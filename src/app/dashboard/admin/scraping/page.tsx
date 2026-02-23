@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { StatusBadge, EmptyState, Spinner, Modal } from '@/components/ui';
-import { Play, Clock, RefreshCw, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Play, Clock, RefreshCw, ChevronLeft, ChevronRight, Trash2, Square } from 'lucide-react';
 
 type ScrapeRun = {
   id: string;
@@ -55,7 +55,9 @@ export default function ScrapingPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [jobCount, setJobCount] = useState<number | null>(null);
+  const [stopping, setStopping] = useState(false);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const supabase = createClient();
 
   const loadRuns = useCallback(async () => {
@@ -87,8 +89,12 @@ export default function ScrapingPage() {
     if (!selectedSources.length) { alert('Select at least one source.'); return; }
 
     setScraping(true);
+    setStopping(false);
     setHistPage(0);
     setLiveLog([`🚀 ${queryList.length} quer${queryList.length > 1 ? 'ies' : 'y'} × ${selectedSources.join(', ')}...`]);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch('/api/scraping', {
@@ -100,6 +106,7 @@ export default function ScrapingPage() {
           location,
           max_results_per_query: maxResults,
         }),
+        signal: controller.signal,
       });
       const data = await res.json();
       if (!res.ok) {
@@ -119,9 +126,26 @@ export default function ScrapingPage() {
       await loadJobCount();
       setScraping(false);
     } catch (e: any) {
-      setLiveLog(l => [...l, `❌ Request failed: ${e.message}`]);
+      if (e.name === 'AbortError') {
+        setLiveLog(l => [...l, '⛔ Scraping stopped by user.']);
+      } else {
+        setLiveLog(l => [...l, `❌ Request failed: ${e.message}`]);
+      }
       setScraping(false);
+    } finally {
+      abortRef.current = null;
     }
+  };
+
+  const stopScrape = async () => {
+    setStopping(true);
+    abortRef.current?.abort();
+    try {
+      await fetch('/api/scraping', { method: 'DELETE' });
+    } catch {}
+    await loadRuns();
+    setScraping(false);
+    setStopping(false);
   };
 
   const clearAllJobs = async () => {
@@ -220,11 +244,18 @@ export default function ScrapingPage() {
                 ))}
               </div>
             </div>
-            <button onClick={startScrape} disabled={scraping} className="btn-primary text-sm w-full">
-              {scraping
-                ? <><Spinner size={14} /> Running{runningCount > 0 ? ` (${runningCount})` : ''}...</>
-                : <><Play size={14} /> Start Scrape</>}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={startScrape} disabled={scraping} className="btn-primary text-sm flex-1">
+                {scraping
+                  ? <><Spinner size={14} /> Running{runningCount > 0 ? ` (${runningCount})` : ''}...</>
+                  : <><Play size={14} /> Start Scrape</>}
+              </button>
+              {scraping && (
+                <button onClick={stopScrape} disabled={stopping} className="btn-ghost text-sm flex items-center gap-1.5 px-4 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/30">
+                  {stopping ? <Spinner size={14} /> : <Square size={14} />} Stop
+                </button>
+              )}
+            </div>
             <p className="text-xs text-surface-400">
               Requires <code className="bg-surface-100 px-1 rounded">APIFY_API_TOKEN</code> in <code className="bg-surface-100 px-1 rounded">.env</code>
             </p>

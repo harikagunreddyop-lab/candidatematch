@@ -387,3 +387,49 @@ function makeHash(j: any) {
 function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DELETE — abort running scrape runs (admin only)
+// ─────────────────────────────────────────────────────────────────────────────
+export async function DELETE(req: NextRequest) {
+  const authResult = await requireAdmin(req);
+  if (authResult instanceof Response) return authResult;
+
+  const supabase = createServiceClient();
+
+  const { data: runningRuns } = await supabase
+    .from('scrape_runs')
+    .select('id, actor_id')
+    .eq('status', 'running');
+
+  let abortedCount = 0;
+
+  for (const run of runningRuns || []) {
+    await supabase.from('scrape_runs').update({
+      status: 'failed',
+      error_message: 'Aborted by user',
+      completed_at: new Date().toISOString(),
+    }).eq('id', run.id);
+    abortedCount++;
+  }
+
+  // Try to abort any active Apify runs
+  if (APIFY_TOKEN) {
+    try {
+      const listRes = await fetch(
+        `https://api.apify.com/v2/actor-runs?token=${APIFY_TOKEN}&status=RUNNING&limit=10`
+      );
+      if (listRes.ok) {
+        const { data: { items } } = await listRes.json();
+        for (const item of items || []) {
+          fetch(
+            `https://api.apify.com/v2/actor-runs/${item.id}/abort?token=${APIFY_TOKEN}`,
+            { method: 'POST' }
+          ).catch(() => {});
+        }
+      }
+    } catch {}
+  }
+
+  return NextResponse.json({ aborted: abortedCount });
+}

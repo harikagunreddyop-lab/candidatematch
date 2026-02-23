@@ -12,3 +12,4 @@ dist
 out
 coverage
 *.tsbuildinfo
+*.zip

@@ -540,7 +540,13 @@ export default function CandidateDashboard() {
               {greeting}, {firstName}
             </h1>
             <p className="text-surface-300 mt-1.5 text-sm sm:text-base">
-              {candidate.primary_title}{candidate.location ? ` · ${candidate.location}` : ' · Your career dashboard'}
+              <span className="text-surface-400">Job title: </span>
+              {candidate.primary_title?.trim() ? (
+                <span>{candidate.primary_title}</span>
+              ) : (
+                <a href="/dashboard/candidate/profile" className="underline hover:text-white">Add in My profile →</a>
+              )}
+              {candidate.location ? ` · ${candidate.location}` : ''}
             </p>
             <div className="mt-5 flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-3">

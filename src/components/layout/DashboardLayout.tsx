@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { cn } from '@/utils/helpers';
@@ -142,12 +143,12 @@ export default function DashboardLayout({ children, profile }: { children: React
       )}>
         {/* Logo */}
         <div className={cn('flex items-center h-16 border-b border-white/10 px-4', collapsed && 'justify-center')}>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shadow-lg">
-              <Cpu size={16} className="text-white" />
+          <Link href={profile.role === 'admin' ? '/dashboard/admin' : profile.role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate'} className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
+              <Image src="/logo.png" alt="Logo" width={32} height={32} className="object-contain" />
             </div>
             {!collapsed && <span className="font-bold text-white font-display tracking-tight">Orion CMOS</span>}
-          </div>
+          </Link>
         </div>
 
         {/* Nav */}

@@ -90,12 +90,20 @@ export default function AdminMessagesPage() {
 
   useEffect(() => {
     if (!profile || !supabase) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const scheduleReload = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => loadConversations(), 400);
+    };
     const channel = supabase
       .channel('admin-messages-page')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => loadConversations())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => loadConversations())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, [profile, supabase, loadConversations]);
 
   const loadAllUsers = async () => {

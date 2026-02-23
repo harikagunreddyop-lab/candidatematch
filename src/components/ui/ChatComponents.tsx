@@ -188,16 +188,24 @@ export function ChatPanel({
 
   useEffect(() => {
     loadMessages();
-    // Realtime subscription
     const channel = supabase
       .channel(`messages-${conversationId}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${conversationId}`,
+      }, (payload) => {
+        const newRow = payload.new as any;
+        if (!newRow?.id) return;
+        if (newRow.sender_id !== currentProfile.id) loadMessages();
+        onUnreadChange?.();
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'messages',
+        filter: `conversation_id=eq.${conversationId}`,
       }, () => loadMessages())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [conversationId, loadMessages]);
+  }, [conversationId, loadMessages, currentProfile.id, currentProfile.name, currentProfile.email, currentProfile.role, onUnreadChange]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -222,17 +230,36 @@ export function ChatPanel({
 
   const sendMessage = async (content: string, attachmentPath?: string, attachmentName?: string, attachmentType?: string) => {
     if (!content.trim() && !attachmentPath) return;
-    setSending(true);
-    await supabase.from('messages').insert({
+    const tempId = `temp-${Date.now()}`;
+    const optimistic: Message = {
+      id: tempId,
       conversation_id: conversationId,
       sender_id: currentProfile.id,
       content: content.trim() || null,
       attachment_path: attachmentPath || null,
       attachment_name: attachmentName || null,
       attachment_type: attachmentType || null,
-    });
+      created_at: new Date().toISOString(),
+      sender: { id: currentProfile.id, name: currentProfile.name, email: currentProfile.email, role: currentProfile.role, created_at: '', updated_at: '' },
+    };
+    setMessages(prev => [...prev, optimistic]);
     setText('');
+    setSending(true);
+    const { data: inserted } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: currentProfile.id,
+      content: content.trim() || null,
+      attachment_path: attachmentPath || null,
+      attachment_name: attachmentName || null,
+      attachment_type: attachmentType || null,
+    }).select('*').single();
     setSending(false);
+    if (inserted) {
+      setMessages(prev => prev.map(m => m.id === tempId ? { ...inserted, sender: optimistic.sender } : m));
+    } else {
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      loadMessages();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

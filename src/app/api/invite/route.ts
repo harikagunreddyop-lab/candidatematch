@@ -83,21 +83,43 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
 
-    // For candidates — create row immediately; keep name/email/phone in sync with profile
+    // For candidates — link existing orphan or create new row
     if (role === 'candidate') {
-      await adminClient.from('candidates').upsert({
-        user_id: newUserId,
-        email,
-        full_name: displayName,
-        phone: phone?.trim() || null,
-        primary_title: '',
-        skills: [],
-        secondary_titles: [],
-        active: true,
-        onboarding_completed: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id' });
+      // Check if there's an existing candidate with this email but no user_id (admin-created)
+      const { data: existingOrphan } = await adminClient
+        .from('candidates')
+        .select('id')
+        .eq('email', email)
+        .is('user_id', null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existingOrphan) {
+        // Link existing candidate to the new auth user
+        await adminClient.from('candidates')
+          .update({
+            user_id: newUserId,
+            onboarding_completed: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingOrphan.id);
+      } else {
+        // No existing candidate — create fresh
+        await adminClient.from('candidates').upsert({
+          user_id: newUserId,
+          email,
+          full_name: displayName,
+          phone: phone?.trim() || null,
+          primary_title: '',
+          skills: [],
+          secondary_titles: [],
+          active: true,
+          onboarding_completed: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' });
+      }
     }
   }
 

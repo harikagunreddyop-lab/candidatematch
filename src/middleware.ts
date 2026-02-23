@@ -131,11 +131,31 @@ export async function middleware(request: NextRequest) {
 
       // Candidates: full dashboard only when a recruiter is assigned; otherwise only waiting page
       if (isCandidate && isCandidateDashboard && !isWaitingPage) {
-        const { data: candidate } = await supabase
+        let { data: candidate } = await supabase
           .from('candidates')
           .select('id')
           .eq('user_id', user.id)
           .single();
+
+        // Auto-link: if no candidate found by user_id, try email match
+        if (!candidate && user.email) {
+          const { data: orphan } = await supabase
+            .from('candidates')
+            .select('id')
+            .eq('email', user.email)
+            .is('user_id', null)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (orphan) {
+            await supabase
+              .from('candidates')
+              .update({ user_id: user.id })
+              .eq('id', orphan.id);
+            candidate = orphan;
+          }
+        }
 
         if (!candidate) {
           return NextResponse.redirect(new URL('/dashboard/candidate/waiting', request.url));
@@ -153,11 +173,27 @@ export async function middleware(request: NextRequest) {
 
       // If candidate is on waiting page but has recruiter assigned → send to dashboard
       if (isCandidate && isWaitingPage) {
-        const { data: candidate } = await supabase
+        let { data: candidate } = await supabase
           .from('candidates')
           .select('id')
           .eq('user_id', user.id)
           .single();
+
+        // Auto-link by email on waiting page too
+        if (!candidate && user.email) {
+          const { data: orphan } = await supabase
+            .from('candidates')
+            .select('id')
+            .eq('email', user.email)
+            .is('user_id', null)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+            .single();
+          if (orphan) {
+            await supabase.from('candidates').update({ user_id: user.id }).eq('id', orphan.id);
+            candidate = orphan;
+          }
+        }
 
         if (candidate) {
           const { count } = await supabase

@@ -22,6 +22,7 @@ export default function CandidateProfilePage() {
     setCandidate(cand);
     setProfileForm({
       full_name: cand.full_name || '',
+      primary_title: cand.primary_title || '',
       phone: cand.phone || '',
       location: cand.location || '',
       linkedin_url: cand.linkedin_url || '',
@@ -57,6 +58,7 @@ export default function CandidateProfilePage() {
     setProfileError(null);
     const { error } = await supabase.from('candidates').update({
       full_name: profileForm.full_name,
+      primary_title: profileForm.primary_title?.trim() || null,
       phone: profileForm.phone || null,
       location: profileForm.location || null,
       linkedin_url: profileForm.linkedin_url || null,
@@ -117,6 +119,22 @@ export default function CandidateProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Job title / Role</h3>
+            {editingProfile
+              ? (
+                <input
+                  type="text"
+                  value={profileForm.primary_title || ''}
+                  onChange={e => setProfileForm((p: any) => ({ ...p, primary_title: e.target.value }))}
+                  className="input text-sm w-full dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 dark:placeholder:text-surface-400"
+                  placeholder="e.g. Software Engineer, Data Analyst"
+                />
+              )
+              : <p className="text-sm text-surface-600 dark:text-surface-300">{candidate.primary_title?.trim() || <span className="text-surface-400 dark:text-surface-500 italic">Not set — add in edit mode</span>}</p>
+            }
+          </div>
+
           <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Professional summary</h3>
             {editingProfile

@@ -62,11 +62,19 @@ export default function CandidateMessagesPage() {
 
   useEffect(() => {
     if (!profile) return;
-    const channel = supabase.channel('candidate-messages-page')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => loadConversations())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => loadConversations())
+    let timeout: ReturnType<typeof setTimeout>;
+    const scheduleReload = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => loadConversations(), 400);
+    };
+    const channel = supabase.channel('recruiter-candidates-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
   }, [profile, loadConversations]);
 
   const loadAvailableUsers = async () => {

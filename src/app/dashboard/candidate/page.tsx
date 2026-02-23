@@ -471,7 +471,7 @@ export default function CandidateDashboard() {
         <User size={36} className="text-surface-400 dark:text-surface-400" />
       </div>
       <h2 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">Profile not linked</h2>
-      <p className="text-sm text-surface-500 dark:text-surface-300 max-w-sm">Your account hasn't been linked to a candidate profile yet. Please contact your recruiter to get started.</p>
+      <p className="text-sm text-surface-500 dark:text-surface-300 max-w-sm">Your account hasn&apos;t been linked to a candidate profile yet. Please contact your recruiter to get started.</p>
     </div>
   );
 

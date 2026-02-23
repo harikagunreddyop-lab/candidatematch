@@ -104,7 +104,7 @@ export default function AdminDashboard() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-w-0 max-w-full">
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>

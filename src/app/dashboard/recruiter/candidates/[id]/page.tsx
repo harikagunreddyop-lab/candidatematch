@@ -443,14 +443,14 @@ export default function RecruiterCandidateDetail() {
   const education = safeArray(candidate.education);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full overflow-x-hidden">
 
       {/* ── HEADER ── */}
-      <div className="flex items-center gap-4">
-        <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-surface-900 font-display">{candidate.full_name}</h1>
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
+        <button onClick={() => router.back()} className="btn-ghost p-2 shrink-0"><ArrowLeft size={18} /></button>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200' : 'bg-surface-100 dark:bg-surface-600 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}
             </span>

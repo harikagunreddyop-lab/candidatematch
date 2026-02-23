@@ -103,10 +103,16 @@ export default function AdminDashboardClient({
   const router = useRouter();
 
   const runMatching = async () => {
-    setMatching(true); setMatchMsg(null);
-    const res = await fetch('/api/matches', { method: 'POST' });
-    const d = await res.json();
-    setMatchMsg(`✅ ${d.total_matches_upserted || 0} matches across ${d.candidates_processed || 0} candidates`);
+    setMatching(true);
+    setMatchMsg(null);
+    try {
+      const res = await fetch('/api/matches', { method: 'GET' });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Matching failed');
+      setMatchMsg(`✅ ${d.total_matches_upserted ?? 0} matches across ${d.candidates_processed ?? 0} candidates`);
+    } catch (err: any) {
+      setMatchMsg(`❌ ${err.message ?? 'Matching failed'}`);
+    }
     setMatching(false);
     router.refresh();
   };

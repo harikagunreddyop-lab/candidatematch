@@ -186,7 +186,7 @@ export default function UsersPage() {
           description={search ? 'Try a different search' : 'Invite your first recruiter or candidate'}
           action={<button onClick={() => setShowInvite(true)} className="btn-primary text-sm flex items-center gap-1.5"><Send size={14} /> Invite User</button>} />
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden min-w-0">
           <div className="divide-y divide-surface-100 dark:divide-surface-600">
             {filtered.map(u => {
               const assignedCount = assignmentCounts[u.id] || 0;
@@ -336,7 +336,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
           <p className="text-sm font-semibold text-surface-900">Invite sent!</p>
           <p className="text-xs text-surface-500">
             A magic link was sent to <strong>{email}</strong>.<br />
-            They'll be added as a <strong>{role}</strong> when they sign up.
+            They&apos;ll be added as a <strong>{role}</strong> when they sign up.
           </p>
           <div className="flex justify-center gap-3 pt-2">
             <button onClick={reset} className="btn-secondary text-sm">Send another</button>

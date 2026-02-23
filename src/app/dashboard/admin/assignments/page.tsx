@@ -33,12 +33,22 @@ export default function AssignmentsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    const { data: candProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
+    const validProfileIds = (candProfiles || []).map((p: any) => p.id as string);
+    const safeIds = validProfileIds.length > 0 ? validProfileIds : ['00000000-0000-0000-0000-000000000000'];
+
     const [asgn, recs, cands] = await Promise.all([
       supabase.from('recruiter_candidate_assignments')
         .select('*, recruiter:profiles!recruiter_id(name, email), candidate:candidates!candidate_id(full_name, email, primary_title)')
         .order('assigned_at', { ascending: false }),
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-      supabase.from('candidates').select('id, full_name, email, primary_title, user_id').eq('active', true).not('invite_accepted_at', 'is', null).order('full_name'),
+      supabase
+        .from('candidates')
+        .select('id, full_name, email, primary_title, user_id')
+        .eq('active', true)
+        .not('invite_accepted_at', 'is', null)
+        .in('user_id', safeIds)
+        .order('full_name'),
     ]);
     const err = asgn.error?.message || recs.error?.message || cands.error?.message;
     if (err) {
@@ -49,11 +59,7 @@ export default function AssignmentsPage() {
     } else {
       setAssignments(asgn.data || []);
       setRecruiters(recs.data || []);
-      const { data: candProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
-      const candProfileIdArr = (candProfiles || []).map((p: any) => p.id as string);
-      const candProfileSet: Record<string, boolean> = {};
-      for (const id of candProfileIdArr) candProfileSet[id] = true;
-      setCandidates((cands.data || []).filter((c: any) => candProfileSet[c.user_id]));
+      setCandidates(cands.data || []);
     }
     setLoading(false);
   }, []);
@@ -272,7 +278,7 @@ export default function AssignmentsPage() {
 
             {recruiters.length === 0 ? (
               <div className="py-8 text-center text-sm text-surface-500 dark:text-surface-400">
-                No recruiters found. Go to <strong>Users</strong> page and set a user's role to "recruiter" first.
+                No recruiters found. Go to <strong>Users</strong> page and set a user&apos;s role to &quot;recruiter&quot; first.
               </div>
             ) : (
               <>

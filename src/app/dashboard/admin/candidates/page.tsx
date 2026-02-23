@@ -251,8 +251,8 @@ function CandidatesPageContent() {
           }
         />
       ) : (
-        <div className="card overflow-hidden">
-          <div className="divide-y divide-surface-50">
+        <div className="card overflow-hidden min-w-0">
+          <div className="divide-y divide-surface-50 min-w-0 overflow-x-auto">
             {filtered.map((c) => {
               const latestStatus = c.applications?.[0]?.status;
               const assignedRecruiterIds = assignments[c.id] || [];
@@ -263,7 +263,7 @@ function CandidatesPageContent() {
                 <div
                   key={c.id}
                   id={`candidate-row-${c.id}`}
-                  className="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-700/30 transition-colors group"
+                  className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-700/30 transition-colors group min-w-0"
                 >
                   <div
                     className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/30 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0 cursor-pointer"
@@ -273,8 +273,8 @@ function CandidatesPageContent() {
                   </div>
 
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push(`/dashboard/admin/candidates/${c.id}`)}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">{c.full_name}</p>
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate max-w-[180px] sm:max-w-none">{c.full_name}</p>
                       {c.rating > 0 && (
                         <div className="flex gap-0.5">
                           {Array.from({ length: c.rating }).map((_, i) => (

@@ -630,7 +630,6 @@ export async function runEliteMatching(
   }
 
   const elapsed = (Date.now() - startTime) / 60000;
-  const interviewReadyCount = matches.filter((m) => m.interview_ready).length;
   const stats = {
     total_pairs: totalPairs,
     pairs_after_prefilter: passingPairs.length,

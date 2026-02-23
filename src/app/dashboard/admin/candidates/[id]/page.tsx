@@ -6,7 +6,7 @@ import { Tabs, StatusBadge, Spinner, EmptyState, Modal } from '@/components/ui';
 import {
   ArrowLeft, FileText, Briefcase, Download, ExternalLink,
   CheckCircle2, Sparkles, MapPin, Trash2, Plus, Link2,
-  Mail, Phone, Star, RefreshCw, AlertCircle, Bell, BookmarkCheck, FileDown,
+  Mail, Phone, Star, RefreshCw, AlertCircle, Bell, BookmarkCheck, FileDown, Zap,
 } from 'lucide-react';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 
@@ -51,6 +51,8 @@ export default function CandidateDetailPage() {
   const [assigningRecruiter, setAssigningRecruiter] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [removingAssignment, setRemovingAssignment] = useState<string | null>(null);
+  const [runningMatch, setRunningMatch] = useState(false);
+  const [matchMsg, setMatchMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -185,6 +187,23 @@ export default function CandidateDetailPage() {
     setExporting(false);
   };
 
+  const runMatchingForCandidate = async () => {
+    setRunningMatch(true);
+    setMatchMsg(null);
+    try {
+      const res = await fetch(`/api/matches?candidate_id=${id}`, { method: 'GET' });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Matching failed');
+      setMatchMsg(`✅ ${d.total_matches_upserted ?? 0} matches updated`);
+      await load();
+      setTimeout(() => setMatchMsg(null), 4000);
+    } catch (err: any) {
+      setMatchMsg(`❌ ${err.message ?? 'Matching failed'}`);
+      setTimeout(() => setMatchMsg(null), 5000);
+    }
+    setRunningMatch(false);
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (!candidate) return (
     <div className="text-center py-20">
@@ -206,13 +225,13 @@ export default function CandidateDetailPage() {
   const targetLocs   = safeArray(candidate.target_locations);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 max-w-full">
       {/* Header */}
-      <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
         <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-2xl font-bold text-surface-900 font-display">{candidate.full_name}</h1>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
               candidate.active ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-surface-500')}>
               {candidate.active ? 'Active' : 'Inactive'}
@@ -234,11 +253,19 @@ export default function CandidateDetailPage() {
             {candidate.phone && <a href={`tel:${candidate.phone}`} className="flex items-center gap-1 hover:text-brand-600"><Phone size={12} />{candidate.phone}</a>}
           </div>
         </div>
+        <button onClick={runMatchingForCandidate} disabled={runningMatch} className="btn-secondary text-sm py-2 px-3 flex items-center gap-1.5" title="Re-run job matching for this candidate only">
+          {runningMatch ? <Spinner size={14} /> : <Zap size={14} />} {runningMatch ? 'Matching…' : 'Run matching'}
+        </button>
         <button onClick={handleExportCandidate} disabled={exporting} className="btn-secondary text-sm py-2 px-3 flex items-center gap-1.5">
           {exporting ? <Spinner size={14} /> : <FileDown size={14} />} Export data
         </button>
         <button onClick={load} className="btn-ghost p-2"><RefreshCw size={14} /></button>
       </div>
+      {matchMsg && (
+        <div className={cn('rounded-xl border px-4 py-2.5 text-sm', matchMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700')}>
+          {matchMsg}
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs

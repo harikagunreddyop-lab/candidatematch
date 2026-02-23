@@ -112,7 +112,7 @@ export default function RecruiterApplicationsPage() {
       <div>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Applications</h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-          Track and update status for all your candidates' applications
+          Track and update status for all your candidates&apos; applications
         </p>
       </div>
 
@@ -246,7 +246,7 @@ export default function RecruiterApplicationsPage() {
                     </button>
                   )}
                   {(a.interview_notes || a.notes) && schedulingAppId !== a.id && (
-                    <p className="text-xs text-surface-500 mt-1 italic">"{a.interview_notes || a.notes}"</p>
+                    <p className="text-xs text-surface-500 mt-1 italic">&quot;{a.interview_notes || a.notes}&quot;</p>
                   )}
                 </div>
               )}

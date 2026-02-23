@@ -115,7 +115,7 @@ export default function CandidateReportsPage() {
   if (notLinked) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
       <AlertCircle size={32} className="text-surface-300" />
-      <p className="text-sm text-surface-500">Your account isn't linked to a candidate profile yet. Contact your recruiter.</p>
+      <p className="text-sm text-surface-500">Your account isn&apos;t linked to a candidate profile yet. Contact your recruiter.</p>
     </div>
   );
 
@@ -250,7 +250,7 @@ export default function CandidateReportsPage() {
               Get a personalized AI analysis of your job search progress — ATS score trends, top skill gaps to fix, and one concrete action item for this week.
             </p>
             <button onClick={generateBrief} className="btn-primary flex items-center gap-2">
-              <Brain size={14} /> Generate This Week's Brief
+              <Brain size={14} /> Generate This Week&apos;s Brief
             </button>
           </div>
         )}

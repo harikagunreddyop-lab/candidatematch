@@ -1013,20 +1013,23 @@ export default function CandidateDashboard() {
                   </p>
                 )}
 
-                {m.score_breakdown?.version === 2 && m.score_breakdown.dimensions && (
+                {(m.score_breakdown?.version === 2 || m.score_breakdown?.version === 3) && m.score_breakdown.dimensions && (
                   <div className="pt-3 border-t border-surface-100 dark:border-surface-700 space-y-2.5">
-                    <p className="text-[11px] font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide">ATS Score Breakdown</p>
+                    <p className="text-[11px] font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide">ATS Score Breakdown {m.score_breakdown.version === 3 ? '(v3 — Elite)' : ''}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
                       {[
-                        { key: 'keyword', label: 'Keywords', weight: 35, icon: '🔑' },
-                        { key: 'experience', label: 'Experience', weight: 20, icon: '💼' },
-                        { key: 'title', label: 'Role Fit', weight: 15, icon: '🎯' },
-                        { key: 'education', label: 'Education', weight: 10, icon: '🎓' },
-                        { key: 'location', label: 'Location', weight: 10, icon: '📍' },
-                        { key: 'soft', label: 'Soft Factors', weight: 10, icon: '✨' },
+                        { key: 'keyword', label: 'Keywords', icon: '🔑' },
+                        { key: 'experience', label: 'Experience', icon: '💼' },
+                        { key: 'title', label: 'Role Fit', icon: '🎯' },
+                        { key: 'education', label: 'Education', icon: '🎓' },
+                        { key: 'location', label: 'Location', icon: '📍' },
+                        { key: 'formatting', label: 'ATS Format', icon: '📄' },
+                        { key: 'behavioral', label: 'Behavioral', icon: '🤝' },
+                        { key: 'soft', label: 'Soft Factors', icon: '✨' },
                       ].map(dim => {
                         const d = m.score_breakdown.dimensions[dim.key];
                         if (!d) return null;
+                        const dimWeight = m.score_breakdown.weights?.[dim.key];
                         const barColor = d.score >= 80 ? 'bg-emerald-500' : d.score >= 60 ? 'bg-amber-500' : d.score >= 40 ? 'bg-orange-500' : 'bg-red-500';
                         return (
                           <div key={dim.key} className="flex items-center gap-2 group" title={d.details}>
@@ -1036,7 +1039,7 @@ export default function CandidateDashboard() {
                               <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${d.score}%` }} />
                             </div>
                             <span className={cn('text-[10px] font-bold tabular-nums w-7 text-right', d.score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : d.score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400')}>{d.score}</span>
-                            <span className="text-[8px] text-surface-400 w-5 shrink-0">{dim.weight}%</span>
+                            {dimWeight && <span className="text-[8px] text-surface-400 w-5 shrink-0">{dimWeight}%</span>}
                           </div>
                         );
                       })}

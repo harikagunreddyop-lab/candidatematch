@@ -162,26 +162,69 @@ export default function HomePage() {
   const strength = mode === 'signup' ? passwordStrength(password) : null;
 
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-surface-50 dark:bg-surface-900">
-      {/* Background blobs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-brand-200/30 dark:bg-brand-500/10 blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-indigo-200/20 dark:bg-indigo-500/10 blur-3xl" />
-      </div>
-
-      <div className="relative flex-1 min-h-0 flex flex-col items-center justify-center px-4 py-4 overflow-auto">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-4 sm:mb-6 shrink-0">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl overflow-hidden bg-white dark:bg-surface-800 flex items-center justify-center shadow-lg shadow-brand-500/25 border border-surface-200 dark:border-surface-600">
-            <Image src="/logo.png" alt="Logo" width={48} height={48} className="object-contain w-10 h-10 sm:w-12 sm:h-12" />
+    <div className="min-h-screen flex bg-surface-50 dark:bg-surface-900">
+      {/* One section: left half = logo, right half = login box */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-screen">
+        {/* Left half — Matte black with Orion-path gradient, stars/crystals, meaning */}
+        <div
+          className="relative flex items-center justify-center px-6 py-12 overflow-hidden min-h-[50vh] md:min-h-0"
+          style={{
+            background: 'linear-gradient(140deg, #0a0a0a 0%, #0f0f0f 35%, #0c0c0c 50%, #080808 70%, #0a0a0a 100%)',
+          }}
+        >
+          {/* Shiny black stars & crystals (decorative) */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden>
+            {/* Stars — dark with a tiny highlight */}
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/60 shadow-[0_0_6px_0_rgba(255,255,255,0.15),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.08)] top-[18%] left-[22%]" />
+            <div className="absolute w-2 h-2 rounded-full bg-neutral-900 border border-neutral-500/50 shadow-[0_0_8px_0_rgba(255,255,255,0.2),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.1)] top-[28%] right-[28%]" />
+            <div className="absolute w-1 h-1 rounded-full bg-black border border-neutral-600/50 shadow-[0_0_4px_0_rgba(255,255,255,0.12)] top-[12%] right-[18%]" />
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/50 shadow-[0_0_5px_0_rgba(255,255,255,0.12),inset_0_0_1px_0_rgba(255,255,255,0.1)] bottom-[32%] left-[15%]" />
+            <div className="absolute w-2 h-2 rounded-full bg-neutral-900 border border-neutral-500/60 shadow-[0_0_7px_0_rgba(255,255,255,0.18),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.08)] bottom-[22%] right-[20%]" />
+            <div className="absolute w-1 h-1 rounded-full bg-black shadow-[0_0_4px_0_rgba(255,255,255,0.1)] bottom-[38%] right-[32%]" />
+            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/40 shadow-[0_0_5px_0_rgba(255,255,255,0.1)] top-[42%] left-[12%]" />
+            <div className="absolute w-1 h-1 rounded-full bg-neutral-900 shadow-[0_0_4px_0_rgba(255,255,255,0.08)] top-[55%] right-[14%]" />
+            {/* Crystals — dark facets with a hint of edge shine */}
+            <div className="absolute w-2.5 h-2.5 rotate-45 bg-gradient-to-br from-neutral-700/80 to-neutral-900 border border-neutral-600/50 shadow-[0_0_4px_0_rgba(255,255,255,0.06)] top-[24%] left-[35%]" />
+            <div className="absolute w-2 h-2 rotate-[30deg] bg-gradient-to-br from-neutral-600/70 to-neutral-900 border border-neutral-500/40 top-[35%] right-[38%]" />
+            <div className="absolute w-2 h-2 -rotate-12 bg-gradient-to-br from-neutral-700/60 to-neutral-900 border border-neutral-600/40 bottom-[45%] right-[25%]" />
+            <div className="absolute w-2 h-2 rotate-45 bg-gradient-to-br from-neutral-600/80 to-neutral-900 border border-neutral-500/50 bottom-[28%] left-[28%]" />
+            <div className="absolute w-1.5 h-1.5 rotate-12 bg-gradient-to-br from-neutral-600/70 to-neutral-900 border border-neutral-600/50 top-[60%] left-[20%]" />
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 dark:text-white font-display tracking-tight">Orion CMOS</h1>
+
+          <div className="relative flex flex-col items-center justify-center text-center max-w-sm">
+            <div
+              className="relative flex items-center justify-center rounded-2xl p-1"
+              style={{
+                boxShadow: '0 0 32px rgba(96, 165, 250, 0.35), 0 0 64px rgba(96, 165, 250, 0.2), 0 0 0 1px rgba(96, 165, 250, 0.2)',
+              }}
+            >
+              <Image
+                src="/logo.png"
+                alt="Orion CMOS"
+                width={280}
+                height={280}
+                className="object-contain w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl"
+              />
+            </div>
+            <h1 className="mt-5 text-2xl sm:text-3xl font-bold text-white font-display tracking-tight">
+              Orion CMOS
+            </h1>
+            <p className="mt-1 text-sm text-neutral-500 font-medium">AI-powered recruitment platform</p>
+            <p className="mt-6 text-xs text-neutral-600 leading-relaxed">
+              <span className="text-neutral-500 font-medium">Orion path</span> — like the constellation that guides the way: we light the path between talent and the right opportunity.
+            </p>
           </div>
         </div>
 
-        {/* Card */}
-        <div className="w-full max-w-md card p-4 sm:p-6 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100 shrink-0">
+        {/* Right half — Login box (same matte black Orion-path background) */}
+        <div
+          className="flex items-center justify-center px-4 sm:px-8 lg:px-12 py-12 min-h-[50vh] md:min-h-0"
+          style={{
+            background: 'linear-gradient(140deg, #0a0a0a 0%, #0f0f0f 35%, #0c0c0c 50%, #080808 70%, #0a0a0a 100%)',
+          }}
+        >
+          <div className="w-full max-w-md">
+            <div className="card p-5 sm:p-8 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100 shadow-xl border border-surface-200 dark:border-surface-700">
           <h2 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h2>
@@ -413,21 +456,8 @@ export default function HomePage() {
               </p>
             </>
           )}
+          </div>
         </div>
-
-        {/* Feature strip - compact, fits viewport */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mt-4 shrink-0">
-          {[
-            { icon: <Sparkles size={16} />, title: 'AI Resumes', desc: 'Tailored to every JD' },
-            { icon: <Zap size={16} />, title: 'Auto Match', desc: 'ATS scoring' },
-            { icon: <Shield size={16} />, title: 'Secure', desc: 'RLS policies' },
-          ].map(f => (
-            <div key={f.title} className="flex flex-col items-center text-center p-2 sm:p-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-50 dark:bg-brand-500/20 flex items-center justify-center text-brand-500 dark:text-brand-400 mb-1">{f.icon}</div>
-              <h3 className="text-xs sm:text-sm font-semibold text-surface-800 dark:text-surface-100">{f.title}</h3>
-              <p className="text-[10px] sm:text-xs text-surface-500 dark:text-surface-400 mt-0.5">{f.desc}</p>
-            </div>
-          ))}
         </div>
       </div>
     </div>

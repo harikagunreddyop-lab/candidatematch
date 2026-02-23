@@ -487,3 +487,12 @@ input:focus, textarea:focus, select:focus {
 [class~="text-yellow-600"], [class~="text-yellow-700"], [class~="text-yellow-800"] { color: #fbbf24 !important; }
 [class~="text-orange-600"], [class~="text-orange-700"], [class~="text-orange-800"] { color: #fb923c !important; }
 [class~="text-emerald-600"], [class~="text-emerald-700"], [class~="text-emerald-800"] { color: #34d399 !important; }
+
+/* Login page: floating logo animation */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}

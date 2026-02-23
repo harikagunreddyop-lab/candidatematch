@@ -309,6 +309,25 @@ export async function runMatching(
   const summary: any[] = [];
 
   for (const candidate of candidates as Candidate[]) {
+    // Profile completeness gate: skip candidates with minimal data to avoid wasting API calls
+    const candidateSkills = parseSkills(candidate.skills);
+    const candidateTools = parseSkills(candidate.tools);
+    const candidateExp = parseArray(candidate.experience);
+    const candidateEdu = parseArray(candidate.education);
+    const hasResumeParsed = (candidate.parsed_resume_text || '').trim().length > 50;
+    const profileSignals = [
+      candidateSkills.length >= 3,
+      candidateExp.length > 0,
+      candidateEdu.length > 0,
+      hasResumeParsed,
+    ].filter(Boolean).length;
+
+    if (profileSignals === 0) {
+      log(`${candidate.full_name}: Skipped — profile too sparse (no experience, no education, <3 skills, no resume). Ask candidate to complete their profile.`);
+      summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Incomplete Profile' });
+      continue;
+    }
+
     const variants = await getResumeVariants(supabase, candidate.id, candidate);
     const combinedResumeText = variants.map(v => v.text).join(' ').slice(0, 3000);
     const { eligible: potentialJobs, stats } = prefilterJobs(jobs as Job[], candidate, combinedResumeText);
@@ -318,11 +337,6 @@ export async function runMatching(
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Filtered' });
       continue;
     }
-
-    const candidateSkills = parseSkills(candidate.skills);
-    const candidateTools = parseSkills(candidate.tools);
-    const candidateExp = parseArray(candidate.experience);
-    const candidateEdu = parseArray(candidate.education);
     const candidateCerts = parseArray(candidate.certifications);
     const candidateDomains = getCandidateDomains(candidate);
 

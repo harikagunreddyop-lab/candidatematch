@@ -48,6 +48,10 @@ export default function HomePage() {
 
   const reset = () => { setError(null); setSuccess(null); };
 
+  // Use the production URL (from env) so OAuth/invite/reset emails always
+  // point to the deployed app, never to localhost.
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+
   // ── OAuth ─────────────────────────────────────────────────────────────────
   const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {
     reset();
@@ -55,7 +59,7 @@ export default function HomePage() {
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${appUrl}/auth/callback`,
         queryParams: provider === 'linkedin_oidc' ? { scope: 'openid email profile' } : undefined,
       },
     });
@@ -109,7 +113,7 @@ export default function HomePage() {
           name: fullName.trim(),
           signup_role: signupRole,
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${appUrl}/auth/callback`,
       },
     });
 
@@ -139,7 +143,7 @@ export default function HomePage() {
     if (!email) { setError('Enter your email address'); return; }
     setLoading(true);
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`,
+      redirectTo: `${appUrl}/auth/reset-password`,
     });
     if (err) { setError(err.message); setLoading(false); return; }
     setSuccess('Password reset link sent. Check your email.');

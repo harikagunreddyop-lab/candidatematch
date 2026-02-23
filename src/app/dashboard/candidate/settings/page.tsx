@@ -203,7 +203,7 @@ function SendPasswordReset() {
       return;
     }
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/reset-password` : '',
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/auth/reset-password`,
     });
     if (err) setError(err.message);
     else setSent(true);

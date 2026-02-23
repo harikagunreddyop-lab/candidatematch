@@ -59,16 +59,16 @@ export default function UsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
-    const [profilesRes, candidateCountRes, assignRes] = await Promise.all([
+    const [profilesRes, assignRes] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null),
       supabase.from('recruiter_candidate_assignments').select('recruiter_id'),
     ]);
 
     if (profilesRes.error) setError(profilesRes.error.message);
     else setUsers(profilesRes.data || []);
 
-    setTotalCandidates(candidateCountRes.count || 0);
+    // Count candidate profiles directly so this matches what the candidates page shows
+    setTotalCandidates((profilesRes.data || []).filter((u: any) => u.role === 'candidate').length);
 
     // Count assignments per recruiter
     const counts: Record<string, number> = {};

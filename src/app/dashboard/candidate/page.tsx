@@ -80,7 +80,7 @@ function SendPasswordReset() {
       setSending(false);
       return;
     }
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/reset-password` });
+    const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/auth/reset-password` });
     if (err) {
       setError(err.message);
     } else {

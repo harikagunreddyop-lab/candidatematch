@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { SCORE_MIN_STORED } from '@/lib/ats-score';
 import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
+import { runEliteMatching, matchToDbRow, type EliteJob, type EliteCandidate, type MatchResult } from '@/lib/elite-ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -288,6 +289,97 @@ export async function runMatching(
   if (!jobs?.length) { log('No active jobs.'); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
 
   log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (multi-dimensional ATS engine, concurrency=${CONCURRENCY}).`);
+
+  // ── Elite ATS path (Batches API, Claude Sonnet) ─────────────────────────────
+  if (process.env.USE_ELITE_ATS === '1' && ANTHROPIC_API_KEY) {
+    const logElite = (m: string) => log(m);
+    const eliteJobs: EliteJob[] = (jobs as Job[]).map((j) => ({
+      id: j.id,
+      title: j.title,
+      company: j.company,
+      description: (j.jd_clean || j.jd_raw || '').trim().slice(0, 5000),
+      location: j.location,
+      is_active: true,
+    }));
+
+    const eliteCandidates: EliteCandidate[] = [];
+    for (const candidate of candidates as Candidate[]) {
+      const candidateSkills = parseSkills(candidate.skills);
+      const candidateExp = parseArray(candidate.experience);
+      const candidateEdu = parseArray(candidate.education);
+      const hasResumeParsed = (candidate.parsed_resume_text || '').trim().length > 50;
+      const profileSignals = [
+        candidateSkills.length >= 3,
+        candidateExp.length > 0,
+        candidateEdu.length > 0,
+        hasResumeParsed,
+      ].filter(Boolean).length;
+      if (profileSignals === 0) continue;
+
+      const variants = await getResumeVariants(supabase, candidate.id, candidate);
+      if (variants.every((v) => !v.text.trim())) continue;
+
+      eliteCandidates.push({
+        id: candidate.id,
+        name: candidate.full_name,
+        title: candidate.primary_title,
+        years_experience: candidate.years_of_experience,
+        location: candidate.location,
+        needs_visa_sponsorship: /h1b|opt|visa|sponsorship/i.test((candidate.visa_status || '') + (candidate as any).work_authorization || ''),
+        resumes: variants.map((v, i) => ({
+          index: i,
+          text: v.text,
+          resume_id: v.resumeId,
+        })),
+      });
+    }
+
+    if (eliteCandidates.length === 0) {
+      log('Elite ATS: No candidates with sufficient profile + resume data.');
+      return { candidates_processed: 0, total_matches_upserted: 0, summary: [] };
+    }
+
+    try {
+      const { matches: eliteMatches, stats } = await runEliteMatching(eliteJobs, eliteCandidates, logElite);
+
+      // Cap at MAX_MATCHES_PER_CANDIDATE per candidate, then upsert
+      const byCandidate = new Map<string, typeof eliteMatches>();
+      for (const m of eliteMatches) {
+        const list = byCandidate.get(m.candidate_id) || [];
+        list.push(m);
+        byCandidate.set(m.candidate_id, list);
+      }
+      const toUpsert: any[] = [];
+      for (const list of Array.from(byCandidate.values())) {
+        const sorted = list.sort((a: MatchResult, b: MatchResult) => b.fit_score - a.fit_score).slice(0, MAX_MATCHES_PER_CANDIDATE);
+        for (const m of sorted) toUpsert.push(matchToDbRow(m));
+      }
+
+      if (toUpsert.length > 0) {
+        const { error: upsertErr } = await supabase.from('candidate_job_matches').upsert(toUpsert, { onConflict: 'candidate_id,job_id' });
+        if (upsertErr) {
+          logError('[MATCH] Elite upsert failed', upsertErr);
+          return { candidates_processed: eliteCandidates.length, total_matches_upserted: 0, summary: [] };
+        }
+      }
+
+      const summary = (candidates as Candidate[]).map((c) => {
+        const rows = toUpsert.filter((r: any) => r.candidate_id === c.id);
+        const count = rows.length;
+        const top_score = count ? Math.max(...rows.map((r: any) => r.fit_score)) : undefined;
+        return { candidate_id: c.id, candidate: c.full_name, matches: count, top_score, status: count ? 'Matched' : 'No Matches' };
+      });
+      log(`Elite ATS complete: ${toUpsert.length} matches upserted.`);
+      return {
+        candidates_processed: (candidates as Candidate[]).length,
+        total_matches_upserted: toUpsert.length,
+        summary,
+      };
+    } catch (e) {
+      logError('[MATCH] Elite ATS failed', e);
+      return { candidates_processed: (candidates as Candidate[]).length, total_matches_upserted: 0, summary: [] };
+    }
+  }
 
   // Phase 0: Extract & cache JD requirements for all jobs (parallel, one-time per job)
   const jobReqMap = new Map<string, JobRequirements | null>();

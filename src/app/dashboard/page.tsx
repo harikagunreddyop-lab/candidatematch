@@ -43,11 +43,15 @@ export default function AdminDashboard() {
 
     const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
 
+    const { data: cProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
+    const validIds = (cProfiles || []).map((p: any) => p.id);
+    const safeIds = validIds.length > 0 ? validIds : ['00000000-0000-0000-0000-000000000000'];
+
     const [
       candidates, jobs, resumes, applications, recruiters, assignments,
       apps, jobsList, candList, stuckRes, unassignedRes,
     ] = await Promise.all([
-      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null),
+      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds),
       supabase.from('jobs').select('id', { count: 'exact', head: true }),
       supabase.from('resume_versions').select('id', { count: 'exact', head: true }).eq('generation_status', 'completed'),
       supabase.from('applications').select('id', { count: 'exact', head: true }),
@@ -59,17 +63,15 @@ export default function AdminDashboard() {
       supabase.from('jobs').select('*')
         .order('scraped_at', { ascending: false }).limit(5),
       supabase.from('candidates').select('id, full_name, primary_title, email, created_at, active')
-        .not('invite_accepted_at', 'is', null)
+        .not('invite_accepted_at', 'is', null).in('user_id', safeIds)
         .order('created_at', { ascending: false }).limit(5),
-      // Stuck candidates: in an active status but not updated in 14+ days
       supabase.from('applications')
         .select('id', { count: 'exact', head: true })
         .in('status', ['applied', 'screening', 'interview'])
         .lt('updated_at', fourteenDaysAgo),
-      // All candidates — we filter unassigned client-side (invite-only flow)
       supabase.from('candidates')
         .select('id, full_name, primary_title, email, created_at, recruiter_candidate_assignments(candidate_id)')
-        .not('invite_accepted_at', 'is', null)
+        .not('invite_accepted_at', 'is', null).in('user_id', safeIds)
         .order('created_at', { ascending: false }),
     ]);
 

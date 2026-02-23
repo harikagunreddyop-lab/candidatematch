@@ -38,7 +38,7 @@ export default function AssignmentsPage() {
         .select('*, recruiter:profiles!recruiter_id(name, email), candidate:candidates!candidate_id(full_name, email, primary_title)')
         .order('assigned_at', { ascending: false }),
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-      supabase.from('candidates').select('id, full_name, email, primary_title').eq('active', true).not('invite_accepted_at', 'is', null).order('full_name'),
+      supabase.from('candidates').select('id, full_name, email, primary_title, user_id').eq('active', true).not('invite_accepted_at', 'is', null).order('full_name'),
     ]);
     const err = asgn.error?.message || recs.error?.message || cands.error?.message;
     if (err) {
@@ -49,7 +49,11 @@ export default function AssignmentsPage() {
     } else {
       setAssignments(asgn.data || []);
       setRecruiters(recs.data || []);
-      setCandidates(cands.data || []);
+      const { data: candProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
+      const candProfileIdArr = (candProfiles || []).map((p: any) => p.id as string);
+      const candProfileSet: Record<string, boolean> = {};
+      for (const id of candProfileIdArr) candProfileSet[id] = true;
+      setCandidates((cands.data || []).filter((c: any) => candProfileSet[c.user_id]));
     }
     setLoading(false);
   }, []);

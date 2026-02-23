@@ -352,18 +352,32 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   const fileRef = useRef<HTMLInputElement>(null);
 
   const mapRow = (row: any) => {
+    // Normalize keys once so we can match case-insensitively
+    const norm: Record<string, any> = {};
+    for (const [k, v] of Object.entries(row)) {
+      norm[k.toLowerCase()] = v;
+    }
+
     const pick = (...keys: string[]) => {
       for (const k of keys) {
-        const v = row[k];
+        const v = norm[k.toLowerCase()];
         if (v !== undefined && v !== null && String(v).trim() !== '' && v !== 'None') return String(v).trim();
       }
       return '';
     };
 
-    // ✅ supports Apify LinkedIn exports + your old formats
+    // ✅ supports Apify LinkedIn exports + common CSV headers (case-insensitive)
     return {
       title: pick('job_title', 'title', 'Title', 'jobtitle', 'position', 'Job Title'),
-      company: pick('company_name', 'company/name', 'company', 'Company', 'companyName', 'employer', 'Organization'),
+      company: pick(
+        'company_name',
+        'company/name',
+        'company',
+        'companyName',
+        'employer',
+        'organization', // Apify: organization
+        'organisation'
+      ),
       location: pick('location', 'location/linkedinText', 'location/parsed/text', 'Location', 'city', 'City'),
       url: pick(
         'job_url', 'apply_url',

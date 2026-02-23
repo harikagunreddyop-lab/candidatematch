@@ -212,6 +212,10 @@ export default function AdminDashboard() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
 
+    const { data: cProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
+    const validIds = (cProfiles || []).map((p: any) => p.id);
+    const safeIds = validIds.length > 0 ? validIds : ['00000000-0000-0000-0000-000000000000'];
+
     const [
       candidates,
       jobs,
@@ -223,7 +227,7 @@ export default function AdminDashboard() {
       jobsList,
       candList,
     ] = await Promise.all([
-      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null),
+      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds),
       supabase.from('jobs').select('id', { count: 'exact', head: true }),
       supabase
         .from('resume_versions')
@@ -244,6 +248,7 @@ export default function AdminDashboard() {
         .from('candidates')
         .select('id, full_name, primary_title, email, created_at, active')
         .not('invite_accepted_at', 'is', null)
+        .in('user_id', safeIds)
         .order('created_at', { ascending: false })
         .limit(6),
     ]);

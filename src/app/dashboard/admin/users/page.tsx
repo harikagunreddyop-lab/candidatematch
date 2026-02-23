@@ -68,7 +68,10 @@ export default function UsersPage() {
     if (profilesRes.error) setError(profilesRes.error.message);
     else setUsers(profilesRes.data || []);
 
-    setTotalCandidates((profilesRes.data || []).filter((u: any) => u.role === 'candidate').length);
+    const validIds = (profilesRes.data || []).filter((u: any) => u.role === 'candidate').map((u: any) => u.id);
+    const safeIds = validIds.length > 0 ? validIds : ['00000000-0000-0000-0000-000000000000'];
+    const { count } = await supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds);
+    setTotalCandidates(count ?? 0);
 
     const counts: Record<string, number> = {};
     for (const a of assignRes.data || []) {

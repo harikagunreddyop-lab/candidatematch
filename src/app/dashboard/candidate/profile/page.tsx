@@ -56,7 +56,7 @@ export default function CandidateProfilePage() {
     if (!candidate) return;
     setSavingProfile(true);
     setProfileError(null);
-    const { error } = await supabase.from('candidates').update({
+    const payload = {
       full_name: profileForm.full_name,
       primary_title: profileForm.primary_title?.trim() || null,
       phone: profileForm.phone || null,
@@ -69,11 +69,11 @@ export default function CandidateProfilePage() {
       salary_max: profileForm.salary_max !== '' && profileForm.salary_max != null ? Number(profileForm.salary_max) : null,
       availability: profileForm.availability?.trim() || null,
       open_to_remote: profileForm.open_to_remote ?? true,
-    }).eq('id', candidate.id);
+    };
+    const { error } = await supabase.from('candidates').update(payload).eq('id', candidate.id);
     if (error) {
       setProfileError(error.message);
     } else {
-      // Sync name to profiles so admin/recruiter views stay consistent
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user?.id) {
         await supabase.from('profiles').update({ name: profileForm.full_name?.trim() || '', updated_at: new Date().toISOString() }).eq('id', session.user.id);

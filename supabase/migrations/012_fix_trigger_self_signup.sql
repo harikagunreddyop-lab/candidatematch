@@ -1,6 +1,6 @@
--- When linking an orphan candidate to a new auth.users row, decide whether
--- invite_accepted_at should stay NULL (invited users — must set password first)
--- or be set to now() (self-signup via email/OAuth — already "accepted").
+-- Fix: self-signup users who match orphan candidate rows should be visible
+-- immediately (invite_accepted_at = now()), not hidden (NULL).
+-- Only invited users (invited_at IS NOT NULL) should start hidden.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -13,14 +13,11 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- Link orphaned candidate records that match this email but have no user_id.
-  -- invited_at is non-NULL only for users created via admin.inviteUserByEmail();
-  -- self-signup users (email, Google, LinkedIn) always have invited_at = NULL.
   UPDATE public.candidates
   SET user_id = NEW.id,
       invite_accepted_at = CASE
-        WHEN NEW.invited_at IS NOT NULL THEN NULL   -- invited: hidden until password set
-        ELSE now()                                   -- self-signup: visible immediately
+        WHEN NEW.invited_at IS NOT NULL THEN NULL
+        ELSE now()
       END
   WHERE email = NEW.email
     AND user_id IS NULL
@@ -34,3 +31,12 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Backfill: any self-signup users currently stuck with invite_accepted_at = NULL
+-- whose auth.users row has invited_at IS NULL (i.e. they were NOT invited).
+UPDATE public.candidates c
+SET invite_accepted_at = c.created_at
+FROM auth.users u
+WHERE c.user_id = u.id
+  AND c.invite_accepted_at IS NULL
+  AND u.invited_at IS NULL;

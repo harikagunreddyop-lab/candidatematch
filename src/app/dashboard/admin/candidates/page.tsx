@@ -56,8 +56,23 @@ function CandidatesPageContent() {
     setLoading(true);
     setError(null);
 
+    // Get all valid profile IDs for candidates so we can filter out orphaned rows
+    const { data: candidateProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'candidate');
+
+    const validProfileIds = (candidateProfiles || []).map((p: any) => p.id);
+
     const [candRes, recRes, asgRes] = await Promise.all([
-      supabase.from('candidates').select('*, applications(status)').not('invite_accepted_at', 'is', null).order('created_at', { ascending: false }),
+      supabase
+        .from('candidates')
+        .select('*, applications(status)')
+        .not('invite_accepted_at', 'is', null)
+        // Only include candidates whose user_id exists in profiles
+        // This filters out orphaned rows left behind after a user is deleted
+        .in('user_id', validProfileIds.length > 0 ? validProfileIds : ['00000000-0000-0000-0000-000000000000'])
+        .order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
       supabase.from('recruiter_candidate_assignments').select('candidate_id, recruiter_id'),
     ]);
@@ -113,7 +128,6 @@ function CandidatesPageContent() {
       recruiter_id: assigningId,
       candidate_id: assignTarget.id,
     });
-    // Sync assigned_recruiter_id so candidate messages see this recruiter
     await supabase.from('candidates').update({ assigned_recruiter_id: assigningId, updated_at: new Date().toISOString() }).eq('id', assignTarget.id);
 
     setAssigningId('');
@@ -124,7 +138,6 @@ function CandidatesPageContent() {
   const removeRecruiter = async (candidateId: string, recruiterId: string) => {
     setRemovingAssign(recruiterId);
     await supabase.from('recruiter_candidate_assignments').delete().eq('recruiter_id', recruiterId).eq('candidate_id', candidateId);
-    // Sync assigned_recruiter_id: set to another assigned recruiter or null
     const { data: remaining } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).order('assigned_at', { ascending: true }).limit(1);
     const nextRecruiterId = remaining?.[0]?.recruiter_id ?? null;
     await supabase.from('candidates').update({ assigned_recruiter_id: nextRecruiterId, updated_at: new Date().toISOString() }).eq('id', candidateId);

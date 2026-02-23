@@ -55,6 +55,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<any | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [deleting, setDeleting] = useState<any | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -67,10 +68,8 @@ export default function UsersPage() {
     if (profilesRes.error) setError(profilesRes.error.message);
     else setUsers(profilesRes.data || []);
 
-    // Count candidate profiles directly so this matches what the candidates page shows
     setTotalCandidates((profilesRes.data || []).filter((u: any) => u.role === 'candidate').length);
 
-    // Count assignments per recruiter
     const counts: Record<string, number> = {};
     for (const a of assignRes.data || []) {
       counts[a.recruiter_id] = (counts[a.recruiter_id] || 0) + 1;
@@ -81,7 +80,6 @@ export default function UsersPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Realtime: watch profiles, candidates AND assignments ──────────────────
   useEffect(() => {
     const channel = supabase.channel('users-page-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
@@ -93,15 +91,29 @@ export default function UsersPage() {
 
   const updateRole = async (id: string, role: string) => {
     await supabase.from('profiles').update({ role }).eq('id', id);
-    // realtime will reload
   };
 
   const deleteUser = async () => {
     if (!deleting) return;
-    // Important: delete candidate rows FIRST so the FK on candidates.user_id
-    // (ON DELETE SET NULL) doesn't clear user_id before we delete them.
+    setDeleteLoading(true);
+
+    // 1. Delete candidate rows linked by user_id
     await supabase.from('candidates').delete().eq('user_id', deleting.id);
+
+    // 2. Delete orphaned candidate rows matched only by email
+    //    (manually created candidates have user_id = null — these are missed by step 1)
+    if (deleting.email) {
+      await supabase
+        .from('candidates')
+        .delete()
+        .eq('email', deleting.email)
+        .is('user_id', null);
+    }
+
+    // 3. Delete the profile itself
     await supabase.from('profiles').delete().eq('id', deleting.id);
+
+    setDeleteLoading(false);
     setDeleting(null);
   };
 
@@ -174,7 +186,6 @@ export default function UsersPage() {
         <div className="card overflow-hidden">
           <div className="divide-y divide-surface-100 dark:divide-surface-600">
             {filtered.map(u => {
-              // Use live assignment count from recruiter_candidate_assignments
               const assignedCount = assignmentCounts[u.id] || 0;
               const isExpanded = expandedId === u.id;
               return (
@@ -249,19 +260,29 @@ export default function UsersPage() {
       {showEditForm && editing && (
         <EditUserModal user={editing} onClose={() => { setShowEditForm(false); setEditing(null); }} onSaved={load} />
       )}
+
+      {/* ── Delete Confirmation Modal ── */}
       {deleting && (
-        <Modal open onClose={() => setDeleting(null)} title="Remove User" size="sm">
+        <Modal open onClose={() => !deleteLoading && setDeleting(null)} title="Remove User" size="sm">
           <p className="text-sm text-surface-700 mb-4">
             Remove <strong>{deleting.name || deleting.email}</strong> from the system?
           </p>
           {deleting.role === 'candidate' && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
-              ⚠️ This will also delete their candidate profile and all associated data.
+              ⚠️ This will also delete their candidate profile and all associated data,
+              including any manually-created records with the same email.
             </p>
           )}
           <div className="flex justify-end gap-3">
-            <button onClick={() => setDeleting(null)} className="btn-secondary text-sm">Cancel</button>
-            <button onClick={deleteUser} className="btn-primary text-sm !bg-red-600 !border-red-600">Remove</button>
+            <button onClick={() => setDeleting(null)} disabled={deleteLoading} className="btn-secondary text-sm">Cancel</button>
+            <button
+              onClick={deleteUser}
+              disabled={deleteLoading}
+              className="btn-primary text-sm !bg-red-600 !border-red-600 flex items-center gap-2 min-w-[100px] justify-center"
+            >
+              {deleteLoading ? <Spinner size={14} /> : <Trash2 size={14} />}
+              {deleteLoading ? 'Removing...' : 'Remove'}
+            </button>
           </div>
         </Modal>
       )}
@@ -375,8 +396,6 @@ function InviteModal({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Edit User Modal ──────────────────────────────────────────────────────────
-// For candidates: admin can only edit name, email (read-only), phone, password reset; rest is recruiter-only.
-// For recruiters/admins: full profile edit.
 function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => void; onSaved: () => void }) {
   const supabase = createClient();
   const [saving, setSaving] = useState(false);
@@ -402,7 +421,6 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
         name: form.name, phone: form.phone || null, is_active: form.is_active, role: form.role,
       }).eq('id', user.id);
       if (error) { setSaveError(error.message); setSaving(false); return; }
-      // Sync name/phone to candidates so recruiter views stay consistent (single source of truth: profile)
       const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', user.id).maybeSingle();
       if (cand?.id) {
         await supabase.from('candidates').update({
@@ -435,9 +453,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ email: user.email }),
       });
-      const data = await res.json();
-      if (res.ok) setResetPasswordMessage('success');
-      else setResetPasswordMessage('error');
+      setResetPasswordMessage(res.ok ? 'success' : 'error');
     } catch {
       setResetPasswordMessage('error');
     }

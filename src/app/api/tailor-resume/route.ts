@@ -41,7 +41,8 @@ export async function GET(req: NextRequest) {
 
 // POST — trigger resume tailoring for a job match
 export async function POST(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  // Only admins and recruiters can trigger tailoring (candidates cannot).
+  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
   
   let body: { candidate_id?: string; job_id?: string };
@@ -58,13 +59,30 @@ export async function POST(req: NextRequest) {
   
   const supabase = createServiceClient();
   
-  // Access control
-  if (authResult.profile.role === 'candidate') {
-    const { data: c } = await supabase.from('candidates').select('id').eq('id', candidate_id).eq('user_id', authResult.user.id).single();
-    if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  } else if (authResult.profile.role === 'recruiter') {
-    const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidate_id).eq('recruiter_id', authResult.profile.id).single();
+  // Access control: recruiter must be assigned to the candidate; admins always allowed.
+  if (authResult.profile.role === 'recruiter') {
+    const { data: a } = await supabase
+      .from('recruiter_candidate_assignments')
+      .select('recruiter_id')
+      .eq('candidate_id', candidate_id)
+      .eq('recruiter_id', authResult.profile.id)
+      .maybeSingle();
     if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  // Only recruiters with admin-granted permission can use tailoring (admins always allowed).
+  if (authResult.profile.role === 'recruiter') {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('resume_generation_allowed')
+      .eq('id', authResult.profile.id)
+      .single();
+    if (profile?.resume_generation_allowed !== true) {
+      return NextResponse.json(
+        { error: 'Resume tailoring is not enabled for your account. Ask an admin to grant access.' },
+        { status: 403 },
+      );
+    }
   }
   
   // Check match exists
@@ -76,6 +94,13 @@ export async function POST(req: NextRequest) {
     .single();
   if (!match) {
     return NextResponse.json({ error: 'No match found for this candidate and job' }, { status: 404 });
+  }
+  const fitScore = match.fit_score ?? null;
+  if (fitScore !== null && fitScore >= 75) {
+    return NextResponse.json(
+      { error: 'Resume tailoring is only available for matches with ATS score below 75.' },
+      { status: 400 },
+    );
   }
   
   // Check if already generating

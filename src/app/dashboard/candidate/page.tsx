@@ -996,32 +996,28 @@ export default function CandidateDashboard() {
                         {(() => {
                           const tr = tailoredResumes[m.job_id];
                           const status = tr?.generation_status;
+                          // Candidates can only download recruiter-generated tailored resumes;
+                          // they cannot trigger or retry generation themselves.
                           if (status === 'done' || status === 'completed') {
                             return (
-                              <button onClick={() => downloadTailoredResume(tr.pdf_path, m.job?.title || 'Job')} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10">
+                              <button
+                                onClick={() => downloadTailoredResume(tr.pdf_path, m.job?.title || 'Job')}
+                                className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                              >
                                 <Download size={12} /> Download Tailored Resume
-                              </button>
-                            );
-                          }
-                          if (status === 'failed') {
-                            return (
-                              <button onClick={() => triggerTailorResume(candidate.id, m.job_id)} disabled={tailoringJobId === m.job_id} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 text-red-600 dark:text-red-400 border-red-300 dark:border-red-500/40 hover:bg-red-50 dark:hover:bg-red-500/10">
-                                {tailoringJobId === m.job_id ? <Spinner size={12} /> : <><AlertCircle size={12} /> Failed – Retry</>}
                               </button>
                             );
                           }
                           if (['pending', 'generating', 'compiling', 'uploading'].includes(status)) {
                             return (
                               <span className="inline-flex items-center gap-1.5 text-xs py-2 px-4 text-brand-600 dark:text-brand-400 font-medium">
-                                <Spinner size={12} /> Generating…
+                                <Spinner size={12} /> Recruiter is tailoring your resume…
                               </span>
                             );
                           }
-                          return (
-                            <button onClick={() => triggerTailorResume(candidate.id, m.job_id)} disabled={tailoringJobId === m.job_id} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
-                              {tailoringJobId === m.job_id ? <Spinner size={12} /> : <><Sparkles size={12} /> Tailor Resume</>}
-                            </button>
-                          );
+                          // No button when there is no tailored resume yet or it failed;
+                          // candidates must rely on recruiters to trigger tailoring.
+                          return null;
                         })()}
                       </div>
                     </div>

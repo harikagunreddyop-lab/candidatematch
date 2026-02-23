@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
-import { Users, Briefcase, ChevronRight, Star, Calendar, Sparkles, Bell, ArrowUpRight, TrendingUp, Zap } from 'lucide-react';
+import { Users, Briefcase, ChevronRight, Star, Calendar, Sparkles, Bell, TrendingUp, Zap } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
 function scoreColor(score: number) {
@@ -200,44 +200,27 @@ export default function RecruiterDashboard() {
         </div>
       </div>
 
-      {/* Quick stats — elite stat cards like candidate */}
+      {/* Quick stats — floating stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
-          <div className="w-12 h-12 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-            <Users size={22} className="text-brand-600 dark:text-brand-400" />
+        {[
+          { value: totalAssigned, label: 'Candidates', Icon: Users, bg: 'bg-brand-500/10 dark:bg-brand-500/20', color: 'text-brand-600 dark:text-brand-400' },
+          { value: newMatchesTotal, label: 'New matches', Icon: Sparkles, bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', color: 'text-emerald-600 dark:text-emerald-400' },
+          { value: totalApps, label: 'In pipeline', Icon: Zap, bg: 'bg-violet-500/10 dark:bg-violet-500/20', color: 'text-violet-600 dark:text-violet-400' },
+          { value: todayInterviews.length, label: 'Interviews today', Icon: Calendar, bg: 'bg-amber-500/10 dark:bg-amber-500/20', color: 'text-amber-600 dark:text-amber-400' },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="group rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3"
+          >
+            <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', s.bg)}>
+              <s.Icon size={22} className={s.color} />
+            </div>
+            <div>
+              <p className="text-3xl font-extrabold text-surface-100 tabular-nums font-display tracking-tight">{s.value}</p>
+              <p className="text-[11px] font-semibold text-surface-400 uppercase tracking-widest mt-1">{s.label}</p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">{totalAssigned}</p>
-            <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">Candidates</p>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-            <Sparkles size={22} className="text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">{newMatchesTotal}</p>
-            <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">New matches</p>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
-          <div className="w-12 h-12 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-            <Zap size={22} className="text-violet-600 dark:text-violet-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">{totalApps}</p>
-            <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">In pipeline</p>
-          </div>
-        </div>
-        <div className="rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-            <Calendar size={22} className="text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">{todayInterviews.length}</p>
-            <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">Interviews today</p>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Alert banners — elite recommended-step style */}
@@ -258,7 +241,7 @@ export default function RecruiterDashboard() {
                 </p>
                 <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Review and share with candidates</p>
               </div>
-              <ArrowUpRight size={18} className="text-brand-500 dark:text-brand-400 shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <ChevronRight size={18} className="text-brand-500 dark:text-brand-400 shrink-0 group-hover:translate-x-1 transition-transform" />
             </Link>
           )}
           {todayInterviews.length > 0 && (

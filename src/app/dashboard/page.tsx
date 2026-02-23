@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Spinner, StatusBadge } from '@/components/ui';
 import {
   Users, Briefcase, FileText, ClipboardList, TrendingUp,
-  RefreshCw, ChevronRight, Link2, ArrowUpRight, AlertTriangle, UserCheck,
+  RefreshCw, ChevronRight, Link2, AlertTriangle, UserCheck,
 } from 'lucide-react';
 import { formatRelative, cn } from '@/utils/helpers';
 
@@ -13,15 +13,14 @@ function StatCard({ label, value, icon, href, color }: {
   label: string; value: number | string; icon: React.ReactNode; href: string; color: string;
 }) {
   return (
-    <Link href={href} className="card hover:shadow-md transition-shadow p-5 flex items-center gap-4 group">
-      <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shrink-0', color)}>
+    <Link href={href} className="group rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3">
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', color)}>
         {icon}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-2xl font-bold text-surface-900">{value}</p>
-        <p className="text-xs text-surface-500">{label}</p>
+      <div>
+        <p className="text-3xl font-extrabold text-surface-100 tabular-nums font-display tracking-tight">{value}</p>
+        <p className="text-[11px] font-semibold text-surface-400 uppercase tracking-widest mt-1">{label}</p>
       </div>
-      <ArrowUpRight size={14} className="text-surface-300 group-hover:text-brand-500 transition-colors" />
     </Link>
   );
 }

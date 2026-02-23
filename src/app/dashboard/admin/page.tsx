@@ -13,7 +13,6 @@ import {
   RefreshCw,
   ChevronRight,
   Link2,
-  ArrowUpRight,
   Zap,
   Activity,
   Sparkles,
@@ -90,6 +89,7 @@ function StatCard({
   href,
   lightBg,
   iconColor,
+  gradient,
   Icon,
 }: {
   label: string;
@@ -103,25 +103,21 @@ function StatCard({
   return (
     <Link
       href={href}
-      className={cn(
-        'group rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-all duration-200',
-        'flex items-center gap-4 hover:border-brand-400/40 dark:hover:border-brand-500/40'
-      )}
+      className="group relative rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3 overflow-hidden"
     >
-      <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', lightBg)}>
+      <div className={cn('absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br', gradient)} style={{ opacity: 0 }} />
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-[0.08] transition-opacity duration-300 bg-gradient-to-br from-white to-transparent" />
+      <div className={cn('relative w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', lightBg)}>
         <Icon size={22} className={iconColor} />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">
+      <div className="relative">
+        <p className="text-3xl font-extrabold text-surface-100 tabular-nums font-display tracking-tight">
           {typeof value === 'number' ? value.toLocaleString() : value}
         </p>
-        <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">
+        <p className="text-[11px] font-semibold text-surface-400 uppercase tracking-widest mt-1">
           {label}
         </p>
       </div>
-      <span className="shrink-0 w-9 h-9 rounded-xl bg-surface-100 dark:bg-surface-700 flex items-center justify-center text-surface-400 dark:text-surface-500 group-hover:bg-brand-100 dark:group-hover:bg-brand-500/20 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-        <ArrowUpRight size={18} />
-      </span>
     </Link>
   );
 }

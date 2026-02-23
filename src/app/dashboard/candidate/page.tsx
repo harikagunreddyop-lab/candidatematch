@@ -6,7 +6,7 @@ import {
   ClipboardList, Briefcase, FileText, User, Upload, Download,
   Trash2, AlertCircle, Plus, ExternalLink, ChevronRight,
   TrendingUp, Target, Star, CheckCircle2, X, MapPin,
-  Linkedin, Phone, Mail, RefreshCw, Sparkles, Zap, ArrowUpRight,
+  Linkedin, Phone, Mail, RefreshCw, Sparkles, Zap,
   Bookmark, BookmarkCheck, Bell, Calendar, FileDown, Settings,
   ArrowRight, Lightbulb, Award, Brain,
 } from 'lucide-react';
@@ -44,12 +44,12 @@ function ATSScoreBadge({ score, decision }: { score: number; decision?: string }
 
 function StatCard({ label, value, icon, color, subtext }: { label: string; value: any; icon: React.ReactNode; color: string; subtext?: string }) {
   return (
-    <div className="rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 p-5 shadow-sm hover:shadow-md transition-shadow flex items-center gap-4 group">
-      <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105', color)}>{icon}</div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums font-display tracking-tight">{value}</p>
-        <p className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mt-0.5">{label}</p>
-        {subtext && <p className="text-[11px] text-surface-400 dark:text-surface-500 mt-1">{subtext}</p>}
+    <div className="group rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3">
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', color)}>{icon}</div>
+      <div>
+        <p className="text-3xl font-extrabold text-surface-100 tabular-nums font-display tracking-tight">{value}</p>
+        <p className="text-[11px] font-semibold text-surface-400 uppercase tracking-widest mt-1">{label}</p>
+        {subtext && <p className="text-[10px] text-surface-500 mt-1">{subtext}</p>}
       </div>
     </div>
   );
@@ -511,7 +511,7 @@ export default function CandidateDashboard() {
         <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-5 py-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
-              <ArrowUpRight size={20} className="text-brand-600 dark:text-brand-400" />
+              <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
             </div>
             <div>
               <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Recommended next step</p>
@@ -754,7 +754,7 @@ export default function CandidateDashboard() {
                     <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Track status and follow up</p>
                   </div>
                   <button onClick={() => setTab('applications')} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 shrink-0">
-                    View all <ArrowUpRight size={12} />
+                    View all <ChevronRight size={12} />
                   </button>
                 </div>
                 <div className="divide-y divide-surface-100 dark:divide-surface-700">

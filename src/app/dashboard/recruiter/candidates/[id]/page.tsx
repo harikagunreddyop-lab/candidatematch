@@ -1,7 +1,7 @@
 'use client';
 // src/app/dashboard/recruiter/candidates/[id]/page.tsx
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { Tabs, StatusBadge, Spinner, EmptyState } from '@/components/ui';
@@ -9,7 +9,7 @@ import {
   ArrowLeft, MapPin, Sparkles, Download, CheckCircle2,
   ExternalLink, FileText, Briefcase, Brain, Mail,
   Calendar, Phone, Linkedin, Star, Copy, Check,
-  Save, Edit2, Plus, X, AlertCircle, Send,
+  Save, Edit2, Plus, X, AlertCircle, Send, Upload,
 } from 'lucide-react';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 
@@ -18,6 +18,7 @@ const VISA_OPTIONS = ['US Citizen','Green Card','H1B','H4 EAD','L2 EAD','OPT','C
 const AVAILABILITY_OPTIONS = ['Immediately','2 Weeks','1 Month','3 Months','Not Looking'];
 const EDUCATION_LEVELS = ["High School","Associate's","Bachelor's","Master's","MBA","PhD","MD","JD","Bootcamp","Self-Taught","Other"];
 const LANGUAGE_LEVELS = ['Basic','Conversational','Proficient','Fluent','Native'];
+const MAX_RESUMES_PER_CANDIDATE = 5;
 
 function safeArray(val: any): any[] {
   if (!val) return [];
@@ -113,6 +114,13 @@ export default function RecruiterCandidateDetail() {
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewNotes, setInterviewNotes] = useState('');
   const [savingInterview, setSavingInterview] = useState(false);
+
+  // Recruiter-uploaded resumes for this candidate
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadLabel, setUploadLabel] = useState('');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Two-step apply flow:
   // Step 1 — "Apply Now" opens job URL and sets pendingApply = job_id
@@ -397,6 +405,28 @@ export default function RecruiterCandidateDetail() {
   const downloadResume = async (pdfPath: string) => {
     const { data } = await supabase.storage.from('resumes').createSignedUrl(pdfPath, 300);
     if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+  };
+
+  const handleUploadResumeForCandidate = async (file: File) => {
+    if (!candidate) return;
+    setUploadError(null);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('candidate_id', candidate.id);
+    formData.append('label', uploadLabel.trim() || file.name.replace(/\.pdf$/i, ''));
+    try {
+      const res = await fetch('/api/candidate-resumes', { method: 'POST', body: formData });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      setShowUploadModal(false);
+      setUploadLabel('');
+      await load(false);
+    } catch (e: any) {
+      setUploadError(e.message || 'Upload failed');
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
@@ -936,6 +966,20 @@ export default function RecruiterCandidateDetail() {
       {/* ── RESUMES TAB ── */}
       {tab === 'resumes' && (
         <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-surface-500">
+              You can upload up to {MAX_RESUMES_PER_CANDIDATE} resumes for this candidate.
+            </p>
+            {candidateResumes.length < MAX_RESUMES_PER_CANDIDATE && (
+              <button
+                onClick={() => { setUploadError(null); setUploadLabel(''); setShowUploadModal(true); }}
+                className="btn-primary text-xs sm:text-sm flex items-center gap-2 py-2 px-3 sm:px-4"
+              >
+                <Upload size={14} /> Upload resume
+              </button>
+            )}
+          </div>
+
           {candidateResumes.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-surface-700 mb-3">Uploaded by Candidate ({candidateResumes.length})</h3>
@@ -962,7 +1006,7 @@ export default function RecruiterCandidateDetail() {
           <div>
             <h3 className="text-sm font-semibold text-surface-700 mb-3">AI-Generated Resumes ({resumes.length})</h3>
             {resumes.length === 0 && candidateResumes.length === 0 ? (
-              <EmptyState icon={<FileText size={24} />} title="No resumes yet" description="Generate one from the Matching Jobs tab, or wait for the candidate to upload theirs" />
+              <EmptyState icon={<FileText size={24} />} title="No resumes yet" description="Generate one from the Matching Jobs tab, or upload a resume for the candidate." />
             ) : resumes.length === 0 ? (
               <p className="text-sm text-surface-400 italic">No AI-generated resumes yet. Generate one from the Matching Jobs tab.</p>
             ) : (
@@ -989,6 +1033,72 @@ export default function RecruiterCandidateDetail() {
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Upload Resume Modal (recruiter uploading for candidate) */}
+      {showUploadModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">
+                Upload resume for candidate
+              </h3>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div>
+              <label className="label dark:text-surface-200">
+                Label{' '}
+                <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">
+                  e.g. General, Senior SWE v2
+                </span>
+              </label>
+              <input
+                className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 dark:placeholder:text-surface-400"
+                value={uploadLabel}
+                onChange={e => setUploadLabel(e.target.value)}
+                placeholder="General Resume"
+              />
+            </div>
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-xl p-8 text-center cursor-pointer hover:border-brand-400 dark:hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
+            >
+              {uploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Spinner size={22} />
+                  <p className="text-sm text-surface-500 dark:text-surface-400">Uploading...</p>
+                </div>
+              ) : (
+                <>
+                  <Upload size={28} className="mx-auto text-surface-400 dark:text-surface-500 mb-2" />
+                  <p className="text-sm font-medium text-surface-700 dark:text-surface-200">Click to select PDF</p>
+                  <p className="text-xs text-surface-400 dark:text-surface-500 mt-1">PDF only · max 10MB</p>
+                </>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={e => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUploadResumeForCandidate(f);
+                }}
+              />
+            </div>
+            {uploadError && (
+              <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                <AlertCircle size={12} />
+                {uploadError}
+              </p>
             )}
           </div>
         </div>

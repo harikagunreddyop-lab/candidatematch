@@ -12,7 +12,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className={cn('relative bg-white dark:bg-surface-800 rounded-2xl shadow-modal w-full p-6 animate-slide-up border border-surface-200 dark:border-surface-600', widths[size])}
+      <div className={cn('relative bg-white dark:bg-surface-800 rounded-2xl shadow-modal w-full max-w-[95vw] p-6 animate-slide-up border border-surface-200 dark:border-surface-600', widths[size])}
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>

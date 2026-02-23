@@ -44,7 +44,7 @@ export default function AdminAuditPage() {
           <h1 className="text-2xl font-bold text-surface-900 font-display">Audit log</h1>
           <p className="text-sm text-surface-500 mt-1">Recent actions by admins and recruiters</p>
         </div>
-        <select value={limit} onChange={e => setLimit(Number(e.target.value))} className="input text-sm py-2 px-3 w-28">
+        <select value={limit} onChange={e => setLimit(Number(e.target.value))} className="input text-sm py-2 px-3 w-full sm:w-28">
           <option value={50}>Last 50</option>
           <option value={100}>Last 100</option>
           <option value={250}>Last 250</option>
@@ -55,7 +55,7 @@ export default function AdminAuditPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Spinner size={28} /></div>
       ) : loadError === 'TABLE_MISSING' ? (
-        <div className="card p-8 max-w-2xl mx-auto text-left">
+        <div className="card p-4 sm:p-6 md:p-8 max-w-2xl mx-auto text-left">
           <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Audit log table not found</h2>
           <p className="text-sm text-surface-600 dark:text-surface-400 mt-2">
             The <code className="px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-700 text-xs">public.audit_log</code> table has not been created yet. Run the migration to create it.

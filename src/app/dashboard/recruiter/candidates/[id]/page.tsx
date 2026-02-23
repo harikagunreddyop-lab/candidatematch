@@ -457,7 +457,7 @@ export default function RecruiterCandidateDetail() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Matches', value: matches.length, color: 'text-brand-600' },
           { label: 'Applications', value: applications.length, color: 'text-purple-600' },
@@ -489,7 +489,7 @@ export default function RecruiterCandidateDetail() {
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-surface-800 mb-4">Basic Information</h3>
               <p className="text-xs text-surface-500 mb-3">Name, email and phone are set by the admin. You can edit all other fields below.</p>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div><label className="label">Full Name <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.full_name} readOnly className="input text-sm bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-300" /></div>
                 <div><label className="label">Primary Title <span className="text-red-500">*</span></label><input value={profileForm.primary_title} onChange={(e) => set('primary_title', e.target.value)} className="input text-sm" placeholder="Data Analyst" /></div>
                 <div><label className="label">Email <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.email} readOnly className="input text-sm bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-300" type="email" /></div>
@@ -522,7 +522,7 @@ export default function RecruiterCandidateDetail() {
                 <div><label className="label">Technical Skills <span className="text-xs text-surface-400 font-normal">press Enter to add</span></label><TagInput value={profileForm.skills} onChange={(v) => set('skills', v)} placeholder="Python, SQL, Tableau..." /></div>
                 <div><label className="label">Tools & Software</label><TagInput value={profileForm.tools} onChange={(v) => set('tools', v)} placeholder="Excel, Power BI, Jira..." /></div>
                 <div><label className="label">Soft Skills</label><TagInput value={profileForm.soft_skills} onChange={(v) => set('soft_skills', v)} placeholder="Communication, Leadership..." /></div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div><label className="label">Years of Experience</label><input value={profileForm.years_of_experience} onChange={(e) => set('years_of_experience', e.target.value)} className="input text-sm" type="number" min="0" max="50" /></div>
                   <div>
                     <label className="label">Highest Education</label>
@@ -538,7 +538,7 @@ export default function RecruiterCandidateDetail() {
                     {profileForm.languages.map((lang: any, i: number) => (
                       <div key={i} className="flex items-center gap-2">
                         <input value={lang.language} onChange={(e) => { const l = [...profileForm.languages]; l[i] = { ...l[i], language: e.target.value }; set('languages', l); }} className="input text-sm flex-1" placeholder="Language" />
-                        <select value={lang.level} onChange={(e) => { const l = [...profileForm.languages]; l[i] = { ...l[i], level: e.target.value }; set('languages', l); }} className="input text-sm w-36" aria-label="Level">
+                        <select value={lang.level} onChange={(e) => { const l = [...profileForm.languages]; l[i] = { ...l[i], level: e.target.value }; set('languages', l); }} className="input text-sm w-full sm:w-36" aria-label="Level">
                           {LANGUAGE_LEVELS.map((lvl) => <option key={lvl} value={lvl}>{lvl}</option>)}
                         </select>
                         <button type="button" onClick={() => set('languages', profileForm.languages.filter((_: any, j: number) => j !== i))} className="btn-ghost p-1.5 text-red-400"><X size={14} /></button>
@@ -568,7 +568,7 @@ export default function RecruiterCandidateDetail() {
 
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-surface-800 mb-4">Preferences</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label">Availability</label>
                   <select value={profileForm.availability} onChange={(e) => set('availability', e.target.value)} className="input text-sm" aria-label="Availability">
@@ -893,7 +893,7 @@ export default function RecruiterCandidateDetail() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status={a.status} />
-                    <select value={a.status} onChange={(e) => updateStatus(a.id, e.target.value)} className="input text-xs py-1 px-2 w-32" aria-label="Update status">
+                    <select value={a.status} onChange={(e) => updateStatus(a.id, e.target.value)} className="input text-xs py-1 px-2 w-full sm:w-32" aria-label="Update status">
                       {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {a.job?.url && (

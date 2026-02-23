@@ -142,7 +142,7 @@ export default function CandidateProfilePage() {
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Preferences</h3>
             {editingProfile ? (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label text-xs dark:text-surface-200">Salary min (USD)</label>
                     <input type="number" min={0} value={profileForm.salary_min ?? ''} onChange={e => setProfileForm((p: any) => ({ ...p, salary_min: e.target.value }))} className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100" placeholder="e.g. 120000" />

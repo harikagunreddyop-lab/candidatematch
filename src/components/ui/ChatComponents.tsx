@@ -132,7 +132,7 @@ function MessageBubble({ msg, isMine }: { msg: Message; isMine: boolean }) {
               className={cn('flex items-center gap-2 mt-1 text-xs rounded-lg px-2 py-1.5 transition-colors',
                 isMine ? 'bg-brand-500 hover:bg-brand-400 text-white' : 'bg-surface-600 hover:bg-surface-500 text-surface-200')}>
               <File size={12} />
-              <span className="truncate max-w-[160px]">{msg.attachment_name || 'Attachment'}</span>
+              <span className="truncate max-w-[120px] sm:max-w-[160px]">{msg.attachment_name || 'Attachment'}</span>
               <Download size={12} className="shrink-0" />
             </button>
           )}
@@ -277,7 +277,7 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3">
         {messages.length === 0 && (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-surface-400">No messages yet. Say hello!</p>

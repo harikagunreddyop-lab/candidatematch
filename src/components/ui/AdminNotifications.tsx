@@ -94,7 +94,7 @@ export function AdminNotificationBell({ adminId }: { adminId: string }) {
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 mt-2 w-[360px] max-w-[90vw] z-50 bg-surface-800 border border-surface-600 rounded-2xl shadow-xl overflow-hidden">
+          <div className="absolute right-[-1rem] sm:right-0 mt-2 w-[360px] max-w-[90vw] z-50 bg-surface-800 border border-surface-600 rounded-2xl shadow-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-surface-700">
               <p className="text-sm font-semibold text-surface-100">Notifications</p>
               <div className="flex items-center gap-2">

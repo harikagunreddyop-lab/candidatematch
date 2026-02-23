@@ -186,7 +186,7 @@ export default function JobsPage() {
           onChange={e => setSourceFilter(e.target.value)}
           aria-label="Filter by source"
           title="Filter by source"
-          className="input text-sm w-36 shrink-0"
+          className="input text-sm w-full sm:w-36 shrink-0"
         >
           <option value="all">All sources</option>
           <option value="linkedin">LinkedIn</option>

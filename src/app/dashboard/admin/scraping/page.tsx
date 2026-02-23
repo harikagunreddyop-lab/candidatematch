@@ -166,7 +166,7 @@ export default function ScrapingPage() {
       </div>
 
       {/* Summary strip */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card p-4 text-center">
           <p className="text-2xl font-bold text-surface-900">{runs.reduce((a, r) => a + (r.jobs_found || 0), 0).toLocaleString()}</p>
           <p className="text-xs text-surface-500 mt-1">Total Found</p>

@@ -145,9 +145,9 @@ function PanelCard({
 }) {
   return (
     <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
-        <div className="flex items-center gap-3">
-          <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center shrink-0', iconBg)}>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className={cn('w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0', iconBg)}>
             {icon}
           </span>
           <div>
@@ -168,7 +168,7 @@ function PanelCard({
         </Link>
       </div>
       {isEmpty ? (
-        <div className="px-6 py-10 text-center">
+        <div className="px-4 sm:px-6 py-8 sm:py-10 text-center">
           <p className="text-sm text-surface-500 dark:text-surface-400">{emptyMessage}</p>
         </div>
       ) : (
@@ -377,7 +377,7 @@ export default function AdminDashboard() {
             {recentApps.map((app) => (
               <div
                 key={app.id}
-                className="px-6 py-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors"
+                className="px-4 sm:px-6 py-3 sm:py-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <AvatarInitial name={(app.candidate as any)?.full_name} />
@@ -421,7 +421,7 @@ export default function AdminDashboard() {
               <Link
                 key={job.id}
                 href="/dashboard/admin/jobs"
-                className="px-6 py-4 block hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
+                className="px-4 sm:px-6 py-3 sm:py-4 block hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center shrink-0">
@@ -463,7 +463,7 @@ export default function AdminDashboard() {
               <Link
                 key={c.id}
                 href={`/dashboard/admin/candidates/${c.id}`}
-                className="px-6 py-4 flex items-center gap-3 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
+                className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
               >
                 <AvatarInitial name={c.full_name} />
                 <div className="flex-1 min-w-0">

@@ -222,7 +222,7 @@ export default function CandidateReportsPage() {
       </div>
 
       {/* ── Quick KPIs ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           { label: 'Total Matches', value: totalMatches, color: 'text-brand-600', sub: 'jobs matched' },
           { label: 'Avg ATS Score', value: avgScore || '—', color: avgScore >= 70 ? 'text-green-600' : avgScore >= 50 ? 'text-yellow-600' : 'text-red-500', sub: 'out of 100' },
@@ -309,7 +309,7 @@ export default function CandidateReportsPage() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-center">
                 <div className="rounded-lg bg-red-50 p-2">
                   <p className="text-sm font-bold text-red-600">{matches.filter(m => m.fit_score < 75).length}</p>
                   <p className="text-[10px] text-red-500">Cannot apply (&lt;75)</p>

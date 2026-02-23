@@ -150,7 +150,7 @@ export default function AdminDashboardClient({
       )}
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <KpiCard label="Candidates"   value={stats.candidates}   icon={<Users size={18} />}         href="/dashboard/admin/candidates" />
         <KpiCard label="Jobs"         value={stats.jobs}         icon={<Briefcase size={18} />}      href="/dashboard/admin/jobs"       />
         <KpiCard label="Matches"      value={stats.matches}      icon={<TrendingUp size={18} />}                                        />
@@ -241,7 +241,7 @@ export default function AdminDashboardClient({
         {tab === 'candidates' && (
           <div>
             <div className="p-4 border-b border-surface-100 flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
+              <div className="relative flex-1 w-full sm:max-w-sm">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
                 <input className="input text-sm pl-8" placeholder="Search by name, title, location..."
                   value={candSearch} onChange={e => setCandSearch(e.target.value)} />
@@ -314,7 +314,7 @@ export default function AdminDashboardClient({
         {tab === 'recruiters' && (
           <div>
             <div className="p-4 border-b border-surface-100 flex items-center gap-3">
-              <div className="relative flex-1 max-w-sm">
+              <div className="relative flex-1 w-full sm:max-w-sm">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
                 <input className="input text-sm pl-8" placeholder="Search recruiters..."
                   value={recruiterSearch} onChange={e => setRecruiterSearch(e.target.value)} />
@@ -348,7 +348,7 @@ export default function AdminDashboardClient({
                         <p className="text-xs text-surface-500">{r.email}</p>
                         <p className="text-xs text-surface-400 mt-0.5">Joined {formatRelative(r.created_at)}</p>
                       </div>
-                      <div className="hidden sm:grid grid-cols-4 gap-6 text-center">
+                      <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
                         {[
                           { label: 'Candidates', val: r.candidates_count,   color: 'text-surface-900' },
                           { label: 'Apps',       val: r.applications_count, color: 'text-blue-700'    },

@@ -169,7 +169,7 @@ export default function RecruiterReportsPage() {
           Pipeline summary, best fit candidates, and roles that need attention — for your assigned candidates only.
         </p>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="rounded-xl bg-surface-50 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
             <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums">{stats.totalCandidates}</p>
             <p className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">Candidates</p>

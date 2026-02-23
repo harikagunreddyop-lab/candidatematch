@@ -172,7 +172,8 @@ export default function MatchingPanel() {
             <span className="text-sm font-semibold text-surface-800">Results</span>
             <span className="text-xs text-surface-400">{summary.length} candidates processed</span>
           </div>
-          <div className="divide-y divide-surface-50">
+          <div className="overflow-x-auto">
+          <div className="divide-y divide-surface-50 min-w-[500px]">
             {summary.map((s, i) => (
               <div key={i} className="grid grid-cols-[1fr_80px_60px_1fr] gap-3 items-center px-4 py-2.5 text-sm hover:bg-surface-50">
                 <span className="font-medium text-surface-900 truncate">{s.candidate}</span>
@@ -194,6 +195,7 @@ export default function MatchingPanel() {
                 </div>
               </div>
             ))}
+          </div>
           </div>
         </div>
       )}

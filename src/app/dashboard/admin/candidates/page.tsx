@@ -168,7 +168,7 @@ function CandidatesPageContent() {
             )}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={load} className="btn-ghost text-sm flex items-center gap-1.5">
             <RefreshCw size={14} />
           </button>
@@ -202,17 +202,17 @@ function CandidatesPageContent() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, title, location..." />
-        <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value as 'all' | 'unassigned' | 'assigned')} className="input text-sm w-44" aria-label="Assignment filter">
+        <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value as 'all' | 'unassigned' | 'assigned')} className="input text-sm w-full sm:w-44" aria-label="Assignment filter">
           <option value="all">All</option>
           <option value="unassigned">Waiting for recruiter</option>
           <option value="assigned">Assigned</option>
         </select>
-        <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} className="input text-sm w-32" aria-label="Active filter">
+        <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} className="input text-sm w-full sm:w-32" aria-label="Active filter">
           <option value="all">All</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <select value={filterRecruiter} onChange={(e) => setFilterRecruiter(e.target.value)} className="input text-sm w-44" aria-label="Recruiter filter">
+        <select value={filterRecruiter} onChange={(e) => setFilterRecruiter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Recruiter filter">
           <option value="all">All recruiters</option>
           {recruiters.map((r) => (
             <option key={r.id} value={r.id}>{r.name || r.email}</option>

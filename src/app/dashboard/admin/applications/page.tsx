@@ -108,8 +108,8 @@ export default function AdminApplicationsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3 items-center">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search candidate, job, or company…" className="min-w-[200px]" />
-        <select value={recruiterFilter} onChange={e => setRecruiterFilter(e.target.value)} className="input text-sm py-2 px-3 w-48">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search candidate, job, or company…" className="w-full sm:min-w-[200px]" />
+        <select value={recruiterFilter} onChange={e => setRecruiterFilter(e.target.value)} className="input text-sm py-2 px-3 w-full sm:w-48">
           <option value="all">All recruiters</option>
           {recruiters.map(r => (
             <option key={r.id} value={r.id}>{r.name || r.email}</option>
@@ -170,7 +170,7 @@ export default function AdminApplicationsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <StatusBadge status={a.status} />
-                  <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)} className="input text-xs py-1 px-2 w-32" aria-label="Update status">
+                  <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)} className="input text-xs py-1 px-2 w-full sm:w-32" aria-label="Update status">
                     {STATUS_OPTIONS.map(s => (
                       <option key={s} value={s} className="capitalize">{s}</option>
                     ))}

@@ -80,7 +80,7 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      <div className="card p-6 space-y-5">
+      <div className="card p-4 sm:p-6 space-y-5">
         <h3 className="text-sm font-semibold text-surface-800 flex items-center gap-2">
           <Settings size={16} /> Feature flags
         </h3>

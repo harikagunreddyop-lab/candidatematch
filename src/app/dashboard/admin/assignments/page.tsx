@@ -254,7 +254,7 @@ export default function AssignmentsPage() {
       {/* Assign Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl w-full max-w-lg p-6 space-y-4 max-h-[85vh] flex flex-col border border-surface-200 dark:border-surface-600">
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl w-full max-w-lg p-4 sm:p-6 space-y-4 max-h-[85vh] flex flex-col border border-surface-200 dark:border-surface-600">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Assign Recruiter to Candidates</h3>
               <button onClick={() => setShowForm(false)} className="btn-ghost p-1.5"><X size={16} /></button>

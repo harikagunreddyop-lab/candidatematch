@@ -308,12 +308,12 @@ export default function RecruiterDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* New Matches */}
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
-            <div className="flex items-center gap-3">
-              <span className="w-9 h-9 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shrink-0">
                 <Sparkles size={18} className="text-brand-600 dark:text-brand-400" />
               </span>
-              <div>
+              <div className="min-w-0">
                 <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">New matches</h3>
                 <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Since yesterday · by fit score</p>
               </div>
@@ -339,9 +339,9 @@ export default function RecruiterDashboard() {
                 <Link
                   key={m.id}
                   href={`/dashboard/recruiter/candidates/${m.candidate_id}`}
-                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors group"
+                  className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors group"
                 >
-                  <span className={cn('shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold', scoreColor(m.fit_score))}>
+                  <span className={cn('shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xs sm:text-sm font-bold', scoreColor(m.fit_score))}>
                     {m.fit_score}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -357,9 +357,9 @@ export default function RecruiterDashboard() {
 
         {/* My Candidates */}
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden shadow-sm">
-          <div className="px-6 py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
-            <div className="flex items-center gap-3">
-              <span className="w-9 h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <span className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
                 <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
               </span>
               <div>
@@ -388,7 +388,7 @@ export default function RecruiterDashboard() {
                 <Link
                   key={c.id}
                   href={`/dashboard/recruiter/candidates/${c.id}`}
-                  className="flex items-center gap-4 px-5 py-3.5 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors group"
+                  className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0 group-hover:bg-brand-500/20 dark:group-hover:bg-brand-500/30 transition-colors">
                     {c.full_name?.[0]?.toUpperCase() || '?'}

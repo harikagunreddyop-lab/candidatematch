@@ -156,7 +156,7 @@ export default function UsersPage() {
       <div className="flex flex-wrap gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, email, company..." />
         <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
-          className="input text-sm w-36" aria-label="Filter by role">
+          className="input text-sm w-full sm:w-36" aria-label="Filter by role">
           <option value="all">All roles</option>
           {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
         </select>
@@ -212,7 +212,7 @@ export default function UsersPage() {
 
                     <div className="shrink-0 flex items-center gap-2">
                       <select value={u.role} onChange={e => updateRole(u.id, e.target.value)}
-                        className="input text-xs py-1 px-2 w-28" aria-label="Change role">
+                        className="input text-xs py-1 px-2 w-full sm:w-28" aria-label="Change role">
                         {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                       </select>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -229,7 +229,7 @@ export default function UsersPage() {
                   </div>
 
                   {isExpanded && (
-                    <div className="px-16 py-3 bg-surface-50 dark:bg-surface-700/80 border-t border-surface-100 dark:border-surface-600 text-xs text-surface-600 grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="px-4 sm:px-8 md:px-16 py-3 bg-surface-50 dark:bg-surface-700/80 border-t border-surface-100 dark:border-surface-600 text-xs text-surface-600 grid grid-cols-2 md:grid-cols-3 gap-3">
                       {u.title && <div><span className="text-surface-400">Title</span><p className="font-medium mt-0.5">{u.title}</p></div>}
                       {u.timezone && <div><span className="text-surface-400">Timezone</span><p className="font-medium mt-0.5">{u.timezone}</p></div>}
                       <div><span className="text-surface-400">Joined</span><p className="font-medium mt-0.5">{formatRelative(u.created_at)}</p></div>
@@ -321,7 +321,7 @@ function InviteModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-4">
           <div>
             <label className="label">Role</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {(['candidate', 'recruiter'] as const).map(r => (
                 <button key={r} type="button" onClick={() => setRole(r)}
                   className={cn(
@@ -448,7 +448,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
         {isCandidate ? (
           <>
             <p className="text-xs text-surface-500 mb-2">Only name, email, phone and password can be edited here. All other candidate details are managed by the assigned recruiter.</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Full Name</label>
                 <input type="text" value={form.name} onChange={e => set('name', e.target.value)}
@@ -464,7 +464,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
                 <input value={user.email} disabled className="input text-sm bg-surface-50 text-surface-400" />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Role</label>
                 <select value={form.role} onChange={e => set('role', e.target.value)}
@@ -494,7 +494,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
           </>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {([
                 ['name', 'Full Name', 'text', 'Jane Smith'],
                 ['phone', 'Phone', 'tel', '+1 555-0123'],
@@ -529,7 +529,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
                 ))}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Timezone</label>
                 <select value={form.timezone} onChange={e => set('timezone', e.target.value)}

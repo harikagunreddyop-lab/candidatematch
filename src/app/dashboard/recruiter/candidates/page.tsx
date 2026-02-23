@@ -76,7 +76,7 @@ export default function RecruiterCandidatesPage() {
 
       <div className="flex gap-3 flex-wrap">
         <SearchInput value={search} onChange={setSearch} placeholder="Search candidates..." />
-        <select value={filter} onChange={e => setFilter(e.target.value)} className="input text-sm w-44" aria-label="Filter">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Filter">
           <option value="all">All candidates</option>
           <option value="active">Active</option>
         </select>

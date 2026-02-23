@@ -497,7 +497,7 @@ export default function AdminReportsPage() {
           )}
 
           {/* ── Talent & fit analysis (platform-wide) ── */}
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <div className="w-9 h-9 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shrink-0">
                 <BarChart3 size={18} className="text-brand-600 dark:text-brand-400" />
@@ -588,7 +588,7 @@ export default function AdminReportsPage() {
                 icon={<Target size={16} className="text-brand-600" />}
               />
               <PipelineFunnel data={funnel} />
-              <div className="mt-4 pt-4 border-t border-surface-100 dark:border-surface-600 grid grid-cols-2 gap-2">
+              <div className="mt-4 pt-4 border-t border-surface-100 dark:border-surface-600 grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {funnel.slice(1).map((f, i) => (
                   <div key={f.stage} className="text-xs text-surface-500">
                     <span className="font-medium capitalize">{STAGE_ORDER[i]} → {f.stage}</span>:{' '}

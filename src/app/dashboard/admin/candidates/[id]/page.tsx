@@ -208,7 +208,7 @@ export default function CandidateDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
@@ -600,6 +600,7 @@ export default function CandidateDetailPage() {
               description="Generate a resume and mark applied" />
           ) : (
             <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-surface-50 border-b border-surface-200">
                   <tr>
@@ -624,6 +625,7 @@ export default function CandidateDetailPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
           )}
         </div>

@@ -83,7 +83,7 @@ export default function OfferCaptureModal({ appId, candidateName, jobTitle, comp
 
         {/* Form */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label text-xs">Base Salary (USD/yr)</label>
               <input
@@ -105,7 +105,7 @@ export default function OfferCaptureModal({ appId, candidateName, jobTitle, comp
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="label text-xs">Equity / RSU</label>
               <input
@@ -127,7 +127,7 @@ export default function OfferCaptureModal({ appId, candidateName, jobTitle, comp
           </div>
           <div>
             <label className="label text-xs">Candidate Decision</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { val: 'pending', label: 'Pending', color: 'border-surface-600 text-surface-300' },
                 { val: 'true',    label: '✓ Accepted', color: 'border-green-500/40 text-green-400 bg-green-500/10' },
@@ -164,7 +164,7 @@ export default function OfferCaptureModal({ appId, candidateName, jobTitle, comp
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-1">
+        <div className="flex flex-wrap justify-end gap-3 pt-1">
           <button onClick={onClose} className="btn-ghost text-sm">Skip</button>
           <button onClick={handleSave} disabled={saving} className="btn-primary text-sm min-w-[120px] flex items-center gap-2">
             {saving ? <Spinner size={14} /> : <CheckCircle2 size={14} />}

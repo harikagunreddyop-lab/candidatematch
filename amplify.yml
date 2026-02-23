@@ -7,14 +7,13 @@ frontend:
         - npm ci
     build:
       commands:
-        # Write all NEXT_PUBLIC_ vars to .env.production so they're available at runtime
-        - env | grep -e NEXT_PUBLIC_ >> .env.production
-        # Write server-side env vars too
-        - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production
-        - env | grep -e ANTHROPIC_API_KEY >> .env.production
-        - env | grep -e APIFY_API_TOKEN >> .env.production
-        - env | grep -e CRON_SECRET >> .env.production
-        - env | grep -e RESUME_WORKER_URL >> .env.production
+        - env | grep -e NEXT_PUBLIC_ >> .env.production || true
+        - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production || true
+        - env | grep -e ANTHROPIC_API_KEY >> .env.production || true
+        - env | grep -e APIFY_API_TOKEN >> .env.production || true
+        - env | grep -e CRON_SECRET >> .env.production || true
+        - env | grep -e RESUME_WORKER_URL >> .env.production || true
+        - cat .env.production 2>/dev/null; echo "---"
         - npm run build
   artifacts:
     baseDirectory: .next

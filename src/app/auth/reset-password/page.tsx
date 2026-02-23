@@ -18,9 +18,18 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) router.replace('/?error=auth');
-    });
+    let cancelled = false;
+    (async () => {
+      // Give Supabase time to process the invite/recovery link and create a session
+      for (let i = 0; i < 10; i++) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (session) return; // session ready, stay on this page
+        await new Promise(r => setTimeout(r, 300));
+      }
+      if (!cancelled) router.replace('/?error=auth');
+    })();
+    return () => { cancelled = true; };
   }, [supabase, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -242,7 +242,7 @@ textarea::placeholder {
   }
 
   .table-container {
-    @apply card overflow-hidden;
+    @apply card overflow-hidden overflow-x-auto;
   }
 
   .table-container table {
@@ -309,6 +309,28 @@ textarea::placeholder {
     @apply px-2 py-0.5 rounded-lg font-semibold text-sm;
     background-color: rgba(239, 68, 68, 0.15);
     color: #f87171;
+  }
+}
+
+/* Hide scrollbar utility for horizontal scroll areas */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile-friendly table cells */
+@media (max-width: 640px) {
+  .table-container th,
+  .table-container td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    font-size: 0.75rem;
+  }
+  .table-container th {
+    font-size: 0.65rem;
   }
 }
 

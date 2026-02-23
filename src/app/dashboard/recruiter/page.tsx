@@ -146,13 +146,13 @@ export default function RecruiterDashboard() {
   return (
     <div className="space-y-8">
       {/* Hero — elite gradient like candidate */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-6 py-8 sm:py-10 text-white shadow-xl border border-white/5">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
           <div className="flex-1">
             <p className="text-surface-300/90 text-xs font-semibold uppercase tracking-[0.2em] mb-2">{dateStr}</p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
               {greeting}, {firstName}
             </h1>
             <p className="text-surface-300 mt-1.5 text-sm sm:text-base">
@@ -201,7 +201,7 @@ export default function RecruiterDashboard() {
       </div>
 
       {/* Quick stats — floating stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { value: totalAssigned, label: 'Candidates', Icon: Users, bg: 'bg-brand-500/10 dark:bg-brand-500/20', color: 'text-brand-600 dark:text-brand-400' },
           { value: newMatchesTotal, label: 'New matches', Icon: Sparkles, bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', color: 'text-emerald-600 dark:text-emerald-400' },
@@ -285,7 +285,7 @@ export default function RecruiterDashboard() {
               </Link>
             </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
             {STAGES.map(s => (
               <div key={s.key} className={cn('rounded-xl p-3 text-center border border-surface-100 dark:border-surface-600', s.bg)}>
                 <p className={cn('text-2xl font-bold tabular-nums font-display', s.color)}>{pipeline[s.key] || 0}</p>
@@ -305,7 +305,7 @@ export default function RecruiterDashboard() {
       )}
 
       {/* Widgets row — elite section cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         {/* New Matches */}
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden shadow-sm">
           <div className="px-6 py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">

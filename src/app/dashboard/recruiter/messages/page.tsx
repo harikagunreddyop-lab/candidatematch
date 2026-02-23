@@ -3,7 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
-import { MessageCircle, Plus, X } from 'lucide-react';
+import { MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
+import { cn } from '@/utils/helpers';
 import {
   ChatPanel, ConversationItem, OnlineDot,
   type Conversation, type ConversationParticipant,
@@ -201,9 +202,13 @@ export default function RecruiterMessagesPage() {
         </button>
       </div>
 
-      <div className="h-[calc(100vh-200px)] bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-600 shadow-sm overflow-hidden flex">
+      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-600 shadow-sm overflow-hidden flex">
         {/* Sidebar */}
-        <div className="w-72 border-r border-surface-200 dark:border-surface-600 flex flex-col shrink-0">
+        <div className={cn(
+          'border-r border-surface-200 dark:border-surface-600 flex flex-col shrink-0',
+          'w-full md:w-72',
+          activeConvId || showNewConv ? 'hidden md:flex' : 'flex'
+        )}>
           <div className="p-3 border-b border-surface-200 dark:border-surface-600">
             <SearchInput value={search} onChange={setSearch} placeholder="Search..." />
           </div>
@@ -229,11 +234,17 @@ export default function RecruiterMessagesPage() {
         </div>
 
         {/* Chat / New conv */}
-        <div className="flex-1 overflow-hidden">
+        <div className={cn(
+          'flex-1 overflow-hidden flex flex-col',
+          !activeConvId && !showNewConv ? 'hidden md:flex' : 'flex'
+        )}>
           {showNewConv ? (
-            <div className="h-full overflow-y-auto p-6">
+            <div className="h-full overflow-y-auto p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-surface-900 dark:text-surface-100">New Conversation</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); }} className="md:hidden p-1.5 rounded-lg hover:bg-surface-700 text-surface-400"><ArrowLeft size={18} /></button>
+                  <h3 className="font-semibold text-surface-900 dark:text-surface-100">New Conversation</h3>
+                </div>
                 <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); }} className="btn-ghost p-1.5"><X size={16} /></button>
               </div>
               <p className="text-xs font-semibold text-surface-400 dark:text-surface-300 uppercase tracking-wide mb-3">Your candidates & admins</p>
@@ -288,7 +299,14 @@ export default function RecruiterMessagesPage() {
               </div>
             </div>
           ) : activeConvId ? (
-            <ChatPanel conversationId={activeConvId} currentProfile={profile} onUnreadChange={loadConversations} />
+            <div className="flex flex-col h-full">
+              <button onClick={() => setActiveConvId(null)} className="md:hidden flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-surface-300 hover:text-white border-b border-surface-700 shrink-0">
+                <ArrowLeft size={16} /> Back to conversations
+              </button>
+              <div className="flex-1 min-h-0">
+                <ChatPanel conversationId={activeConvId} currentProfile={profile} onUnreadChange={loadConversations} />
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
               <div className="w-16 h-16 rounded-2xl bg-brand-600/10 flex items-center justify-center">

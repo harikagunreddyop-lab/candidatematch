@@ -456,13 +456,13 @@ export default function CandidateDashboard() {
   return (
     <div className="space-y-8">
       {/* ─── Hero: premium welcome + readiness ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-6 py-8 sm:py-10 text-white shadow-xl border border-white/5">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
           <div className="flex-1">
             <p className="text-surface-300/90 text-xs font-semibold uppercase tracking-[0.2em] mb-2">{dateStr}</p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
               {greeting}, {firstName}
             </h1>
             <p className="text-surface-300 mt-1.5 text-sm sm:text-base">
@@ -508,12 +508,12 @@ export default function CandidateDashboard() {
 
       {/* ─── Recommended next step ───────────────────────────────────────────── */}
       {(topUnappliedMatch || (!uploadedResumes.length && matches.length > 0) || profileCompletenessPct < 80) && (
-        <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-5 py-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+        <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
               <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Recommended next step</p>
               <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
                 {topUnappliedMatch
@@ -552,7 +552,7 @@ export default function CandidateDashboard() {
       )}
 
       {/* ─── Quick stats ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Matched Jobs" value={matches.length} icon={<Briefcase size={22} className="text-brand-600 dark:text-brand-400" />} color="bg-brand-500/10 dark:bg-brand-500/20" subtext={applicationsThisWeek > 0 ? `${applicationsThisWeek} applied this week` : undefined} />
         <StatCard label="Applications" value={applications.length} icon={<ClipboardList size={22} className="text-violet-600 dark:text-violet-400" />} color="bg-violet-500/10 dark:bg-violet-500/20" />
         <StatCard label="Strong matches" value={interviewPossible} icon={<Star size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="82+ ATS · apply ready" />
@@ -571,11 +571,11 @@ export default function CandidateDashboard() {
       )}
 
       {/* ─── Tabs ───────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 p-1 rounded-2xl bg-surface-100 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700 overflow-x-auto">
+      <div className="flex gap-1 sm:gap-1.5 p-1 rounded-2xl bg-surface-100 dark:bg-surface-800/80 border border-surface-200 dark:border-surface-700 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-1">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-xl transition-all',
+              'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium whitespace-nowrap rounded-xl transition-all',
               tab === t.key
                 ? 'bg-white dark:bg-surface-700 text-brand-700 dark:text-brand-300 shadow-sm border border-surface-200 dark:border-surface-600'
                 : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200 hover:bg-white/50 dark:hover:bg-surface-700/50'

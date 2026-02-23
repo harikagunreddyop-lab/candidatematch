@@ -195,12 +195,12 @@ export default function DashboardLayout({ children, profile }: { children: React
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar — glossy black */}
-        <header className="sticky top-0 z-30 h-16 flex items-center justify-between px-4 lg:px-8 bg-black/90 backdrop-blur-xl border-b border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
+        <header className="sticky top-0 z-30 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 lg:px-8 bg-black/90 backdrop-blur-xl border-b border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
           <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white">
             <Menu size={20} />
           </button>
           <div />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {profile.role === 'admin' && (
               <AdminNotificationBell adminId={profile.id} />
             )}
@@ -216,18 +216,18 @@ export default function DashboardLayout({ children, profile }: { children: React
                 </span>
               )}
             </Link>
-            <div className="text-right">
-              <p className="text-sm font-medium text-white">{profile.name || profile.email}</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
               <p className="text-xs text-neutral-400 capitalize">{profile.role}</p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white font-bold text-sm border border-white/20">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 flex items-center justify-center text-white font-bold text-sm border border-white/20">
               {(profile.name || profile.email || '?')[0].toUpperCase()}
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden">
           {children}
         </main>
       </div>

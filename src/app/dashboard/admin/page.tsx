@@ -288,7 +288,7 @@ export default function AdminDashboard() {
       <div className="pointer-events-none absolute inset-0 -top-8 -left-8 -right-8 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.07),transparent)] dark:bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.12),transparent)]" aria-hidden />
       <div className="relative space-y-8">
       {/* Hero — elite gradient like candidate */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-6 py-8 sm:py-10 text-white shadow-xl border border-white/5">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
         <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -343,7 +343,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Key metrics — stat cards elite style */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {STAT_CONFIG.map((s) => (
           <StatCard
             key={s.key}
@@ -363,7 +363,7 @@ export default function AdminDashboard() {
         <h2 className="text-xs font-bold text-surface-500 dark:text-surface-400 uppercase tracking-widest mb-4">
           Activity
         </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           <PanelCard
             title="Recent applications"
             subtitle="Latest candidate applications"
@@ -494,17 +494,17 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick actions — elite strip like candidate recommended step */}
-      <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-5 py-4 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+      <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
             <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
           </div>
           <div>
             <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Quick actions</p>
-            <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">Invite users, assign recruiters, view pipeline & reports</p>
+            <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 hidden sm:block">Invite users, assign recruiters, view pipeline & reports</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
           <Link href="/dashboard/admin/users" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
             Invite user
           </Link>

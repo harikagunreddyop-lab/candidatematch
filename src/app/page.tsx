@@ -181,7 +181,7 @@ export default function HomePage() {
         </div>
 
         {/* Card */}
-        <div className="w-full max-w-md card p-8 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100">
+        <div className="w-full max-w-md card p-5 sm:p-8 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100">
           <h2 className="text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h2>

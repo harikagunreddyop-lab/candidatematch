@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
-import { MessageCircle, Plus, X, AlertCircle } from 'lucide-react';
+import { MessageCircle, Plus, X, AlertCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import {
   ChatPanel, ConversationItem, OnlineDot,
@@ -180,10 +180,14 @@ export default function AdminMessagesPage() {
         </button>
       </div>
 
-      <div className="h-[calc(100vh-200px)] bg-surface-800 rounded-2xl border border-surface-600 shadow-sm overflow-hidden flex">
+      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-surface-800 rounded-2xl border border-surface-600 shadow-sm overflow-hidden flex">
 
         {/* Sidebar */}
-        <div className="w-80 border-r border-surface-700 flex flex-col shrink-0">
+        <div className={cn(
+          'border-r border-surface-700 flex flex-col shrink-0',
+          'w-full md:w-80',
+          activeConvId || showNewConv ? 'hidden md:flex' : 'flex'
+        )}>
           <div className="p-3 border-b border-surface-700">
             <SearchInput value={search} onChange={setSearch} placeholder="Search conversations..." />
           </div>
@@ -218,11 +222,17 @@ export default function AdminMessagesPage() {
         </div>
 
         {/* Main area */}
-        <div className="flex-1 overflow-hidden">
+        <div className={cn(
+          'flex-1 overflow-hidden flex flex-col',
+          !activeConvId && !showNewConv ? 'hidden md:flex' : 'flex'
+        )}>
           {showNewConv ? (
-            <div className="h-full overflow-y-auto p-6">
+            <div className="h-full overflow-y-auto p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-surface-900">New Conversation</h3>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }} className="md:hidden p-1.5 rounded-lg hover:bg-surface-700 text-surface-400"><ArrowLeft size={18} /></button>
+                  <h3 className="font-semibold text-surface-900">New Conversation</h3>
+                </div>
                 <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }}
                   className="btn-ghost p-1.5"><X size={16} /></button>
               </div>
@@ -310,11 +320,18 @@ export default function AdminMessagesPage() {
             </div>
 
           ) : activeConvId ? (
-            <ChatPanel
-              conversationId={activeConvId}
-              currentProfile={profile}
-              onUnreadChange={loadConversations}
-            />
+            <div className="flex flex-col h-full">
+              <button onClick={() => setActiveConvId(null)} className="md:hidden flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-surface-300 hover:text-white border-b border-surface-700 shrink-0">
+                <ArrowLeft size={16} /> Back to conversations
+              </button>
+              <div className="flex-1 min-h-0">
+                <ChatPanel
+                  conversationId={activeConvId}
+                  currentProfile={profile}
+                  onUnreadChange={loadConversations}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
               <div className="w-16 h-16 rounded-2xl bg-brand-600/10 flex items-center justify-center">

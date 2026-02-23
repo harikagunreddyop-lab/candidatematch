@@ -318,7 +318,7 @@ function CandidatesPageContent() {
 
                   <div className="shrink-0 flex items-center gap-3">
                     {latestStatus && (
-                      <span className={cn('px-2 py-0.5 rounded-md text-[11px] font-medium hidden sm:inline-flex', STATUS_COLORS[latestStatus] || 'bg-surface-100 text-surface-600')}>
+                      <span className={cn('px-2 py-0.5 rounded-md text-[10px] sm:text-[11px] font-medium inline-flex', STATUS_COLORS[latestStatus] || 'bg-surface-100 text-surface-600')}>
                         {latestStatus}
                       </span>
                     )}

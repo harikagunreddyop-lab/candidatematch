@@ -336,13 +336,17 @@ function applyTier(score: number): MatchResult['apply_tier'] {
   return 'strong';
 }
 
+const BATCH_HEADERS = {
+  'x-api-key': ANTHROPIC_API_KEY!,
+  'anthropic-version': '2023-06-01',
+} as const;
+
 async function createBatch(requests: Array<{ custom_id: string; params: object }>): Promise<string> {
   const res = await fetch(ANTHROPIC_BATCHES_BASE, {
     method: 'POST',
     headers: {
+      ...BATCH_HEADERS,
       'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_API_KEY!,
-      'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({ requests }),
   });
@@ -354,19 +358,25 @@ async function createBatch(requests: Array<{ custom_id: string; params: object }
   return data.id;
 }
 
-async function getBatchStatus(batchId: string): Promise<{ status: string; request_counts?: { processing: number; succeeded: number; errored: number } }> {
+async function getBatchStatus(batchId: string): Promise<{ status?: string; processing_status?: string; request_counts?: { processing: number; succeeded: number; errored: number } }> {
   const res = await fetch(`${ANTHROPIC_BATCHES_BASE}/${batchId}`, {
-    headers: { 'x-api-key': ANTHROPIC_API_KEY! },
+    headers: BATCH_HEADERS,
   });
-  if (!res.ok) throw new Error(`Batches get failed: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Batches get failed: ${res.status} ${text}`);
+  }
   return res.json();
 }
 
 async function getBatchResults(batchId: string): Promise<Array<{ custom_id: string; result: { type: string; message?: { content: Array<{ text: string }> } } }>> {
   const res = await fetch(`${ANTHROPIC_BATCHES_BASE}/${batchId}/results`, {
-    headers: { 'x-api-key': ANTHROPIC_API_KEY! },
+    headers: BATCH_HEADERS,
   });
-  if (!res.ok) throw new Error(`Batches results failed: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Batches results failed: ${res.status} ${text}`);
+  }
   const data = await res.json();
   return data.items ?? data.results ?? [];
 }
@@ -474,10 +484,10 @@ export async function runEliteMatching(
     };
   }
 
-  // Layer 2: Batch scoring
+  // Layer 2: Batch scoring (custom_id must be ≤64 chars per Anthropic API)
   onLog('🧠 Layer 2: Elite semantic scoring (batched)...');
-  const batchRequests = passingPairs.map(({ job, candidate, resume }) => ({
-    custom_id: `score__${job.id}__${candidate.id}__r${resume.index}`,
+  const batchRequests = passingPairs.map(({ job, candidate, resume }, i) => ({
+    custom_id: `s_${i}`,
     params: {
       model: MODEL,
       max_tokens: 2000, // v2: cross-ATS output for 10 systems
@@ -504,8 +514,9 @@ export async function runEliteMatching(
     }
   >();
 
-  for (const { job, candidate, resume } of passingPairs) {
-    const cid = `score__${job.id}__${candidate.id}__r${resume.index}`;
+  for (let i = 0; i < passingPairs.length; i++) {
+    const { job, candidate, resume } = passingPairs[i];
+    const cid = `s_${i}`;
     const result = rawResults.get(cid);
     if (!result || result.error) continue;
 

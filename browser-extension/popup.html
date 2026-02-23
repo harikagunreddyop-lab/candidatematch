@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=380" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <!-- Login screen -->
+  <div id="login-screen">
+    <div class="header">
+      <div class="logo">CM</div>
+      <h1>CandidateMatch</h1>
+      <p class="subtitle">Auto-fill job applications</p>
+    </div>
+    <form id="login-form" autocomplete="off">
+      <label for="app-url">App URL</label>
+      <input id="app-url" type="url" placeholder="https://your-app.vercel.app" required />
+
+      <label for="anon-key">Supabase Anon Key</label>
+      <input id="anon-key" type="text" placeholder="eyJ..." required />
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" required />
+
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="••••••••" required />
+
+      <button type="submit" id="login-btn">Connect</button>
+      <p id="login-error" class="error" hidden></p>
+    </form>
+  </div>
+
+  <!-- Candidate selector screen (admin/recruiter) -->
+  <div id="select-screen" hidden>
+    <div class="header compact">
+      <div class="logo sm">CM</div>
+      <div class="header-text">
+        <span class="connected-badge" id="role-badge">Recruiter</span>
+        <span class="header-name" id="user-name"></span>
+      </div>
+    </div>
+
+    <div class="selector-section">
+      <h3>Select a candidate to autofill for</h3>
+      <input id="candidate-search" type="text" placeholder="Search candidates..." class="search-input" />
+      <div id="candidate-list" class="candidate-list"></div>
+      <p id="no-candidates" class="empty-msg" hidden>No candidates found.</p>
+    </div>
+
+    <div class="actions">
+      <button id="select-logout-btn" class="ghost">Disconnect</button>
+    </div>
+  </div>
+
+  <!-- Connected screen (ready to fill) -->
+  <div id="connected-screen" hidden>
+    <div class="header compact">
+      <div class="logo sm">CM</div>
+      <span class="connected-badge">Ready to fill</span>
+    </div>
+
+    <div id="profile-card">
+      <p class="profile-name" id="p-name">—</p>
+      <p class="profile-meta" id="p-title">—</p>
+      <p class="profile-meta" id="p-email">—</p>
+    </div>
+
+    <div class="fields-preview">
+      <h3>Autofill fields</h3>
+      <div id="fields-list" class="tags"></div>
+    </div>
+
+    <div class="actions">
+      <button id="fill-btn" class="primary">Fill Current Page</button>
+      <button id="refresh-btn" class="secondary">Refresh Profile</button>
+      <button id="change-candidate-btn" class="secondary" hidden>Change Candidate</button>
+      <button id="logout-btn" class="ghost">Disconnect</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

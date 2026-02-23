@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Extension Icons</title></head>
+<body>
+<p>Open this file in a browser and right-click each canvas to "Save image as" PNG.</p>
+<canvas id="c16" width="16" height="16"></canvas>
+<canvas id="c48" width="48" height="48"></canvas>
+<canvas id="c128" width="128" height="128"></canvas>
+<script>
+[16, 48, 128].forEach(size => {
+  const c = document.getElementById('c' + size);
+  const ctx = c.getContext('2d');
+  const r = size * 0.18;
+  // rounded rect background
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(size - r, 0); ctx.quadraticCurveTo(size, 0, size, r);
+  ctx.lineTo(size, size - r); ctx.quadraticCurveTo(size, size, size - r, size);
+  ctx.lineTo(r, size); ctx.quadraticCurveTo(0, size, 0, size - r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#6366f1'); grad.addColorStop(1, '#8b5cf6');
+  ctx.fillStyle = grad; ctx.fill();
+  // "CM" text
+  ctx.fillStyle = '#fff';
+  ctx.font = `bold ${Math.round(size * 0.42)}px -apple-system, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('CM', size / 2, size / 2 + size * 0.03);
+});
+</script>
+</body>
+</html>

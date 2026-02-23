@@ -1,0 +1,467 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&f[]=cabinet-grotesk@400,500,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-satoshi: 'Satoshi', system-ui, sans-serif;
+  --font-cabinet: 'Cabinet Grotesk', system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono', monospace;
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-satoshi);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface-900;
+    color: #e9ecef;
+  }
+
+  * {
+    @apply border-surface-700;
+  }
+}
+
+/* =============================================================================
+   DARK-ONLY TEXT — all surface-* text classes resolve to readable light colors
+   ============================================================================= */
+[class*="text-surface-900"],
+[class*="text-surface-800"],
+[class*="text-surface-700"] {
+  color: #e9ecef !important;
+}
+[class*="text-surface-600"],
+[class*="text-surface-500"] {
+  color: #ced4da !important;
+}
+[class*="text-surface-400"],
+[class*="text-surface-300"],
+[class*="text-surface-200"],
+[class*="text-surface-100"] {
+  color: #ced4da !important;
+}
+
+/* Text colors that might be used inline */
+[class*="text-gray-900"],
+[class*="text-gray-800"],
+[class*="text-gray-700"] {
+  color: #e9ecef !important;
+}
+[class*="text-gray-600"],
+[class*="text-gray-500"] {
+  color: #ced4da !important;
+}
+
+/* =============================================================================
+   DARK-ONLY BACKGROUNDS — convert all light backgrounds to dark equivalents
+   ============================================================================= */
+[class~="bg-white"],
+.bg-white {
+  background-color: #343a40 !important;
+}
+[class~="bg-surface-0"] {
+  background-color: #2b3035 !important;
+}
+[class~="bg-surface-50"],
+[class*="bg-surface-50\/"],
+[class*="bg-surface-50:"] {
+  background-color: #2b3035 !important;
+}
+[class~="bg-surface-100"] {
+  background-color: #2f353a !important;
+}
+[class~="bg-surface-200"] {
+  background-color: #343a40 !important;
+}
+
+/* =============================================================================
+   DARK-ONLY BORDERS — convert light borders to darker equivalents
+   ============================================================================= */
+[class~="border-surface-200"],
+[class~="border-surface-100"],
+[class~="border-surface-300"],
+[class*="divide-surface-200"],
+[class*="divide-surface-100"] {
+  border-color: #495057 !important;
+}
+
+/* =============================================================================
+   DARK-ONLY HOVER BACKGROUNDS
+   ============================================================================= */
+.hover\:bg-surface-50:hover,
+.hover\:bg-surface-50\/80:hover,
+.hover\:bg-surface-50\/30:hover {
+  background-color: rgba(73, 80, 87, 0.55) !important;
+}
+.hover\:bg-surface-100:hover {
+  background-color: rgba(73, 80, 87, 0.65) !important;
+}
+.hover\:bg-surface-200:hover {
+  background-color: rgba(73, 80, 87, 0.75) !important;
+}
+.hover\:bg-white:hover {
+  background-color: rgba(73, 80, 87, 0.55) !important;
+}
+tr:hover {
+  background-color: rgba(73, 80, 87, 0.5) !important;
+}
+
+/* Placeholder text */
+.placeholder\:text-surface-400::placeholder,
+.placeholder\:text-surface-500::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: #adb5bd !important;
+}
+
+/* =============================================================================
+   COMPONENT CLASSES — dark-only defaults
+   ============================================================================= */
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
+           bg-brand-600 text-white font-medium rounded-xl
+           hover:bg-brand-700 active:bg-brand-800
+           transition-all duration-150 ease-out
+           shadow-sm hover:shadow-md
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+           font-medium rounded-xl
+           transition-all duration-150 ease-out
+           shadow-sm;
+    background-color: #495057;
+    border: 1px solid #868e96;
+    color: #e9ecef;
+  }
+  .btn-secondary:hover {
+    background-color: #5c636a;
+    color: #dee2e6;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
+           bg-danger-500 text-white font-medium rounded-xl
+           hover:bg-danger-600 active:bg-red-700
+           transition-all duration-150 ease-out
+           shadow-sm;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-3 py-2
+           font-medium rounded-xl
+           transition-all duration-150;
+    color: #ced4da;
+  }
+  .btn-ghost:hover {
+    background-color: #495057;
+    color: #e9ecef;
+  }
+
+  .card {
+    @apply rounded-2xl shadow-card;
+    background-color: #343a40;
+    border: 1px solid #495057;
+    color: #e9ecef;
+  }
+
+  .card-hover {
+    @apply card hover:shadow-elevated
+           transition-all duration-200 cursor-pointer;
+  }
+  .card-hover:hover {
+    border-color: #5c636a;
+  }
+
+  .input {
+    @apply w-full px-4 py-2.5 rounded-xl
+           focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
+           transition-all duration-150;
+    background-color: #495057;
+    border: 1px solid #868e96;
+    color: #e9ecef;
+  }
+  .input::placeholder {
+    color: #adb5bd !important;
+  }
+
+  .select {
+    @apply input appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23ced4da%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_12px_center] bg-[length:16px] pr-10;
+  }
+
+  .label {
+    @apply block text-sm font-medium mb-1.5;
+    color: #e9ecef !important;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-brand {
+    @apply badge;
+    background-color: rgba(76, 110, 245, 0.2);
+    color: #91a7ff;
+  }
+
+  .badge-success {
+    @apply badge;
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+  }
+
+  .badge-warning {
+    @apply badge;
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  .badge-danger {
+    @apply badge;
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+  }
+
+  .badge-neutral {
+    @apply badge;
+    background-color: #5c636a;
+    color: #e9ecef;
+  }
+
+  .stat-card {
+    @apply card p-6;
+  }
+
+  .table-container {
+    @apply card overflow-hidden;
+  }
+
+  .table-container table {
+    @apply w-full;
+  }
+
+  .table-container thead {
+    background-color: #2b3035;
+    border-bottom: 1px solid #495057;
+  }
+
+  .table-container th {
+    @apply px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider;
+    color: #ced4da !important;
+  }
+
+  .table-container td {
+    @apply px-5 py-4 text-sm;
+    color: #dee2e6 !important;
+  }
+
+  .table-container tbody tr {
+    @apply last:border-0 transition-colors;
+    border-bottom: 1px solid rgba(73, 80, 87, 0.5);
+  }
+  .table-container tbody tr:hover {
+    background-color: rgba(73, 80, 87, 0.5);
+  }
+
+  .skeleton {
+    @apply rounded-lg animate-shimmer;
+    background-color: #495057;
+    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background-size: 200% 100%;
+  }
+
+  .tab-active {
+    @apply font-medium border-b-2;
+    color: #91a7ff;
+    border-color: #748ffc;
+  }
+
+  .tab-inactive {
+    @apply border-b-2 border-transparent;
+    color: #ced4da !important;
+  }
+  .tab-inactive:hover {
+    color: #e9ecef !important;
+  }
+
+  .fit-score-high {
+    @apply px-2 py-0.5 rounded-lg font-semibold text-sm;
+    background-color: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+  }
+
+  .fit-score-mid {
+    @apply px-2 py-0.5 rounded-lg font-semibold text-sm;
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+  }
+
+  .fit-score-low {
+    @apply px-2 py-0.5 rounded-lg font-semibold text-sm;
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-600 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-500;
+}
+
+/* Toast animation */
+.toast-enter {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+.toast-exit {
+  animation: slideOutRight 0.2s ease-in forwards;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(100%); }
+}
+
+/* =============================================================================
+   ADDITIONAL DARK-MODE FORM OVERRIDES — native inputs, selects, textareas
+   ============================================================================= */
+input, textarea, select {
+  background-color: #495057;
+  border-color: #868e96;
+  color: #e9ecef;
+}
+input:focus, textarea:focus, select:focus {
+  border-color: #5c7cfa;
+  outline: none;
+}
+
+/* Ring colors for focus states */
+[class*="ring-surface-200"],
+[class*="ring-surface-300"] {
+  --tw-ring-color: #495057 !important;
+}
+
+/* =============================================================================
+   COLORED BACKGROUND OVERRIDES — badges/pills using light Tailwind colors
+   ============================================================================= */
+[class~="bg-green-50"],
+[class~="bg-green-100"] {
+  background-color: rgba(34, 197, 94, 0.15) !important;
+}
+[class~="bg-amber-50"],
+[class~="bg-amber-100"] {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+[class~="bg-amber-200"] {
+  background-color: rgba(245, 158, 11, 0.25) !important;
+}
+[class~="border-amber-200"],
+[class~="border-amber-100"] {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+[class~="border-red-200"],
+[class~="border-red-100"] {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+[class~="border-green-200"],
+[class~="border-green-100"] {
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+[class~="bg-red-50"],
+[class~="bg-red-100"] {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+[class~="bg-blue-50"],
+[class~="bg-blue-100"] {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+}
+[class~="bg-purple-50"],
+[class~="bg-purple-100"] {
+  background-color: rgba(168, 85, 247, 0.15) !important;
+}
+[class~="bg-brand-50"],
+[class~="bg-brand-100"] {
+  background-color: rgba(76, 110, 245, 0.15) !important;
+}
+[class~="bg-brand-200"] {
+  background-color: rgba(76, 110, 245, 0.25) !important;
+}
+[class~="border-brand-200"],
+[class~="border-brand-100"],
+[class~="divide-brand-100"],
+[class~="divide-brand-200"] {
+  border-color: rgba(76, 110, 245, 0.3) !important;
+}
+[class~="hover:bg-brand-100"]:hover {
+  background-color: rgba(76, 110, 245, 0.2) !important;
+}
+[class~="bg-yellow-50"],
+[class~="bg-yellow-100"] {
+  background-color: rgba(234, 179, 8, 0.12) !important;
+}
+[class~="bg-indigo-50"],
+[class~="bg-indigo-100"] {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+[class~="bg-pink-50"],
+[class~="bg-pink-100"] {
+  background-color: rgba(236, 72, 153, 0.15) !important;
+}
+[class~="bg-orange-50"],
+[class~="bg-orange-100"] {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+}
+[class~="bg-emerald-50"],
+[class~="bg-emerald-100"] {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+[class~="bg-teal-50"],
+[class~="bg-teal-100"] {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+}
+[class~="bg-rose-50"],
+[class~="bg-rose-100"] {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+}
+[class~="bg-cyan-50"],
+[class~="bg-cyan-100"] {
+  background-color: rgba(6, 182, 212, 0.15) !important;
+}
+[class~="text-pink-600"], [class~="text-pink-700"] { color: #f472b6 !important; }
+[class~="text-teal-600"], [class~="text-teal-700"] { color: #2dd4bf !important; }
+[class~="text-rose-600"], [class~="text-rose-700"] { color: #fb7185 !important; }
+[class~="text-cyan-600"], [class~="text-cyan-700"] { color: #22d3ee !important; }
+
+/* Colored text: ensure vibrant, readable versions in dark mode */
+[class~="text-green-600"], [class~="text-green-700"], [class~="text-green-800"] { color: #4ade80 !important; }
+[class~="text-amber-600"], [class~="text-amber-700"], [class~="text-amber-800"] { color: #fbbf24 !important; }
+[class~="text-red-600"], [class~="text-red-700"], [class~="text-red-500"], [class~="text-red-800"] { color: #f87171 !important; }
+[class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"] { color: #60a5fa !important; }
+[class~="text-brand-600"], [class~="text-brand-700"], [class~="text-brand-800"] { color: #91a7ff !important; }
+[class~="text-purple-600"], [class~="text-purple-700"], [class~="text-purple-800"] { color: #c084fc !important; }
+[class~="text-indigo-600"], [class~="text-indigo-700"], [class~="text-indigo-800"] { color: #818cf8 !important; }
+[class~="text-yellow-600"], [class~="text-yellow-700"], [class~="text-yellow-800"] { color: #fbbf24 !important; }
+[class~="text-orange-600"], [class~="text-orange-700"], [class~="text-orange-800"] { color: #fb923c !important; }
+[class~="text-emerald-600"], [class~="text-emerald-700"], [class~="text-emerald-800"] { color: #34d399 !important; }

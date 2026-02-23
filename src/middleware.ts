@@ -78,8 +78,13 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
+    // ── User with no role already on pending-approval → stay there ──
+    if (!role && pathname === '/pending-approval') {
+      return response;
+    }
+
     // ── Already approved user on pending-approval page → send to dashboard ──
-    if (pathname === '/pending-approval') {
+    if (pathname === '/pending-approval' && role) {
       const dest = role === 'admin' ? '/dashboard/admin'
                  : role === 'recruiter' ? '/dashboard/recruiter'
                  : '/dashboard/candidate';

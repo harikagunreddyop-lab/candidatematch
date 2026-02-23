@@ -87,7 +87,9 @@ export async function GET(request: Request) {
                    : role === 'recruiter' ? '/dashboard/recruiter'
                    : '/dashboard/candidate';
 
-        return NextResponse.redirect(new URL(dest, origin));
+        // Redirect to client completion page so the browser picks up the session cookie
+        // before navigating to dashboard (fixes OAuth "first click shows login again" issue)
+        return NextResponse.redirect(new URL('/auth/complete', origin));
       }
     } catch {
       // Env missing or exchange failed — do not expose details

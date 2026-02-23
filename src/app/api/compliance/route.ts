@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (authResult.profile.role === 'admin') {
       const { data, error } = await supabase
         .from('data_deletion_requests')
-        .select('*, profile:profiles(name, email, role)')
+        .select('*, profile:profiles!profile_id(name, email, role)')
         .order('requested_at', { ascending: false });
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       return NextResponse.json({ requests: data || [] });

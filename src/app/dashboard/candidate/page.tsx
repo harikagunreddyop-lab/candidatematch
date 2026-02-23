@@ -108,6 +108,7 @@ export default function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'overview' | 'matches' | 'applications' | 'resumes' | 'saved' | 'reminders'>('overview');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [matchDateFilter, setMatchDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
   const [notLinked, setNotLinked] = useState(false);
 
   // Per-job AI brief (like recruiter)
@@ -483,6 +484,16 @@ export default function CandidateDashboard() {
   const interviewPossible = matches.filter(m => m.fit_score >= SCORE_APPLY_OK).length;
   const cautionCount = matches.filter(m => m.fit_score >= SCORE_APPLY_CAUTION && m.fit_score < SCORE_APPLY_OK).length;
   const alreadyApplied = new Set(applications.map(a => a.job_id));
+  const availableMatches = matches.filter(m => !alreadyApplied.has(m.job_id));
+  const appliedMatches = matches.filter(m => alreadyApplied.has(m.job_id));
+
+  const matchDateCutoff = matchDateFilter === 'all' ? 0 : Date.now() - parseInt(matchDateFilter, 10) * 24 * 60 * 60 * 1000;
+  const filteredAvailableMatches = availableMatches.filter(m => {
+    if (matchDateFilter === 'all') return true;
+    const t = new Date(m.matched_at || m.created_at).getTime();
+    return t >= matchDateCutoff;
+  });
+  const filteredAvailableForSaved = showSavedOnly ? filteredAvailableMatches.filter(m => savedJobIds.has(m.job_id)) : filteredAvailableMatches;
 
   const interviewApps = applications.filter((a: any) => a.status === 'interview');
   const savedMatches = matches.filter(m => savedJobIds.has(m.job_id));
@@ -520,7 +531,7 @@ export default function CandidateDashboard() {
 
   const TABS = [
     { key: 'overview' as const, label: 'Overview', icon: <TrendingUp size={14} /> },
-    { key: 'matches' as const, label: 'Matched Jobs', icon: <Target size={14} />, count: matches.length },
+    { key: 'matches' as const, label: 'Matched Jobs', icon: <Target size={14} />, count: availableMatches.length },
     { key: 'saved' as const, label: 'Saved', icon: <BookmarkCheck size={14} />, count: savedJobIds.size },
     { key: 'applications' as const, label: 'Applications', icon: <ClipboardList size={14} />, count: applications.length },
     { key: 'reminders' as const, label: 'Reminders', icon: <Bell size={14} />, count: reminders.length },
@@ -779,7 +790,7 @@ export default function CandidateDashboard() {
                   </button>
                 </div>
                 <div className="divide-y divide-surface-100 dark:divide-surface-700">
-                  {matches.slice(0, 5).map(m => {
+                  {availableMatches.slice(0, 5).map(m => {
                     const reason = parseMatchReason(m.match_reason);
                     const applied = alreadyApplied.has(m.job_id);
                     return (
@@ -914,15 +925,24 @@ export default function CandidateDashboard() {
       {/* ── MATCHES ── */}
       {tab === 'matches' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-surface-500 dark:text-surface-400">Match date:</span>
+              {(['all', '7', '30', '90'] as const).map(f => (
+                <button key={f} onClick={() => setMatchDateFilter(f)}
+                  className={cn('text-sm font-medium py-1.5 px-3 rounded-lg transition-colors', matchDateFilter === f ? 'bg-brand-600 text-white' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
+                  {f === 'all' ? 'All' : `Last ${f} days`}
+                </button>
+              ))}
+            </div>
             <button onClick={() => setShowSavedOnly(!showSavedOnly)} className={cn('text-sm font-medium py-2 px-4 rounded-xl transition-colors', showSavedOnly ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
               <BookmarkCheck size={14} className="inline mr-1.5" /> Saved only
             </button>
           </div>
-          {(showSavedOnly ? matches.filter(m => savedJobIds.has(m.job_id)) : matches).length === 0 ? (
+          {filteredAvailableForSaved.length === 0 ? (
             <EmptyState icon={<Briefcase size={24} />} title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
-              description={showSavedOnly ? 'Save jobs from the list to see them here.' : "Your recruiter hasn't run matching yet. Check back soon!"} />
-          ) : (showSavedOnly ? matches.filter(m => savedJobIds.has(m.job_id)) : matches).map(m => {
+              description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all matched jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'} />
+          ) : filteredAvailableForSaved.map(m => {
             const reason = parseMatchReason(m.match_reason);
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;

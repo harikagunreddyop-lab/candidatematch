@@ -162,31 +162,30 @@ export default function HomePage() {
   const strength = mode === 'signup' ? passwordStrength(password) : null;
 
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex flex-col">
+    <div className="h-screen overflow-hidden flex flex-col bg-surface-50 dark:bg-surface-900">
       {/* Background blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-[600px] h-[600px] rounded-full bg-brand-200/30 dark:bg-brand-500/10 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] rounded-full bg-indigo-200/20 dark:bg-indigo-500/10 blur-3xl" />
       </div>
 
-      <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-16">
+      <div className="relative flex-1 min-h-0 flex flex-col items-center justify-center px-4 py-4 overflow-auto">
         {/* Logo */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white dark:bg-surface-800 flex items-center justify-center shadow-lg shadow-brand-500/25 border border-surface-200 dark:border-surface-600">
-            <Image src="/logo.png" alt="Logo" width={48} height={48} className="object-contain" />
+        <div className="flex items-center gap-3 mb-4 sm:mb-6 shrink-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl overflow-hidden bg-white dark:bg-surface-800 flex items-center justify-center shadow-lg shadow-brand-500/25 border border-surface-200 dark:border-surface-600">
+            <Image src="/logo.png" alt="Logo" width={48} height={48} className="object-contain w-10 h-10 sm:w-12 sm:h-12" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-surface-900 dark:text-white font-display tracking-tight">Orion CMOS</h1>
-            <p className="text-xs text-surface-500 dark:text-surface-300 font-medium tracking-wide uppercase">Resume Factory</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 dark:text-white font-display tracking-tight">Orion CMOS</h1>
           </div>
         </div>
 
         {/* Card */}
-        <div className="w-full max-w-md card p-5 sm:p-8 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100">
-          <h2 className="text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
+        <div className="w-full max-w-md card p-4 sm:p-6 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100 shrink-0">
+          <h2 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </h2>
-          <p className="text-sm text-surface-500 dark:text-surface-300 text-center mb-6">
+          <p className="text-xs sm:text-sm text-surface-500 dark:text-surface-300 text-center mb-4">
             {mode === 'login' ? 'Sign in to continue to your dashboard'
             : mode === 'signup' ? 'Join as a candidate or recruiter'
             : "We'll send you a secure reset link"}
@@ -416,17 +415,17 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Feature strip */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mt-10">
+        {/* Feature strip - compact, fits viewport */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-xl mt-4 shrink-0">
           {[
-            { icon: <Sparkles size={18} />, title: 'AI Resumes', desc: 'STAR-format bullets tailored to every JD' },
-            { icon: <Zap size={18} />, title: 'Auto Matching', desc: 'Enterprise ATS scoring engine' },
-            { icon: <Shield size={18} />, title: 'Secure', desc: 'Role-based access with RLS policies' },
+            { icon: <Sparkles size={16} />, title: 'AI Resumes', desc: 'Tailored to every JD' },
+            { icon: <Zap size={16} />, title: 'Auto Match', desc: 'ATS scoring' },
+            { icon: <Shield size={16} />, title: 'Secure', desc: 'RLS policies' },
           ].map(f => (
-            <div key={f.title} className="flex flex-col items-center text-center p-4">
-              <div className="w-10 h-10 rounded-xl bg-brand-50 dark:bg-brand-500/20 flex items-center justify-center text-brand-500 dark:text-brand-400 mb-2">{f.icon}</div>
-              <h3 className="text-sm font-semibold text-surface-800 dark:text-surface-100">{f.title}</h3>
-              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{f.desc}</p>
+            <div key={f.title} className="flex flex-col items-center text-center p-2 sm:p-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-brand-50 dark:bg-brand-500/20 flex items-center justify-center text-brand-500 dark:text-brand-400 mb-1">{f.icon}</div>
+              <h3 className="text-xs sm:text-sm font-semibold text-surface-800 dark:text-surface-100">{f.title}</h3>
+              <p className="text-[10px] sm:text-xs text-surface-500 dark:text-surface-400 mt-0.5">{f.desc}</p>
             </div>
           ))}
         </div>

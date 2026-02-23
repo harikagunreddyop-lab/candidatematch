@@ -11,7 +11,6 @@ export default function NotFound() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">Orion CMOS</h1>
-          <p className="text-xs text-surface-500 dark:text-surface-300 font-medium tracking-wide uppercase">Resume Factory</p>
         </div>
       </div>
       <div className="card p-8 max-w-md w-full text-center dark:bg-surface-800 dark:border-surface-600">

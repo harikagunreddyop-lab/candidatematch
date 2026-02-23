@@ -9,7 +9,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Orion CMOS — Resume Factory',
+  title: 'Orion CMOS',
   description: 'AI-powered resume generation and job matching platform',
 };
 

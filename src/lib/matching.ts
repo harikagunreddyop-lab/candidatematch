@@ -4,7 +4,7 @@ import { extractJobRequirements, computeATSScore, type JobRequirements, type ATS
 import { log as devLog, error as logError } from '@/lib/logger';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CONCURRENCY = 10;
+const CONCURRENCY = 5;
 const MAX_MATCHES_PER_CANDIDATE = 50;
 const MAX_RESUME_TEXT_LEN = 4000;
 

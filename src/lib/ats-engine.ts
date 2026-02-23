@@ -373,12 +373,20 @@ Extraction rules:
 - Return null for truly undeterminable fields`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
-    });
-    if (!res.ok) return null;
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (res.status === 429 || res.status === 529) {
+        await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
+        continue;
+      }
+      break;
+    }
+    if (!res || !res.ok) return null;
     const data = await res.json();
     const text = data.content?.[0]?.text || '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -948,22 +956,34 @@ RESUME: ${resumeText.slice(0, 1800)}
 
 Return ONLY valid JSON: { "score": <0-100>, "details": "<1 sentence>" }`;
 
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 150, messages: [{ role: 'user', content: prompt }] }),
-    });
-    if (!res.ok) return { score: 50, details: 'AI unavailable' };
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { score: 50, details: 'Parse error' };
-    const parsed = JSON.parse(jsonMatch[0]);
-    return { score: Math.max(0, Math.min(100, parseInt(String(parsed.score), 10) || 50)), details: parsed.details || 'Evaluated' };
-  } catch {
-    return { score: 50, details: 'AI evaluation failed' };
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 150, messages: [{ role: 'user', content: prompt }] }),
+      });
+      if (res.status === 429 || res.status === 529) {
+        const wait = Math.pow(2, attempt + 1) * 1000;
+        await new Promise(r => setTimeout(r, wait));
+        continue;
+      }
+      if (!res.ok) {
+        logError(`[ats-engine] Soft factor API ${res.status}: ${await res.text().catch(() => '')}`);
+        return { score: 50, details: 'AI unavailable' };
+      }
+      const data = await res.json();
+      const text = data.content?.[0]?.text || '';
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return { score: 50, details: 'Parse error' };
+      const parsed = JSON.parse(jsonMatch[0]);
+      return { score: Math.max(0, Math.min(100, parseInt(String(parsed.score), 10) || 50)), details: parsed.details || 'Evaluated' };
+    } catch {
+      if (attempt < 2) { await new Promise(r => setTimeout(r, 1000 * (attempt + 1))); continue; }
+      return { score: 50, details: 'AI evaluation failed' };
+    }
   }
+  return { score: 50, details: 'AI retries exhausted' };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

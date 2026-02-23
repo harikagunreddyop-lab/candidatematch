@@ -25,7 +25,7 @@ Best balance of simplicity, DX, and cost for most teams.
 | `ANTHROPIC_API_KEY` | Yes | For matching |
 | `APIFY_API_TOKEN` | If using scraping | From Apify |
 | `RESUME_WORKER_URL` | Yes | Full URL of your deployed worker (e.g. `https://your-worker.railway.app`) |
-| `NEXT_PUBLIC_APP_URL` | Yes | Your Vercel app URL (e.g. `https://candidatematch.vercel.app`) |
+| `NEXT_PUBLIC_APP_URL` | Yes | Your app URL (e.g. `https://master.d1zctiy8vgnlrr.amplifyapp.com`) |
 
 - Deploy. The build runs `npm run build`; the app runs as serverless/edge.
 

@@ -139,7 +139,7 @@ export default function HomePage() {
     if (!email) { setError('Enter your email address'); return; }
     setLoading(true);
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     });
     if (err) { setError(err.message); setLoading(false); return; }
     setSuccess('Password reset link sent. Check your email.');

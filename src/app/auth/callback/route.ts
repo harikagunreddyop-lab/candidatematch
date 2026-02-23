@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const type = searchParams.get('type');
 
   if (code) {
     try {
@@ -14,11 +13,6 @@ export async function GET(request: Request) {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (!error && data.session) {
-        // Recovery = password reset link; Invite = first-time set password
-        if (type === 'recovery' || type === 'invite') {
-          return NextResponse.redirect(new URL('/auth/reset-password', origin));
-        }
-
         const userId = data.session.user.id;
         const userEmail = data.session.user.email;
 

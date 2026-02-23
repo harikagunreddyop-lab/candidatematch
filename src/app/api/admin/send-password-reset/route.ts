@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
   const { error: resetError } = await anonClient.auth.resetPasswordForEmail(email.trim(), {
-    redirectTo: `${baseUrl}/auth/callback`,
+    redirectTo: `${baseUrl}/auth/reset-password`,
   });
 
   if (resetError) {

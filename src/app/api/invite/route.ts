@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   // Base URL for invite links — use APP_URL (localhost in dev) or SITE_URL (production). Must match Supabase Auth redirect allowlist.
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
   const redirectTo = role === 'candidate'
-    ? `${baseUrl}/auth/callback?type=invite`
+    ? `${baseUrl}/auth/reset-password`
     : `${baseUrl}/dashboard/recruiter`;
 
   // Send invite (candidate receives email to set password; no onboarding)

@@ -266,7 +266,7 @@ export async function runMatching(
   const supabase = createServiceClient();
   const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
 
-  let q = supabase.from('candidates').select('*').eq('active', true);
+  let q = supabase.from('candidates').select('*').eq('active', true).not('invite_accepted_at', 'is', null);
   if (candidateId) q = q.eq('id', candidateId);
   const { data: candidates, error: cErr } = await q;
   if (cErr) { log('Error fetching candidates: ' + cErr.message); return { candidates_processed: 0, total_matches_upserted: 0, summary: [] }; }

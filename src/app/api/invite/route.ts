@@ -50,13 +50,13 @@ export async function POST(req: NextRequest) {
   // Base URL for invite links — use APP_URL (localhost in dev) or SITE_URL (production). Must match Supabase Auth redirect allowlist.
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
   const redirectTo = role === 'candidate'
-    ? `${baseUrl}/auth/callback`
+    ? `${baseUrl}/auth/callback?type=invite`
     : `${baseUrl}/dashboard/recruiter`;
 
   // Send invite (candidate receives email to set password; no onboarding)
   const { data: inviteData, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     redirectTo,
-    data: { role, name: displayName },
+    data: { role, name: displayName, phone: phone?.trim() || null },
   });
 
   if (error) {
@@ -66,61 +66,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // ── Immediately create profile + candidate rows server-side ──────────────
-  // This ensures the candidate row exists even if the DB trigger is slow or
-  // fails, so when the user logs in they won't see "account not linked".
+  // Do NOT create candidate here. Password creation = acceptance.
+  // Profile is created by DB trigger; upsert to add phone and ensure data.
   if (inviteData?.user?.id) {
-    const newUserId = inviteData.user.id;
-
-    // Upsert profile (name, email, phone are canonical for candidates; recruiter fills the rest via candidates table)
     await adminClient.from('profiles').upsert({
-      id: newUserId,
+      id: inviteData.user.id,
       email,
       name: displayName,
       phone: phone?.trim() || null,
       role,
-      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
-
-    // For candidates — link existing orphan or create new row
-    if (role === 'candidate') {
-      // Check if there's an existing candidate with this email but no user_id (admin-created)
-      const { data: existingOrphan } = await adminClient
-        .from('candidates')
-        .select('id')
-        .eq('email', email)
-        .is('user_id', null)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (existingOrphan) {
-        // Link existing candidate to the new auth user
-        await adminClient.from('candidates')
-          .update({
-            user_id: newUserId,
-            onboarding_completed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existingOrphan.id);
-      } else {
-        // No existing candidate — create fresh
-        await adminClient.from('candidates').upsert({
-          user_id: newUserId,
-          email,
-          full_name: displayName,
-          phone: phone?.trim() || null,
-          primary_title: '',
-          skills: [],
-          secondary_titles: [],
-          active: true,
-          onboarding_completed: true,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
-      }
-    }
   }
 
   return NextResponse.json({ success: true, email, role });

@@ -36,14 +36,26 @@ export default function ResetPasswordPage() {
     }
     setLoading(true);
     const { error: err } = await supabase.auth.updateUser({ password });
-    setLoading(false);
     if (err) {
+      setLoading(false);
       setError(err.message);
       return;
     }
+    // Password creation = acceptance of invite. Create/link candidate and set invite_accepted_at.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      await fetch('/api/invite/accept-invite', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+    }
+    setLoading(false);
     setSuccess(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: profile } = user ? await supabase.from('profiles').select('role').eq('id', user.id).single() : { data: null };
+    const dest = profile?.role === 'admin' ? '/dashboard/admin' : profile?.role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
     setTimeout(() => {
-      router.push('/dashboard');
+      router.push(dest);
       router.refresh();
     }, 1500);
   };

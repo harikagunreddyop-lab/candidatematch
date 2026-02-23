@@ -61,7 +61,7 @@ export default function UsersPage() {
     setLoading(true); setError(null);
     const [profilesRes, candidateCountRes, assignRes] = await Promise.all([
       supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-      supabase.from('candidates').select('id', { count: 'exact', head: true }),
+      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null),
       supabase.from('recruiter_candidate_assignments').select('recruiter_id'),
     ]);
 

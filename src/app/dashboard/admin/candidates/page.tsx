@@ -57,7 +57,7 @@ function CandidatesPageContent() {
     setError(null);
 
     const [candRes, recRes, asgRes] = await Promise.all([
-      supabase.from('candidates').select('*, applications(status)').order('created_at', { ascending: false }),
+      supabase.from('candidates').select('*, applications(status)').not('invite_accepted_at', 'is', null).order('created_at', { ascending: false }),
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
       supabase.from('recruiter_candidate_assignments').select('candidate_id, recruiter_id'),
     ]);

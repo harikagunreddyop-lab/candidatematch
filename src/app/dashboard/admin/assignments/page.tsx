@@ -38,7 +38,7 @@ export default function AssignmentsPage() {
         .select('*, recruiter:profiles!recruiter_id(name, email), candidate:candidates!candidate_id(full_name, email, primary_title)')
         .order('assigned_at', { ascending: false }),
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-      supabase.from('candidates').select('id, full_name, email, primary_title').eq('active', true).order('full_name'),
+      supabase.from('candidates').select('id, full_name, email, primary_title').eq('active', true).not('invite_accepted_at', 'is', null).order('full_name'),
     ]);
     const err = asgn.error?.message || recs.error?.message || cands.error?.message;
     if (err) {

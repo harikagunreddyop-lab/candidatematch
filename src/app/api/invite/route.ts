@@ -47,8 +47,10 @@ export async function POST(req: NextRequest) {
 
   const displayName = name || email.split('@')[0];
 
-  // Base URL for invite links — use APP_URL (localhost in dev) or SITE_URL (production). Must match Supabase Auth redirect allowlist.
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+  if (!baseUrl) {
+    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL is not set' }, { status: 500 });
+  }
   const redirectTo = role === 'candidate'
     ? `${baseUrl}/auth/reset-password`
     : `${baseUrl}/dashboard/recruiter`;

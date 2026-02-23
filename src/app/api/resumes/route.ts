@@ -4,11 +4,8 @@ import { requireApiAuth } from '@/lib/api-auth';
 
 const MAX_RESUMES_PER_CANDIDATE = 5;
 const MAX_FILE_SIZE_MB = 10;
-// Worker runs on 3001; avoid pointing at the Next.js app (3000) or localhost IPv6 issues
-const DEFAULT_WORKER_URL = 'http://127.0.0.1:3001';
 const raw = process.env.RESUME_WORKER_URL?.trim();
-const RESUME_WORKER_URL =
-  raw && !raw.includes(':3000') ? raw : DEFAULT_WORKER_URL;
+const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.1:3001';
 
 const RESUME_GENERATION_MAX_SCORE = 75; // Only allow generation for matches with score below this
 
@@ -157,8 +154,7 @@ export async function POST(req: NextRequest) {
           const workerPath = path.join(process.cwd(), 'worker', 'index.js');
           spawn(process.execPath, [workerPath], { cwd: process.cwd(), detached: true, stdio: 'ignore' }).unref();
           if (process.env.NODE_ENV === 'development') {
-            // eslint-disable-next-line no-console
-            console.log('[api/resumes] Started resume worker in background. Retrying health check in 3s.');
+            console.warn('[api/resumes] Started resume worker in background. Retrying health check in 3s.');
           }
           await new Promise(r => setTimeout(r, 3000));
           const retry = await fetch(`${RESUME_WORKER_URL}/health`);

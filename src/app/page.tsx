@@ -10,28 +10,6 @@ import {
 type AuthMode = 'login' | 'signup' | 'forgot';
 type SignupRole = 'candidate' | 'recruiter';
 
-// LinkedIn SVG icon
-function LinkedInIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="#0A66C2">
-      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-    </svg>
-  );
-}
-
-// Google SVG icon
-function GoogleIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18">
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/>
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z"/>
-      <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z"/>
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58Z"/>
-    </svg>
-  );
-}
-
-// Helper: always returns the correct app URL — safe in browser event handlers
 function getAppUrl(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
 }
@@ -46,34 +24,12 @@ export default function HomePage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'linkedin' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
 
   const reset = () => { setError(null); setSuccess(null); };
 
-  // ── OAuth ─────────────────────────────────────────────────────────────────
-  const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {
-    reset();
-    setOauthLoading(provider === 'google' ? 'google' : 'linkedin');
-    // getAppUrl() is called here (inside a click handler = browser only, never SSR)
-    const appUrl = getAppUrl();
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${appUrl}/auth/callback`,
-        queryParams: provider === 'linkedin_oidc' ? { scope: 'openid email profile' } : undefined,
-      },
-    });
-    if (err) {
-      setError(err.message);
-      setOauthLoading(null);
-    }
-    // On success, browser redirects automatically — no need to clear loading
-  };
-
-  // ── Email login ───────────────────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     reset();
@@ -93,7 +49,6 @@ export default function HomePage() {
     window.location.href = '/dashboard';
   };
 
-  // ── Email signup ──────────────────────────────────────────────────────────
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     reset();
@@ -129,18 +84,15 @@ export default function HomePage() {
     }
 
     if (data.session) {
-      // Email confirmation disabled — logged in immediately
       window.location.href = '/dashboard';
       return;
     }
 
-    // Email confirmation enabled
     setSuccess('Account created! Check your email to confirm your account, then sign in.');
     setMode('login');
     setLoading(false);
   };
 
-  // ── Forgot password ───────────────────────────────────────────────────────
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     reset();
@@ -172,16 +124,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex bg-surface-50 dark:bg-surface-900">
-      {/* One section: left half = logo, right half = login box */}
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-screen">
-        {/* Left half — Matte black with Orion-path gradient, stars/crystals, meaning */}
+        {/* Left half — Matte black with Orion-path gradient */}
         <div
           className="relative flex items-center justify-center px-6 py-12 overflow-hidden min-h-[50vh] md:min-h-0"
           style={{
             background: 'linear-gradient(140deg, #0a0a0a 0%, #0f0f0f 35%, #0c0c0c 50%, #080808 70%, #0a0a0a 100%)',
           }}
         >
-          {/* Shiny black stars & crystals (decorative) */}
           <div className="absolute inset-0 pointer-events-none" aria-hidden>
             <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/60 shadow-[0_0_6px_0_rgba(255,255,255,0.15),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.08)] top-[18%] left-[22%]" />
             <div className="absolute w-2 h-2 rounded-full bg-neutral-900 border border-neutral-500/50 shadow-[0_0_8px_0_rgba(255,255,255,0.2),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.1)] top-[28%] right-[28%]" />
@@ -210,6 +160,7 @@ export default function HomePage() {
                 alt="Orion CMOS"
                 width={280}
                 height={280}
+                priority
                 className="object-contain w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl"
               />
             </div>
@@ -235,13 +186,12 @@ export default function HomePage() {
               <h2 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
                 {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
               </h2>
-              <p className="text-xs sm:text-sm text-surface-500 dark:text-surface-300 text-center mb-4">
+              <p className="text-xs sm:text-sm text-surface-500 dark:text-surface-300 text-center mb-5">
                 {mode === 'login' ? 'Sign in to continue to your dashboard'
-                : mode === 'signup' ? 'Join as a candidate or recruiter'
+                : mode === 'signup' ? 'Join as a recruiter'
                 : "We'll send you a secure reset link"}
               </p>
 
-              {/* Alerts */}
               {error && (
                 <div className="mb-5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-500/40 flex items-start gap-2">
                   <AlertCircle size={14} className="text-red-500 dark:text-red-400 mt-0.5 shrink-0" />
@@ -258,31 +208,6 @@ export default function HomePage() {
               {/* ── LOGIN ── */}
               {mode === 'login' && (
                 <>
-                  <div className="space-y-2.5 mb-5">
-                    <button
-                      onClick={() => handleOAuth('google')}
-                      disabled={!!oauthLoading}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl text-sm font-medium text-surface-700 dark:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-600 hover:border-surface-400 dark:hover:border-surface-500 transition-all shadow-sm disabled:opacity-60"
-                    >
-                      {oauthLoading === 'google' ? <span className="w-4 h-4 border-2 border-surface-300 border-t-brand-500 rounded-full animate-spin" /> : <GoogleIcon />}
-                      Continue with Google
-                    </button>
-                    <button
-                      onClick={() => handleOAuth('linkedin_oidc')}
-                      disabled={!!oauthLoading}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl text-sm font-medium text-surface-700 dark:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-600 hover:border-surface-400 dark:hover:border-surface-500 transition-all shadow-sm disabled:opacity-60"
-                    >
-                      {oauthLoading === 'linkedin' ? <span className="w-4 h-4 border-2 border-surface-300 border-t-[#0A66C2] rounded-full animate-spin" /> : <LinkedInIcon />}
-                      Continue with LinkedIn
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="flex-1 h-px bg-surface-200 dark:bg-surface-600" />
-                    <span className="text-xs text-surface-400 font-medium">or sign in with email</span>
-                    <div className="flex-1 h-px bg-surface-200 dark:bg-surface-600" />
-                  </div>
-
                   <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                       <label className="label text-xs dark:text-surface-200">Email address</label>
@@ -314,7 +239,7 @@ export default function HomePage() {
                   </form>
 
                   <p className="mt-5 text-center text-xs text-surface-500 dark:text-surface-400">
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <button onClick={() => { setMode('signup'); reset(); setPassword(''); }}
                       className="text-brand-600 dark:text-brand-400 font-medium hover:underline">Create one</button>
                   </p>
@@ -324,25 +249,6 @@ export default function HomePage() {
               {/* ── SIGNUP ── */}
               {mode === 'signup' && (
                 <>
-                  <div className="space-y-2.5 mb-5">
-                    <button onClick={() => handleOAuth('google')} disabled={!!oauthLoading}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl text-sm font-medium text-surface-700 dark:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-600 hover:border-surface-400 dark:hover:border-surface-500 transition-all shadow-sm disabled:opacity-60">
-                      {oauthLoading === 'google' ? <span className="w-4 h-4 border-2 border-surface-300 border-t-brand-500 rounded-full animate-spin" /> : <GoogleIcon />}
-                      Sign up with Google
-                    </button>
-                    <button onClick={() => handleOAuth('linkedin_oidc')} disabled={!!oauthLoading}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white dark:bg-surface-700 border border-surface-300 dark:border-surface-600 rounded-xl text-sm font-medium text-surface-700 dark:text-surface-100 hover:bg-surface-50 dark:hover:bg-surface-600 hover:border-surface-400 dark:hover:border-surface-500 transition-all shadow-sm disabled:opacity-60">
-                      {oauthLoading === 'linkedin' ? <span className="w-4 h-4 border-2 border-surface-300 border-t-[#0A66C2] rounded-full animate-spin" /> : <LinkedInIcon />}
-                      Sign up with LinkedIn
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="flex-1 h-px bg-surface-200 dark:bg-surface-600" />
-                    <span className="text-xs text-surface-400 font-medium">or sign up with email</span>
-                    <div className="flex-1 h-px bg-surface-200 dark:bg-surface-600" />
-                  </div>
-
                   <form onSubmit={handleSignup} className="space-y-4">
                     <div>
                       <label className="label text-xs mb-2 dark:text-surface-200">I am joining as</label>
@@ -362,7 +268,7 @@ export default function HomePage() {
                       </div>
                       <p className="mt-2 text-[11px] text-surface-500 dark:text-surface-400 flex items-center gap-1.5">
                         <User size={12} className="shrink-0" />
-                        Candidates join by invite only. Contact your admin to receive an invite and set your password via email.
+                        Candidates join by invite only. Contact your admin to receive an invite.
                       </p>
                     </div>
 
@@ -455,7 +361,7 @@ export default function HomePage() {
                   </form>
                   <p className="mt-5 text-center text-xs text-surface-500 dark:text-surface-400">
                     <button onClick={() => { setMode('login'); reset(); }}
-                      className="text-brand-600 dark:text-brand-400 font-medium hover:underline">← Back to sign in</button>
+                      className="text-brand-600 dark:text-brand-400 font-medium hover:underline">&larr; Back to sign in</button>
                   </p>
                 </>
               )}

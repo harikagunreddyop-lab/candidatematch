@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
-const DEFAULT_WORKER_URL = 'http://127.0.0.1:3001';
 const raw = process.env.RESUME_WORKER_URL?.trim();
-const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : DEFAULT_WORKER_URL;
+const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.1:3001';
 
 // GET — list tailored resumes for a candidate+job pair
 export async function GET(req: NextRequest) {

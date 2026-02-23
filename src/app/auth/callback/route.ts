@@ -16,22 +16,17 @@ export async function GET(request: Request) {
         const userId = data.session.user.id;
         const userEmail = data.session.user.email;
 
-        // Link orphaned candidate records:
-        // When admin creates a candidate with email but the user hasn't signed up yet,
-        // the candidate row has user_id=null. Link it now on first login.
         if (userEmail) {
           try {
             const service = createServiceClient();
 
-            // Check if this user already has a linked candidate
             const { data: linkedCandidate } = await service
               .from('candidates')
               .select('id')
               .eq('user_id', userId)
-              .single();
+              .maybeSingle();
 
             if (!linkedCandidate) {
-              // No candidate linked — find orphan by email and link it
               const { data: orphan } = await service
                 .from('candidates')
                 .select('id')
@@ -40,7 +35,7 @@ export async function GET(request: Request) {
                 .order('active', { ascending: false })
                 .order('updated_at', { ascending: false })
                 .limit(1)
-                .single();
+                .maybeSingle();
 
               if (orphan) {
                 await service
@@ -48,7 +43,6 @@ export async function GET(request: Request) {
                   .update({ user_id: userId })
                   .eq('id', orphan.id);
 
-                // Delete any duplicate empty candidate that was auto-created
                 const { data: duplicates } = await service
                   .from('candidates')
                   .select('id, full_name, skills, experience')
@@ -67,27 +61,14 @@ export async function GET(request: Request) {
               }
             }
           } catch {
-            // Non-critical: linking failed but login should still proceed
+            // Non-critical: orphan linking failed but login should still proceed
           }
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-
-        const role = profile?.role;
-        const dest = role === 'admin' ? '/dashboard/admin'
-                   : role === 'recruiter' ? '/dashboard/recruiter'
-                   : '/dashboard/candidate';
-
-        // Redirect to client completion page so the browser picks up the session cookie
-        // before navigating to dashboard (fixes OAuth "first click shows login again" issue)
         return NextResponse.redirect(new URL('/auth/complete', origin));
       }
     } catch {
-      // Env missing or exchange failed — do not expose details
+      // Exchange failed — redirect to login with error
     }
   }
 

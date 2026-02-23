@@ -1,29 +1,18 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { SCORE_MIN_STORED } from '@/lib/ats-score';
+import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-/** Number of concurrent ATS API calls (parallel scoring). */
-const CONCURRENCY = 12;
-/** Max matches stored per candidate (top N by score). Aim for 50+ strong (82+) per day with chunked uploads. */
+const CONCURRENCY = 10;
 const MAX_MATCHES_PER_CANDIDATE = 50;
-/** Only run resume-variant scoring for jobs where profile-only score >= this (saves API calls). */
-const PROFILE_PASS_THRESHOLD = 50;
-const MAX_RESUME_TEXT_LEN = 3500;
-const MAX_JD_LEN = 1000;
+const MAX_RESUME_TEXT_LEN = 4000;
 
-/** Run async tasks in parallel batches of size `concurrency`. */
-async function runInBatches<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>
-): Promise<R[]> {
+async function runInBatches<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
   for (let i = 0; i < items.length; i += concurrency) {
     const batch = items.slice(i, i + concurrency);
-    const batchResults = await Promise.all(batch.map(fn));
-    results.push(...batchResults);
+    results.push(...await Promise.all(batch.map(fn)));
   }
   return results;
 }
@@ -37,6 +26,11 @@ type Job = {
   jd_raw?: string;
   salary_min?: number;
   salary_max?: number;
+  structured_requirements?: any;
+  must_have_skills?: string[];
+  nice_to_have_skills?: string[];
+  seniority_level?: string;
+  min_years_experience?: number;
 };
 
 type Candidate = {
@@ -45,15 +39,24 @@ type Candidate = {
   primary_title?: string;
   secondary_titles?: string[];
   skills?: any;
+  tools?: string[];
+  soft_skills?: string[];
+  experience?: any;
+  education?: any;
+  certifications?: any;
   location?: string;
   visa_status?: string;
+  years_of_experience?: number;
+  open_to_remote?: boolean;
+  open_to_relocation?: boolean;
+  target_locations?: string[];
   parsed_resume_text?: string;
   active: boolean;
 };
 
 type ResumeVariant = { resumeId: string | null; text: string };
 
-// ── Domain classification for cross-domain mismatch prevention ──────────────
+// ── Domain classification ────────────────────────────────────────────────────
 
 type Domain =
   | 'data-engineering' | 'data-science' | 'devops' | 'fullstack'
@@ -72,13 +75,12 @@ const DOMAIN_COMPATIBILITY: Record<Domain, Domain[]> = {
   'security':            ['security', 'devops', 'general'],
   'management':          ['management', 'general'],
   'design':              ['design', 'frontend', 'general'],
-  'general':             ['general', 'software-engineering', 'frontend', 'fullstack', 'data-engineering', 'data-science', 'devops', 'mobile', 'qa', 'security', 'management', 'design'],
+  'general':             Object.keys({}) as Domain[], // accepts all
 };
 
 function classifyDomain(title: string): Domain {
   const t = (title || '').toLowerCase().trim();
   if (!t) return 'general';
-
   if (/data\s*(engineer|architect|platform|infrastructure|pipeline|warehouse)|etl\s*(dev|eng)|big\s*data/i.test(t)) return 'data-engineering';
   if (/data\s*(scien|analy)|machine\s*learn|\bml\s*(eng|dev)|\bai\s*(eng|dev)|deep\s*learn|\bnlp\b|computer\s*vision|research\s*scien/i.test(t)) return 'data-science';
   if (/devops|\bsre\b|site\s*reliab|cloud\s*(eng|arch)|platform\s*eng/i.test(t)) return 'devops';
@@ -90,28 +92,25 @@ function classifyDomain(title: string): Domain {
   if (/product\s*manag|program\s*manag|project\s*manag|engineering\s*manag|\bscrum\b/i.test(t)) return 'management';
   if (/\bux\b|ui\s*design|product\s*design/i.test(t)) return 'design';
   if (/software|developer|engineer|programmer|back[\s-]*end|java(?!script)|python|\.net|c#|ruby|php|\bnode\b|spring|golang|\bgo\b/i.test(t)) return 'software-engineering';
-
   return 'general';
 }
 
 function getCandidateDomains(candidate: Candidate): Domain[] {
   const domains = new Set<Domain>();
   domains.add(classifyDomain(candidate.primary_title || ''));
-  for (const t of candidate.secondary_titles || []) {
-    domains.add(classifyDomain(t));
-  }
+  for (const t of candidate.secondary_titles || []) domains.add(classifyDomain(t));
   return Array.from(domains);
 }
 
 function isDomainCompatible(candidateDomains: Domain[], jobDomain: Domain): boolean {
   if (jobDomain === 'general') return true;
-  return candidateDomains.some((cd) => {
-    const compatible = DOMAIN_COMPATIBILITY[cd] || DOMAIN_COMPATIBILITY['general'];
-    return compatible.includes(jobDomain);
+  return candidateDomains.some(cd => {
+    const compatible = DOMAIN_COMPATIBILITY[cd] || [];
+    return compatible.includes(jobDomain) || cd === jobDomain;
   });
 }
 
-// ── Skill parsing ───────────────────────────────────────────────────────────
+// ── Skill parsing ────────────────────────────────────────────────────────────
 
 function parseSkills(skills: any): string[] {
   if (!skills) return [];
@@ -121,13 +120,21 @@ function parseSkills(skills: any): string[] {
       const parsed = JSON.parse(skills);
       return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
     } catch {
-      return skills.split(',').map((s) => s.trim()).filter(Boolean);
+      return skills.split(',').map((s: string) => s.trim()).filter(Boolean);
     }
   }
   return [];
 }
 
-/** Extract text from one uploaded resume PDF. Suppresses PDF parser warnings (e.g. TT/font) during extraction. */
+function parseArray(val: any): any[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') { try { return JSON.parse(val); } catch { return []; } }
+  return [];
+}
+
+// ── Resume extraction ────────────────────────────────────────────────────────
+
 async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise<string> {
   try {
     const { data, error } = await supabase.storage.from('resumes').download(pdfPath);
@@ -152,10 +159,6 @@ async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise
   }
 }
 
-/**
- * Get all resume variants for a candidate: each uploaded resume + profile-only fallback.
- * Returns array of { resumeId, text } for use in per-job best-resume scoring.
- */
 async function getResumeVariants(supabase: any, candidateId: string, candidate: Candidate): Promise<ResumeVariant[]> {
   const { data: resumes } = await supabase
     .from('candidate_resumes')
@@ -164,7 +167,6 @@ async function getResumeVariants(supabase: any, candidateId: string, candidate: 
     .order('uploaded_at', { ascending: false });
 
   const variants: ResumeVariant[] = [];
-
   if (resumes?.length) {
     for (const r of resumes) {
       const text = await getResumeTextFromStorage(supabase, r.pdf_path);
@@ -172,13 +174,11 @@ async function getResumeVariants(supabase: any, candidateId: string, candidate: 
     }
   }
 
-  // Fallback: use cached parsed_resume_text on candidate (single variant, no resume id)
   const cached = (candidate.parsed_resume_text || '').trim().slice(0, MAX_RESUME_TEXT_LEN);
-  if (cached && !variants.some((v) => v.text.trim() === cached.trim())) {
+  if (cached && !variants.some(v => v.text.trim() === cached.trim())) {
     variants.push({ resumeId: null, text: cached });
   }
 
-  // If still no variant, use empty so we still score on profile only
   if (variants.length === 0) {
     variants.push({ resumeId: null, text: '' });
   }
@@ -186,94 +186,39 @@ async function getResumeVariants(supabase: any, candidateId: string, candidate: 
   return variants;
 }
 
-function buildCandidateContext(candidate: Candidate, resumeText: string): string {
-  const skills = parseSkills(candidate.skills).join(', ');
-  const titles = [candidate.primary_title, ...(candidate.secondary_titles || [])].filter(Boolean).join(', ');
-  return `
-    TITLES: ${titles || 'N/A'}
-    SKILLS: ${skills || 'N/A'}
-    LOCATION: ${candidate.location || 'N/A'}
-    VISA: ${candidate.visa_status || 'N/A'}
-    ${resumeText ? `RESUME EXCERPT: ${resumeText.slice(0, 1200)}` : ''}
-  `.replace(/\s+/g, ' ').trim();
-}
+// ── JD Requirements: extract once & cache ────────────────────────────────────
 
-/**
- * ATS-style scoring with clear rubric:
- * 82–100: Strong match (keywords, experience, role fit).
- * 75–81: Moderate match (apply with caution).
- * 50–74: Weak match (below apply threshold).
- * 0–49: Poor fit.
- */
-async function scoreJobMatch(job: Job, candidateContext: string): Promise<{ score: number; reason: string } | null> {
-  if (!ANTHROPIC_API_KEY) return null;
-
-  const salary = job.salary_min
-    ? `$${Math.round(job.salary_min / 1000)}k${job.salary_max ? `-$${Math.round(job.salary_max / 1000)}k` : '+'}`
-    : 'Not specified';
-  const reqText = (job.jd_clean || job.jd_raw || '').slice(0, MAX_JD_LEN);
-
-  const prompt = `You are an ATS (Applicant Tracking System) scorer. Score the candidate–job fit from 0 to 100.
-
-SCORING RULES (use strictly):
-- 82–100: Strong match — role, skills and experience align well with the job.
-- 75–81: Moderate match — some alignment; candidate may apply with caution.
-- 50–74: Weak match — below recommended apply threshold.
-- 0–49: Poor fit — major gaps.
-
-DOMAIN ALIGNMENT (critical):
-A candidate's career domain must align with the job's domain. If the candidate's core role is fundamentally different from the job (e.g., Java Developer scored against Data Engineer, Frontend Developer against ML Engineer, Backend Developer against Data Scientist), the score MUST be 0–30 regardless of any overlapping keywords like SQL or Python. Shared tools do NOT make incompatible domains compatible.
-
-Return ONLY valid JSON on a single line, no markdown: { "score": <number 0-100>, "reason": "<one short sentence>" }
-
-JOB:
-Title: ${job.title}
-Company: ${job.company}
-Salary: ${salary}
-Requirements: ${reqText || 'No JD provided. Base score on title and candidate context.'}
-
-CANDIDATE:
-${candidateContext}`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY!,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: 120,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-
-    if (!res.ok) return null;
-
-    const data = await res.json();
-    const text = data.content?.[0]?.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const score = Math.min(100, Math.max(0, parseInt(String(parsed.score), 10) || 0));
-    return { score, reason: parsed.reason || 'No reason' };
-  } catch {
-    return null;
+async function getOrExtractRequirements(supabase: any, job: Job): Promise<JobRequirements | null> {
+  if (job.structured_requirements && typeof job.structured_requirements === 'object' && job.structured_requirements.must_have_skills) {
+    return job.structured_requirements as JobRequirements;
   }
+
+  const jd = (job.jd_clean || job.jd_raw || '').trim();
+  if (!jd || jd.length < 50) return null;
+
+  const reqs = await extractJobRequirements(job.title, jd, job.location);
+  if (!reqs) return null;
+
+  // Cache on the job record for future runs
+  await supabase.from('jobs').update({
+    structured_requirements: reqs,
+    must_have_skills: reqs.must_have_skills,
+    nice_to_have_skills: reqs.nice_to_have_skills,
+    seniority_level: reqs.seniority_level,
+    min_years_experience: reqs.min_years_experience,
+  }).eq('id', job.id);
+
+  return reqs;
 }
 
-/**
- * Pre-filter jobs (no JD required). Uses skills/title/resume hints.
- */
+// ── Pre-filter (fast, no API calls) ──────────────────────────────────────────
+
 function prefilterJobs(jobs: Job[], candidate: Candidate, combinedResumeText: string): { eligible: Job[]; stats: any } {
-  const skills = parseSkills(candidate.skills).map((s) => s.toLowerCase());
+  const skills = parseSkills(candidate.skills).map(s => s.toLowerCase());
   const resumeLower = combinedResumeText.toLowerCase();
   const titleHints = [
     (candidate.primary_title || '').toLowerCase(),
-    ...(candidate.secondary_titles || []).map((t) => (t || '').toLowerCase()),
+    ...(candidate.secondary_titles || []).map(t => (t || '').toLowerCase()),
   ].filter(Boolean).join(' ');
 
   const candidateDomains = getCandidateDomains(candidate);
@@ -281,43 +226,27 @@ function prefilterJobs(jobs: Job[], candidate: Candidate, combinedResumeText: st
   const techHints = [
     'java', 'spring', 'python', 'react', 'node', 'sql', 'aws', 'backend', 'frontend',
     'data', 'engineer', 'developer', 'analyst', 'manager', 'full stack', 'devops',
+    'kubernetes', 'docker', 'cloud', 'machine learning', 'typescript', 'angular', 'vue',
   ];
 
-  let accept = 0;
-  let rejNoSignal = 0;
-  let rejSkillGate = 0;
-  let rejDomain = 0;
+  let accept = 0, rejNoSignal = 0, rejSkillGate = 0, rejDomain = 0;
 
-  const eligible = jobs.filter((job) => {
+  const eligible = jobs.filter(job => {
     const jd = (job.jd_clean || job.jd_raw || '').toLowerCase().trim();
-    const title = (job.title || '').toLowerCase();
-
     const jobDomain = classifyDomain(job.title);
-    if (!isDomainCompatible(candidateDomains, jobDomain)) {
-      rejDomain++;
-      return false;
-    }
+    if (!isDomainCompatible(candidateDomains, jobDomain)) { rejDomain++; return false; }
 
     if (jd.length > 80) {
-      const hasSkill =
-        skills.length ? skills.some((s) => jd.includes(s)) : false;
-      const hasResumeSkill = resumeLower.length > 50 && techHints.some((h) => jd.includes(h) && (resumeLower.includes(h) || titleHints.includes(h)));
-      if (hasSkill || hasResumeSkill) {
-        accept++;
-        return true;
-      }
+      const hasSkill = skills.length ? skills.some(s => jd.includes(s)) : false;
+      const hasResumeSkill = resumeLower.length > 50 && techHints.some(h => jd.includes(h) && (resumeLower.includes(h) || titleHints.includes(h)));
+      if (hasSkill || hasResumeSkill) { accept++; return true; }
       rejSkillGate++;
       return false;
     }
 
-    const hasSignal =
-      techHints.some((h) => title.includes(h)) ||
-      techHints.some((h) => resumeLower.includes(h)) ||
-      techHints.some((h) => titleHints.includes(h));
-    if (hasSignal) {
-      accept++;
-      return true;
-    }
+    const title = (job.title || '').toLowerCase();
+    const hasSignal = techHints.some(h => title.includes(h)) || techHints.some(h => resumeLower.includes(h)) || techHints.some(h => titleHints.includes(h));
+    if (hasSignal) { accept++; return true; }
     rejNoSignal++;
     return false;
   });
@@ -325,11 +254,8 @@ function prefilterJobs(jobs: Job[], candidate: Candidate, combinedResumeText: st
   return { eligible, stats: { accept, rejNoSignal, rejSkillGate, rejDomain } };
 }
 
-/**
- * Run matching: for each candidate, score each job using every resume variant,
- * keep the best score and best_resume_id per (candidate, job). Data stays in sync
- * with candidate_job_matches (fit_score, best_resume_id, match_reason).
- */
+// ── Main: Run Matching ───────────────────────────────────────────────────────
+
 export async function runMatching(
   candidateId?: string,
   onProgress?: (msg: string) => void,
@@ -338,169 +264,155 @@ export async function runMatching(
   if (!ANTHROPIC_API_KEY) throw new Error('API Key missing');
 
   const supabase = createServiceClient();
-  const log = (m: string) => {
-    devLog('[MATCH] ' + m);
-    onProgress?.(m);
-  };
+  const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
 
   let q = supabase.from('candidates').select('*').eq('active', true);
   if (candidateId) q = q.eq('id', candidateId);
-
   const { data: candidates, error: cErr } = await q;
-  if (cErr) {
-    log('Error fetching candidates: ' + cErr.message);
-    return { candidates_processed: 0, total_matches_upserted: 0, summary: [] };
-  }
-  if (!candidates?.length) {
-    log('No active candidates.');
-    return { candidates_processed: 0, total_matches_upserted: 0, summary: [] };
-  }
+  if (cErr) { log('Error fetching candidates: ' + cErr.message); return { candidates_processed: 0, total_matches_upserted: 0, summary: [] }; }
+  if (!candidates?.length) { log('No active candidates.'); return { candidates_processed: 0, total_matches_upserted: 0, summary: [] }; }
 
   let jobQuery = supabase
     .from('jobs')
-    .select('id, title, company, location, jd_clean, jd_raw, salary_min, salary_max')
+    .select('id, title, company, location, jd_clean, jd_raw, salary_min, salary_max, structured_requirements, must_have_skills, nice_to_have_skills, seniority_level, min_years_experience')
     .eq('is_active', true);
   if (options?.jobsSince) {
     const sinceDate = new Date(options.jobsSince);
     if (!isNaN(sinceDate.getTime())) {
       jobQuery = jobQuery.gte('created_at', options.jobsSince);
-      log(`Incremental mode — only jobs created since ${options.jobsSince}`);
-    } else {
-      log(`Invalid jobsSince value "${options.jobsSince}" — ignoring filter`);
+      log(`Incremental mode — only jobs since ${options.jobsSince}`);
     }
   }
-
   const { data: jobs, error: jErr } = await jobQuery;
+  if (jErr) { log('Error fetching jobs: ' + jErr.message); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
+  if (!jobs?.length) { log('No active jobs.'); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
 
-  if (jErr) {
-    log('Error fetching jobs: ' + jErr.message);
-    return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] };
-  }
-  if (!jobs?.length) {
-    log('No active jobs.');
-    return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] };
-  }
+  log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (multi-dimensional ATS engine, concurrency=${CONCURRENCY}).`);
 
-  log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (profile-first, then resume; parallel concurrency=${CONCURRENCY}).`);
+  // Phase 0: Extract & cache JD requirements for all jobs (parallel, one-time per job)
+  const jobReqMap = new Map<string, JobRequirements | null>();
+  const jobsNeedingExtraction = (jobs as Job[]).filter(j => !j.structured_requirements?.must_have_skills);
+  if (jobsNeedingExtraction.length > 0) {
+    log(`Extracting requirements for ${jobsNeedingExtraction.length} jobs (${jobs.length - jobsNeedingExtraction.length} already cached)...`);
+    await runInBatches(jobsNeedingExtraction, CONCURRENCY, async (job) => {
+      const reqs = await getOrExtractRequirements(supabase, job);
+      jobReqMap.set(job.id, reqs);
+    });
+  }
+  for (const job of jobs as Job[]) {
+    if (!jobReqMap.has(job.id)) {
+      jobReqMap.set(job.id, (job.structured_requirements as JobRequirements) || null);
+    }
+  }
 
   let totalMatchesUpserted = 0;
   const summary: any[] = [];
 
   for (const candidate of candidates as Candidate[]) {
     const variants = await getResumeVariants(supabase, candidate.id, candidate);
-    const combinedResumeText = variants.map((v) => v.text).join(' ').slice(0, 2000);
+    const combinedResumeText = variants.map(v => v.text).join(' ').slice(0, 3000);
     const { eligible: potentialJobs, stats } = prefilterJobs(jobs as Job[], candidate, combinedResumeText);
 
     if (!potentialJobs.length) {
-      log(
-        `${candidate.full_name}: No jobs passed filter. (accept=${stats.accept}, rejSkillGate=${stats.rejSkillGate}, rejNoSignal=${stats.rejNoSignal}, rejDomain=${stats.rejDomain || 0})`
-      );
+      log(`${candidate.full_name}: No jobs passed filter (accept=${stats.accept}, rejSkill=${stats.rejSkillGate}, rejDomain=${stats.rejDomain})`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Filtered' });
       continue;
     }
 
-    const profileOnlyContext = buildCandidateContext(candidate, '');
-    const resumeContexts: { resumeId: string | null; context: string }[] = variants.map((v) => ({
-      resumeId: v.resumeId,
-      context: buildCandidateContext(candidate, v.text),
-    }));
-
-    // Phase 1: profile-only scoring (parallel)
-    const profileResults = await runInBatches(
-      potentialJobs,
-      CONCURRENCY,
-      async (job) => {
-        const res = await scoreJobMatch(job, profileOnlyContext);
-        return { job, score: res?.score ?? -1, reason: res?.reason ?? '' };
-      }
-    );
-
-    const jobProfileMap = new Map<string, { score: number; reason: string }>();
-    profileResults.forEach(({ job, score, reason }) => jobProfileMap.set(job.id, { score, reason }));
-
-    const passedJobs = potentialJobs.filter(
-      (j) => (jobProfileMap.get(j.id)?.score ?? -1) >= PROFILE_PASS_THRESHOLD
-    );
-
-    // Phase 2: resume scoring only for jobs that passed profile (parallel across job×variant)
-    type JobCtx = { job: Job; resumeId: string | null; context: string };
-    const resumeTasks: JobCtx[] = [];
-    for (const job of passedJobs) {
-      for (const { resumeId, context } of resumeContexts) {
-        resumeTasks.push({ job, resumeId, context });
-      }
-    }
-
-    const resumeResults = await runInBatches(resumeTasks, CONCURRENCY, async ({ job, resumeId, context }) => {
-      const res = await scoreJobMatch(job, context);
-      return { jobId: job.id, job, resumeId, score: res?.score ?? -1, reason: res?.reason ?? '' };
-    });
-
-    const bestByJob = new Map<
-      string,
-      { score: number; reason: string; bestResumeId: string | null }
-    >();
-    const variantScoresByJob = new Map<
-      string,
-      Array<{ resume_id: string | null; score: number; reason: string }>
-    >();
-    for (const r of resumeResults) {
-      const cur = bestByJob.get(r.jobId);
-      if (!cur || r.score > cur.score) {
-        bestByJob.set(r.jobId, { score: r.score, reason: r.reason, bestResumeId: r.resumeId });
-      }
-      if (!variantScoresByJob.has(r.jobId)) variantScoresByJob.set(r.jobId, []);
-      variantScoresByJob.get(r.jobId)!.push({ resume_id: r.resumeId, score: r.score, reason: r.reason });
-    }
-
+    const candidateSkills = parseSkills(candidate.skills);
+    const candidateTools = parseSkills(candidate.tools);
+    const candidateExp = parseArray(candidate.experience);
+    const candidateEdu = parseArray(candidate.education);
+    const candidateCerts = parseArray(candidate.certifications);
     const candidateDomains = getCandidateDomains(candidate);
 
-    const matches: {
-      candidate_id: string; job_id: string; fit_score: number;
-      match_reason: string; best_resume_id: string | null;
-      matched_at: string; score_breakdown: any;
-    }[] = [];
+    // Score each job × each resume variant
+    type ScoringTask = { job: Job; resumeId: string | null; resumeText: string };
+    const tasks: ScoringTask[] = [];
+    for (const job of potentialJobs) {
+      for (const v of variants) {
+        tasks.push({ job, resumeId: v.resumeId, resumeText: v.text });
+      }
+    }
+
+    const results = await runInBatches(tasks, CONCURRENCY, async ({ job, resumeId, resumeText }) => {
+      const reqs = jobReqMap.get(job.id);
+      if (!reqs) {
+        return { jobId: job.id, resumeId, score: -1, result: null as ATSScoreResult | null };
+      }
+
+      const candidateData = {
+        primary_title: candidate.primary_title,
+        secondary_titles: candidate.secondary_titles || [],
+        skills: candidateSkills,
+        tools: candidateTools,
+        experience: candidateExp,
+        education: candidateEdu,
+        certifications: candidateCerts,
+        location: candidate.location,
+        visa_status: candidate.visa_status,
+        years_of_experience: candidate.years_of_experience,
+        open_to_remote: (candidate as any).open_to_remote ?? true,
+        open_to_relocation: (candidate as any).open_to_relocation ?? false,
+        target_locations: (candidate as any).target_locations || [],
+        resume_text: resumeText,
+      };
+
+      const jd = (job.jd_clean || job.jd_raw || '').trim();
+      const result = await computeATSScore(job.title, jd, reqs, candidateData);
+      return { jobId: job.id, resumeId, score: result.total_score, result };
+    });
+
+    // Pick best score per job
+    const bestByJob = new Map<string, { score: number; resumeId: string | null; result: ATSScoreResult }>();
+    const variantScoresByJob = new Map<string, Array<{ resume_id: string | null; score: number; reason: string }>>();
+
+    for (const r of results) {
+      if (!r.result) continue;
+      const cur = bestByJob.get(r.jobId);
+      if (!cur || r.score > cur.score) {
+        bestByJob.set(r.jobId, { score: r.score, resumeId: r.resumeId, result: r.result });
+      }
+      if (!variantScoresByJob.has(r.jobId)) variantScoresByJob.set(r.jobId, []);
+      variantScoresByJob.get(r.jobId)!.push({ resume_id: r.resumeId, score: r.score, reason: r.result.reason });
+    }
+
+    const matches: any[] = [];
     const now = new Date().toISOString();
 
     for (const job of potentialJobs) {
-      const profile = jobProfileMap.get(job.id);
-      const profileScore = profile?.score ?? -1;
+      const best = bestByJob.get(job.id);
+      if (!best || best.score < SCORE_MIN_STORED) continue;
+
+      const d = best.result.dimensions;
+      const vScores = (variantScoresByJob.get(job.id) || []).sort((a, b) => b.score - a.score);
       const jobDomain = classifyDomain(job.title);
 
-      if (passedJobs.some((p) => p.id === job.id)) {
-        const best = bestByJob.get(job.id);
-        const vScores = (variantScoresByJob.get(job.id) || []).sort((a, b) => b.score - a.score);
-        if (best && best.score >= SCORE_MIN_STORED) {
-          matches.push({
-            candidate_id: candidate.id,
-            job_id: job.id,
-            fit_score: best.score,
-            match_reason: best.reason,
-            best_resume_id: best.bestResumeId,
-            matched_at: now,
-            score_breakdown: {
-              variant_scores: vScores,
-              candidate_domains: candidateDomains,
-              job_domain: jobDomain,
-            },
-          });
-        }
-      } else if (profileScore >= SCORE_MIN_STORED) {
-        matches.push({
-          candidate_id: candidate.id,
-          job_id: job.id,
-          fit_score: profileScore,
-          match_reason: profile?.reason ?? 'Profile match',
-          best_resume_id: null,
-          matched_at: now,
-          score_breakdown: {
-            profile_only: true,
-            variant_scores: [{ resume_id: null, score: profileScore, reason: profile?.reason ?? 'Profile match' }],
-            candidate_domains: candidateDomains,
-            job_domain: jobDomain,
+      matches.push({
+        candidate_id: candidate.id,
+        job_id: job.id,
+        fit_score: best.score,
+        match_reason: best.result.reason,
+        best_resume_id: best.resumeId,
+        matched_keywords: best.result.matched_keywords,
+        missing_keywords: best.result.missing_keywords,
+        matched_at: now,
+        score_breakdown: {
+          version: 2,
+          dimensions: {
+            keyword:    { score: d.keyword.score, details: d.keyword.details, matched: d.keyword.matched, missing: d.keyword.missing },
+            experience: { score: d.experience.score, details: d.experience.details },
+            title:      { score: d.title.score, details: d.title.details },
+            education:  { score: d.education.score, details: d.education.details },
+            location:   { score: d.location.score, details: d.location.details },
+            soft:       { score: d.soft.score, details: d.soft.details },
           },
-        });
-      }
+          weights: { keyword: 35, experience: 20, title: 15, education: 10, location: 10, soft: 10 },
+          variant_scores: vScores,
+          candidate_domains: candidateDomains,
+          job_domain: jobDomain,
+        },
+      });
     }
 
     if (matches.length > 0) {
@@ -513,27 +425,18 @@ export async function runMatching(
 
       if (!saveErr) {
         totalMatchesUpserted += topMatches.length;
-        log(`✅ ${candidate.full_name}: ${topMatches.length} matches saved (profile-first, resume for passed).`);
-        summary.push({
-          candidate_id: candidate.id,
-          candidate: candidate.full_name,
-          matches: topMatches.length,
-          top_score: topMatches[0]?.fit_score ?? null,
-          status: 'Matched',
-        });
+        const strongCount = topMatches.filter((m: any) => m.fit_score >= 82).length;
+        log(`✅ ${candidate.full_name}: ${topMatches.length} matches (${strongCount} strong 82+), top=${topMatches[0]?.fit_score}`);
+        summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: topMatches.length, top_score: topMatches[0]?.fit_score, status: 'Matched' });
       } else {
         log(`Save error: ${saveErr.message}`);
         summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Save Error' });
       }
     } else {
-      log(`${candidate.full_name}: 0 matches after scoring.`);
+      log(`${candidate.full_name}: 0 matches after multi-dimensional scoring.`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'No Matches Found' });
     }
   }
 
-  return {
-    candidates_processed: (candidates as Candidate[]).length,
-    total_matches_upserted: totalMatchesUpserted,
-    summary,
-  };
+  return { candidates_processed: (candidates as Candidate[]).length, total_matches_upserted: totalMatchesUpserted, summary };
 }

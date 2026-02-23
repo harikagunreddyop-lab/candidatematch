@@ -1013,7 +1013,48 @@ export default function CandidateDashboard() {
                   </p>
                 )}
 
-                {(reason.strength || reason.gap || reason.risk) && (
+                {m.score_breakdown?.version === 2 && m.score_breakdown.dimensions && (
+                  <div className="pt-3 border-t border-surface-100 dark:border-surface-700 space-y-2.5">
+                    <p className="text-[11px] font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide">ATS Score Breakdown</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+                      {[
+                        { key: 'keyword', label: 'Keywords', weight: 35, icon: '🔑' },
+                        { key: 'experience', label: 'Experience', weight: 20, icon: '💼' },
+                        { key: 'title', label: 'Role Fit', weight: 15, icon: '🎯' },
+                        { key: 'education', label: 'Education', weight: 10, icon: '🎓' },
+                        { key: 'location', label: 'Location', weight: 10, icon: '📍' },
+                        { key: 'soft', label: 'Soft Factors', weight: 10, icon: '✨' },
+                      ].map(dim => {
+                        const d = m.score_breakdown.dimensions[dim.key];
+                        if (!d) return null;
+                        const barColor = d.score >= 80 ? 'bg-emerald-500' : d.score >= 60 ? 'bg-amber-500' : d.score >= 40 ? 'bg-orange-500' : 'bg-red-500';
+                        return (
+                          <div key={dim.key} className="flex items-center gap-2 group" title={d.details}>
+                            <span className="text-[10px] w-3 shrink-0">{dim.icon}</span>
+                            <span className="text-[10px] text-surface-500 dark:text-surface-400 w-16 shrink-0 truncate">{dim.label}</span>
+                            <div className="flex-1 h-2 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
+                              <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${d.score}%` }} />
+                            </div>
+                            <span className={cn('text-[10px] font-bold tabular-nums w-7 text-right', d.score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : d.score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400')}>{d.score}</span>
+                            <span className="text-[8px] text-surface-400 w-5 shrink-0">{dim.weight}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {m.score_breakdown.dimensions.keyword?.matched?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {m.score_breakdown.dimensions.keyword.matched.slice(0, 8).map((k: string, i: number) => (
+                          <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">{k}</span>
+                        ))}
+                        {m.score_breakdown.dimensions.keyword.missing?.slice(0, 4).map((k: string, i: number) => (
+                          <span key={`m${i}`} className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 line-through">{k}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!m.score_breakdown?.dimensions && (reason.strength || reason.gap || reason.risk) && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-surface-100 dark:border-surface-700">
                     {reason.strength && (
                       <div className="flex items-start gap-2 text-xs rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 px-3 py-2">

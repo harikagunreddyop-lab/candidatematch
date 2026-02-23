@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
   Zap, Menu, X, Link2, MessageCircle,
-  BarChart3, Settings, Calendar, FileText,
+  BarChart3, Settings, Calendar, FileText, Shield,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 
@@ -28,6 +28,7 @@ const adminNav: NavItem[] = [
   { label: 'Audit log',   href: '/dashboard/admin/audit',        icon: <FileText size={18} /> },
   { label: 'Interviews',  href: '/dashboard/admin/interviews',   icon: <Calendar size={18} /> },
   { label: 'Messages',    href: '/dashboard/admin/messages',     icon: <MessageCircle size={18} /> },
+  { label: 'Compliance',  href: '/dashboard/admin/compliance',   icon: <Shield size={18} /> },
   { label: 'Settings',    href: '/dashboard/admin/settings',     icon: <Settings size={18} /> },
 ];
 

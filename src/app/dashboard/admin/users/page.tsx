@@ -98,8 +98,10 @@ export default function UsersPage() {
 
   const deleteUser = async () => {
     if (!deleting) return;
-    await supabase.from('profiles').delete().eq('id', deleting.id);
+    // Important: delete candidate rows FIRST so the FK on candidates.user_id
+    // (ON DELETE SET NULL) doesn't clear user_id before we delete them.
     await supabase.from('candidates').delete().eq('user_id', deleting.id);
+    await supabase.from('profiles').delete().eq('id', deleting.id);
     setDeleting(null);
   };
 

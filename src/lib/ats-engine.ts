@@ -375,11 +375,26 @@ Extraction rules:
   try {
     let res: Response | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
-      });
+      const controller = new AbortController();
+      const timeoutMs = Number(process.env.ANTHROPIC_TIMEOUT_MS || 25000);
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY!, 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
+        });
+      } catch (e) {
+        // Retry on transient network/timeout issues.
+        if (attempt < 2) {
+          await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
+          continue;
+        }
+        throw e;
+      } finally {
+        clearTimeout(timeout);
+      }
       if (res.status === 429 || res.status === 529) {
         await new Promise(r => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
         continue;

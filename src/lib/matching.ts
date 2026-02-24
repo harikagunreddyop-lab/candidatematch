@@ -57,6 +57,21 @@ type Candidate = {
 
 type ResumeVariant = { resumeId: string | null; text: string };
 
+type ProfileScoreResult = {
+  total_score: number;
+  reason: string;
+  matched_keywords: string[];
+  missing_keywords: string[];
+  breakdown: {
+    skill_score: number;
+    title_score: number;
+    experience_score: number;
+    location_score: number;
+    resume_signal_score: number;
+    matched_skills: string[];
+  };
+};
+
 // ── Domain classification ────────────────────────────────────────────────────
 
 type Domain =
@@ -134,6 +149,96 @@ function parseArray(val: any): any[] {
   return [];
 }
 
+function canonicalTerm(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[^a-z0-9#+.\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function computeProfileScore(job: Job, candidate: Candidate, resumeText: string): ProfileScoreResult {
+  const jobText = canonicalTerm(`${job.title || ''} ${(job.jd_clean || job.jd_raw || '').slice(0, 6000)}`);
+  const jobTitle = canonicalTerm(job.title || '');
+
+  const skills = [...parseSkills(candidate.skills), ...(candidate.tools || [])]
+    .map(canonicalTerm)
+    .filter(Boolean);
+  const uniqueSkills = Array.from(new Set(skills)).filter(s => s.length >= 2);
+
+  const matchedSkills = uniqueSkills.filter(s => jobText.includes(s)).slice(0, 20);
+
+  const must = (job.must_have_skills || []).map(canonicalTerm).filter(Boolean);
+  const missing = must.length
+    ? must.filter(s => !matchedSkills.includes(s)).slice(0, 10)
+    : [];
+
+  const denom = Math.max(5, Math.min(12, uniqueSkills.length || 5));
+  const skillScore = Math.max(0, Math.min(60, Math.round((matchedSkills.length / denom) * 60)));
+
+  const candidateDomains = getCandidateDomains(candidate);
+  const jobDomain = classifyDomain(job.title);
+  const domainOk = isDomainCompatible(candidateDomains, jobDomain);
+
+  const titleTokens = Array.from(new Set(
+    [candidate.primary_title, ...(candidate.secondary_titles || [])]
+      .map(t => canonicalTerm(t || ''))
+      .join(' ')
+      .split(' ')
+      .filter(t => t.length >= 4)
+  ));
+  const titleOverlap = titleTokens.filter(t => jobTitle.includes(t)).length;
+  const titleScore = Math.max(0, Math.min(20, (domainOk ? 10 : 0) + (titleOverlap > 0 ? 10 : 0)));
+
+  const jobMin = typeof job.min_years_experience === 'number' ? job.min_years_experience : null;
+  const candYears = typeof candidate.years_of_experience === 'number' ? candidate.years_of_experience : null;
+  let experienceScore = 5;
+  if (jobMin !== null && candYears !== null) {
+    if (candYears >= jobMin) experienceScore = 10;
+    else experienceScore = Math.max(0, Math.min(10, Math.round((candYears / Math.max(1, jobMin)) * 10)));
+  }
+
+  const remoteType = canonicalTerm((job as any).remote_type || '');
+  const openRemote = (candidate as any).open_to_remote ?? true;
+  const openRelocate = (candidate as any).open_to_relocation ?? false;
+  let locationScore = 0;
+  if (remoteType.includes('remote') && openRemote) locationScore = 10;
+  else if (remoteType.includes('hybrid') && (openRemote || openRelocate)) locationScore = 6;
+  else if (remoteType.includes('onsite') && openRelocate) locationScore = 6;
+
+  const resumeSignalScore = (resumeText || '').trim().length >= 300 ? 5 : 0;
+
+  const total = Math.max(0, Math.min(
+    100,
+    Math.round(skillScore + titleScore + experienceScore + locationScore + resumeSignalScore)
+  ));
+
+  const matchedKeywords = matchedSkills.slice(0, 8);
+  const missingKeywords = missing.slice(0, 6);
+
+  const reason = [
+    `Profile match ${total}`,
+    matchedKeywords.length ? `matched: ${matchedKeywords.slice(0, 5).join(', ')}` : 'matched: —',
+    candYears !== null ? `exp: ${candYears}y` : null,
+  ].filter(Boolean).join(' · ');
+
+  return {
+    total_score: total,
+    reason,
+    matched_keywords: matchedKeywords,
+    missing_keywords: missingKeywords,
+    breakdown: {
+      skill_score: skillScore,
+      title_score: titleScore,
+      experience_score: experienceScore,
+      location_score: locationScore,
+      resume_signal_score: resumeSignalScore,
+      matched_skills: matchedSkills.slice(0, 12),
+    },
+  };
+}
+
 // ── Resume extraction ────────────────────────────────────────────────────────
 
 async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise<string> {
@@ -195,21 +300,50 @@ async function getOrExtractRequirements(supabase: any, job: Job): Promise<JobReq
   }
 
   const jd = (job.jd_clean || job.jd_raw || '').trim();
-  if (!jd || jd.length < 50) return null;
+  const minimal: JobRequirements = {
+    must_have_skills: [],
+    nice_to_have_skills: [],
+    implicit_skills: [],
+    min_years_experience: null,
+    preferred_years_experience: null,
+    seniority_level: null,
+    required_education: null,
+    preferred_education_fields: [],
+    certifications: [],
+    location_type: null,
+    location_city: null,
+    visa_sponsorship: null,
+    domain: classifyDomain(job.title),
+    industry_vertical: null,
+    behavioral_keywords: [],
+    context_phrases: [],
+  };
+
+  // Avoid re-attempting extraction forever for jobs with missing/too-short JDs.
+  if (!jd || jd.length < 50) {
+    await supabase.from('jobs').update({
+      structured_requirements: minimal,
+      must_have_skills: minimal.must_have_skills,
+      nice_to_have_skills: minimal.nice_to_have_skills,
+      seniority_level: minimal.seniority_level,
+      min_years_experience: minimal.min_years_experience,
+    }).eq('id', job.id);
+    return minimal;
+  }
 
   const reqs = await extractJobRequirements(job.title, jd, job.location);
-  if (!reqs) return null;
+  const finalReqs = reqs || minimal;
 
   // Cache on the job record for future runs
   await supabase.from('jobs').update({
-    structured_requirements: reqs,
-    must_have_skills: reqs.must_have_skills,
-    nice_to_have_skills: reqs.nice_to_have_skills,
-    seniority_level: reqs.seniority_level,
-    min_years_experience: reqs.min_years_experience,
+    structured_requirements: finalReqs,
+    must_have_skills: finalReqs.must_have_skills,
+    nice_to_have_skills: finalReqs.nice_to_have_skills,
+    seniority_level: finalReqs.seniority_level,
+    min_years_experience: finalReqs.min_years_experience,
   }).eq('id', job.id);
 
-  return reqs;
+  return finalReqs;
 }
 
 // Precompute requirements for a set of jobs (used at ingest time so matching runs stay fast).
@@ -227,6 +361,106 @@ export async function precomputeJobRequirements(supabase: any, jobIds: string[])
       logError('[matching] precomputeJobRequirements failed for job ' + job.id, e);
     }
   });
+}
+
+export async function runAtsCheck(
+  supabase: any,
+  candidateId: string,
+  jobId: string,
+  resumeId?: string | null,
+): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string }> {
+  const now = new Date().toISOString();
+
+  const [{ data: candidate, error: candErr }, { data: job, error: jobErr }] = await Promise.all([
+    supabase.from('candidates').select('*').eq('id', candidateId).single(),
+    supabase.from('jobs').select('*').eq('id', jobId).single(),
+  ]);
+  if (candErr || !candidate) throw new Error(candErr?.message || 'Candidate not found');
+  if (jobErr || !job) throw new Error(jobErr?.message || 'Job not found');
+
+  // Pick resume text: explicit resumeId → match.best_resume_id → latest candidate resume → parsed_resume_text
+  let chosenResumeId: string | null = resumeId ?? null;
+  if (!chosenResumeId) {
+    const { data: matchRow } = await supabase
+      .from('candidate_job_matches')
+      .select('best_resume_id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .single();
+    chosenResumeId = matchRow?.best_resume_id ?? null;
+  }
+
+  let resumeText = '';
+  if (chosenResumeId) {
+    const { data: r, error: rErr } = await supabase
+      .from('candidate_resumes')
+      .select('id, candidate_id, pdf_path')
+      .eq('id', chosenResumeId)
+      .single();
+    if (!rErr && r?.candidate_id === candidateId) {
+      resumeText = await getResumeTextFromStorage(supabase, r.pdf_path);
+    }
+  }
+  if (!resumeText) {
+    const { data: latest } = await supabase
+      .from('candidate_resumes')
+      .select('id, pdf_path')
+      .eq('candidate_id', candidateId)
+      .order('uploaded_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (latest?.pdf_path) {
+      chosenResumeId = latest.id;
+      resumeText = await getResumeTextFromStorage(supabase, latest.pdf_path);
+    }
+  }
+  if (!resumeText) {
+    resumeText = (candidate.parsed_resume_text || '').slice(0, MAX_RESUME_TEXT_LEN);
+    chosenResumeId = chosenResumeId ?? null;
+  }
+
+  const reqs = await getOrExtractRequirements(supabase, job as Job);
+  if (!reqs) throw new Error('Could not extract job requirements');
+
+  const candidateSkills = parseSkills(candidate.skills);
+  const candidateTools = parseSkills(candidate.tools);
+  const candidateExp = parseArray(candidate.experience);
+  const candidateEdu = parseArray(candidate.education);
+  const candidateCerts = parseArray(candidate.certifications);
+
+  const candidateData = {
+    primary_title: candidate.primary_title,
+    secondary_titles: candidate.secondary_titles || [],
+    skills: candidateSkills,
+    tools: candidateTools,
+    experience: candidateExp,
+    education: candidateEdu,
+    certifications: candidateCerts,
+    location: candidate.location,
+    visa_status: candidate.visa_status,
+    years_of_experience: candidate.years_of_experience,
+    open_to_remote: (candidate as any).open_to_remote ?? true,
+    open_to_relocation: (candidate as any).open_to_relocation ?? false,
+    target_locations: (candidate as any).target_locations || [],
+    resume_text: resumeText,
+  };
+
+  const jd = (job.jd_clean || job.jd_raw || '').trim();
+  const result = await computeATSScore(job.title, jd, reqs, candidateData);
+
+  const atsRow = {
+    ats_score: result.total_score,
+    ats_reason: result.reason,
+    ats_breakdown: { dimensions: result.dimensions },
+    ats_checked_at: now,
+    ats_resume_id: chosenResumeId,
+  };
+
+  await supabase
+    .from('candidate_job_matches')
+    .upsert([{ candidate_id: candidateId, job_id: jobId, ...atsRow }], { onConflict: 'candidate_id,job_id' });
+
+  return { ats_score: result.total_score, ats_reason: result.reason, ats_breakdown: atsRow.ats_breakdown, ats_resume_id: chosenResumeId, ats_checked_at: now };
 }
 
 // ── Pre-filter (fast, no API calls) ──────────────────────────────────────────
@@ -315,10 +549,11 @@ export async function runMatching(
     }
   } catch (_) {}
 
-  log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (multi-dimensional ATS engine, concurrency=${CONCURRENCY}).`);
+  const matchingMode = String(process.env.MATCHING_MODE || 'profile').toLowerCase();
+  log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (mode=${matchingMode}, concurrency=${CONCURRENCY}).`);
 
   // ── Elite ATS path (Batches API, Claude Sonnet) ─────────────────────────────
-  if (process.env.USE_ELITE_ATS === '1' && ANTHROPIC_API_KEY) {
+  if (matchingMode === 'elite' && process.env.USE_ELITE_ATS === '1' && ANTHROPIC_API_KEY) {
     const logElite = (m: string) => log(m);
     const eliteJobs: EliteJob[] = (jobs as Job[]).map((j) => ({
       id: j.id,
@@ -411,21 +646,8 @@ export async function runMatching(
     }
   }
 
-  // Phase 0: Extract & cache JD requirements for all jobs (parallel, one-time per job)
-  const jobReqMap = new Map<string, JobRequirements | null>();
-  const jobsNeedingExtraction = (jobs as Job[]).filter(j => !j.structured_requirements?.must_have_skills);
-  if (jobsNeedingExtraction.length > 0) {
-    log(`Extracting requirements for ${jobsNeedingExtraction.length} jobs (${jobs.length - jobsNeedingExtraction.length} already cached)...`);
-    await runInBatches(jobsNeedingExtraction, CONCURRENCY, async (job) => {
-      const reqs = await getOrExtractRequirements(supabase, job);
-      jobReqMap.set(job.id, reqs);
-    });
-  }
-  for (const job of jobs as Job[]) {
-    if (!jobReqMap.has(job.id)) {
-      jobReqMap.set(job.id, (job.structured_requirements as JobRequirements) || null);
-    }
-  }
+  // Profile-only matching (no LLM). ATS can be run on-demand per job for 50+ profile matches.
+  log('Mode: profile-only scoring (ATS on-demand).');
 
   let totalMatchesUpserted = 0;
   const summary: any[] = [];
@@ -461,7 +683,6 @@ export async function runMatching(
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Filtered' });
       continue;
     }
-    const candidateCerts = parseArray(candidate.certifications);
     const candidateDomains = getCandidateDomains(candidate);
 
     // Score each job × each resume variant
@@ -474,35 +695,12 @@ export async function runMatching(
     }
 
     const results = await runInBatches(tasks, CONCURRENCY, async ({ job, resumeId, resumeText }) => {
-      const reqs = jobReqMap.get(job.id);
-      if (!reqs) {
-        return { jobId: job.id, resumeId, score: -1, result: null as ATSScoreResult | null };
-      }
-
-      const candidateData = {
-        primary_title: candidate.primary_title,
-        secondary_titles: candidate.secondary_titles || [],
-        skills: candidateSkills,
-        tools: candidateTools,
-        experience: candidateExp,
-        education: candidateEdu,
-        certifications: candidateCerts,
-        location: candidate.location,
-        visa_status: candidate.visa_status,
-        years_of_experience: candidate.years_of_experience,
-        open_to_remote: (candidate as any).open_to_remote ?? true,
-        open_to_relocation: (candidate as any).open_to_relocation ?? false,
-        target_locations: (candidate as any).target_locations || [],
-        resume_text: resumeText,
-      };
-
-      const jd = (job.jd_clean || job.jd_raw || '').trim();
-      const result = await computeATSScore(job.title, jd, reqs, candidateData);
+      const result = computeProfileScore(job, candidate, resumeText);
       return { jobId: job.id, resumeId, score: result.total_score, result };
     });
 
     // Pick best score per job
-    const bestByJob = new Map<string, { score: number; resumeId: string | null; result: ATSScoreResult }>();
+    const bestByJob = new Map<string, { score: number; resumeId: string | null; result: ProfileScoreResult }>();
     const variantScoresByJob = new Map<string, Array<{ resume_id: string | null; score: number; reason: string }>>();
 
     for (const r of results) {
@@ -523,7 +721,6 @@ export async function runMatching(
       const best = bestByJob.get(job.id);
       if (!best || best.score < SCORE_MIN_STORED) continue;
 
-      const d = best.result.dimensions;
       const vScores = (variantScoresByJob.get(job.id) || []).sort((a, b) => b.score - a.score);
       const jobDomain = classifyDomain(job.title);
 
@@ -537,18 +734,9 @@ export async function runMatching(
         missing_keywords: best.result.missing_keywords,
         matched_at: now,
         score_breakdown: {
-          version: 3,
-          dimensions: {
-            keyword:    { score: d.keyword.score, details: d.keyword.details, matched: d.keyword.matched, missing: d.keyword.missing },
-            experience: { score: d.experience.score, details: d.experience.details },
-            title:      { score: d.title.score, details: d.title.details },
-            education:  { score: d.education.score, details: d.education.details },
-            location:   { score: d.location.score, details: d.location.details },
-            formatting: { score: d.formatting.score, details: d.formatting.details },
-            behavioral: { score: d.behavioral.score, details: d.behavioral.details },
-            soft:       { score: d.soft.score, details: d.soft.details },
-          },
-          weights: { keyword: 30, experience: 18, title: 14, education: 8, location: 8, formatting: 7, behavioral: 7, soft: 8 },
+          version: 1,
+          profile_only: true,
+          profile: best.result.breakdown,
           variant_scores: vScores,
           candidate_domains: candidateDomains,
           job_domain: jobDomain,
@@ -574,7 +762,7 @@ export async function runMatching(
         summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Save Error' });
       }
     } else {
-      log(`${candidate.full_name}: 0 matches after multi-dimensional scoring.`);
+      log(`${candidate.full_name}: 0 matches after profile scoring.`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'No Matches Found' });
     }
   }

@@ -1,10 +1,12 @@
 /**
- * POST — Candidate-only: use AI to extract profile fields from their resume text
- * and update the candidate record. Requires parsed_resume_text (upload a resume first).
+ * POST — Use AI to extract profile fields from resume text and update the candidate record.
+ * - Candidates: can autofill their own profile.
+ * - Recruiters/Admins: can autofill for a specific candidate_id they have access to.
+ * Requires parsed_resume_text or structured_data from at least one resume.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireApiAuth } from '@/lib/api-auth';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,19 +14,48 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = 'claude-sonnet-4-20250514';
 
 export async function POST(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['candidate'] });
-  if (authResult instanceof Response) return authResult;
+  const authResult = await requireApiAuth(req, { roles: ['candidate', 'recruiter', 'admin'] });
+  if (authResult instanceof Response) return authResult as NextResponse;
 
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'AI not configured' }, { status: 500 });
   }
 
   const supabase = createServiceClient();
-  const { data: candidate } = await supabase
-    .from('candidates')
-    .select('id, user_id, full_name, primary_title, email, phone, location, linkedin_url, portfolio_url, summary, default_pitch, skills, experience, education, visa_status, years_of_experience, parsed_resume_text')
-    .eq('user_id', authResult.user.id)
-    .single();
+  const body = await req.json().catch(() => ({} as any));
+
+  let candidate: any = null;
+
+  if (authResult.profile.role === 'candidate') {
+    // Candidate: always operate on their own candidate record (ignore candidate_id from body).
+    const { data } = await supabase
+      .from('candidates')
+      .select('id, user_id, full_name, primary_title, email, phone, location, linkedin_url, portfolio_url, summary, default_pitch, skills, experience, education, visa_status, years_of_experience, parsed_resume_text')
+      .eq('user_id', authResult.user.id)
+      .single();
+    candidate = data;
+  } else {
+    // Recruiter/Admin: require explicit candidate_id and access check.
+    const candidateId = String(body.candidate_id || '');
+    if (!candidateId) {
+      return NextResponse.json({ error: 'candidate_id is required' }, { status: 400 });
+    }
+
+    const allowed = await canAccessCandidate(authResult, candidateId, supabase);
+    if (!allowed) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { data, error } = await supabase
+      .from('candidates')
+      .select('id, user_id, full_name, primary_title, email, phone, location, linkedin_url, portfolio_url, summary, default_pitch, skills, experience, education, visa_status, years_of_experience, parsed_resume_text')
+      .eq('id', candidateId)
+      .single();
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 404 });
+    }
+    candidate = data;
+  }
 
   if (!candidate) {
     return NextResponse.json({ error: 'Candidate profile not found' }, { status: 404 });
@@ -126,8 +157,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    if (payload.full_name && authResult.user.id) {
-      await supabase.from('profiles').update({ name: String(payload.full_name), updated_at: new Date().toISOString() }).eq('id', authResult.user.id);
+    if (payload.full_name && candidate.user_id) {
+      await supabase.from('profiles').update({ name: String(payload.full_name), updated_at: new Date().toISOString() }).eq('id', candidate.user_id);
     }
 
     return NextResponse.json({ ok: true, candidate: updated });

@@ -109,6 +109,16 @@ export default function RecruiterCandidateDetail() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Profile autofill with AI (recruiter-triggered)
+  const [autofilling, setAutofilling] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
+  const [autofillSuccess, setAutofillSuccess] = useState(false);
+
+  // On-demand ATS check (only for 50+ profile matches)
+  const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
+  const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+  const [selectedAtsResumeByJob, setSelectedAtsResumeByJob] = useState<Record<string, string>>({});
+
   // Interview scheduling
   const [schedulingAppId, setSchedulingAppId] = useState<string | null>(null);
   const [interviewDate, setInterviewDate] = useState('');
@@ -285,6 +295,28 @@ export default function RecruiterCandidateDetail() {
     if (candidate) initForm(candidate);
   };
 
+  const handleAutofillWithAI = async () => {
+    setAutofillError(null);
+    setAutofillSuccess(false);
+    setAutofilling(true);
+    try {
+      const res = await fetch('/api/profile/ai-fill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAutofillError(data.error || 'Autofill failed');
+        return;
+      }
+      setAutofillSuccess(true);
+      await load(true);
+    } finally {
+      setAutofilling(false);
+    }
+  };
+
   const generateBrief = async (jobId: string) => {
     setBriefJobId(jobId); setBrief(null); setEmailJobId(null); setBriefLoading(true);
     try {
@@ -333,6 +365,25 @@ export default function RecruiterCandidateDetail() {
       setResumeError('Network error. Try again.');
     }
     setGenerating(null);
+  };
+
+  const runAtsForJob = async (jobId: string, resumeId: string | null) => {
+    setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
+    setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
+    try {
+      const res = await fetch('/api/ats/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id, job_id: jobId, resume_id: resumeId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
+      await load(false);
+    } catch (e: any) {
+      setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
+    } finally {
+      setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
+    }
   };
 
   // Step 1: open the job URL in a new tab + enter pending state
@@ -470,8 +521,21 @@ export default function RecruiterCandidateDetail() {
             {candidate.linkedin_url && <a href={candidate.linkedin_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 hover:text-brand-600"><Linkedin size={12} />LinkedIn</a>}
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {saveSuccess && <span className="flex items-center gap-1 text-xs text-green-600 font-medium"><CheckCircle2 size={13} /> Saved!</span>}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          {autofillSuccess && (
+            <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
+              <CheckCircle2 size={13} /> Autofilled
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleAutofillWithAI}
+            disabled={autofilling}
+            className="btn-secondary text-xs sm:text-sm flex items-center gap-1.5"
+            title="Use AI to autofill this candidate's profile from their resume"
+          >
+            {autofilling ? <Spinner size={13} /> : <Sparkles size={13} />} Autofill with AI
+          </button>
           {!editingProfile && (
             <button onClick={() => setEditingProfile(true)} className="btn-secondary text-sm flex items-center gap-1.5">
               <Edit2 size={13} /> Edit Profile
@@ -483,6 +547,11 @@ export default function RecruiterCandidateDetail() {
       {saveError && (
         <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-center gap-2">
           <AlertCircle size={14} /> {saveError}
+        </div>
+      )}
+      {autofillError && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+          <AlertCircle size={14} /> {autofillError}
         </div>
       )}
 
@@ -766,9 +835,16 @@ export default function RecruiterCandidateDetail() {
                 <div className="flex items-start gap-4">
 
                   {/* ATS score badge */}
-                  <span className={cn('shrink-0 w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold', scoreColor(m.fit_score))}>
-                    {m.fit_score}
-                  </span>
+                  <div className="shrink-0 flex flex-col items-center gap-1">
+                    <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold', scoreColor(m.fit_score))}>
+                      {m.fit_score}
+                    </span>
+                    {typeof (m as any).ats_score === 'number' && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 font-semibold">
+                        ATS {(m as any).ats_score}
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex-1 min-w-0">
                     {/* Job info + action row */}
@@ -810,6 +886,41 @@ export default function RecruiterCandidateDetail() {
                           );
                         })()}
 
+                        {(() => {
+                          const profileScore = Number(m.fit_score ?? 0);
+                          if (profileScore < 50) return null;
+                          const selectedResumeId =
+                            selectedAtsResumeByJob[m.job_id] ||
+                            m.best_resume_id ||
+                            candidateResumes?.[0]?.id ||
+                            '';
+                          const running = !!atsRunningByJob[m.job_id];
+                          return (
+                            <>
+                              {candidateResumes?.length > 0 && (
+                                <select
+                                  value={selectedResumeId}
+                                  onChange={(e) => setSelectedAtsResumeByJob(p => ({ ...p, [m.job_id]: e.target.value }))}
+                                  className="input text-xs py-1.5 px-2 w-36"
+                                  title="Select resume for ATS check"
+                                >
+                                  {candidateResumes.map((r: any) => (
+                                    <option key={r.id} value={r.id}>{r.label || r.file_name || 'Resume'}</option>
+                                  ))}
+                                </select>
+                              )}
+                              <button
+                                onClick={() => runAtsForJob(m.job_id, selectedResumeId || null)}
+                                disabled={running}
+                                className={cn('btn-secondary text-xs py-1.5 px-3 flex items-center gap-1', running && 'opacity-70 cursor-not-allowed')}
+                                title="Runs full ATS scoring (uses tokens). Allowed only for profile score 50+."
+                              >
+                                {running ? <Spinner size={12} /> : <Brain size={12} />} ATS
+                              </button>
+                            </>
+                          );
+                        })()}
+
                         {/* ── Application state machine ── */}
                         {existingApp ? (
                           // Already confirmed applied
@@ -843,6 +954,12 @@ export default function RecruiterCandidateDetail() {
                         )}
                       </div>
                     </div>
+
+                    {(atsErrorByJob[m.job_id] || '').trim() && (
+                      <p className="mt-2 text-xs text-red-600 dark:text-red-400">
+                        {atsErrorByJob[m.job_id]}
+                      </p>
+                    )}
 
                     {/* Pending confirmation banner */}
                     {isPending && (

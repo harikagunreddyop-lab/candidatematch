@@ -110,6 +110,14 @@ export interface MatchScoreBreakdown {
   profile_only?: boolean;
   candidate_domains?: string[];
   job_domain?: string;
+  profile?: {
+    skill_score?: number;
+    title_score?: number;
+    experience_score?: number;
+    location_score?: number;
+    resume_signal_score?: number;
+    matched_skills?: string[];
+  };
 }
 
 export interface CandidateJobMatch {
@@ -123,6 +131,12 @@ export interface CandidateJobMatch {
   matched_at: string;
   score_breakdown?: MatchScoreBreakdown;
   best_resume_id?: string;
+  /** On-demand ATS check (computed only when recruiter/admin runs it for a job). */
+  ats_score?: number | null;
+  ats_reason?: string | null;
+  ats_breakdown?: any;
+  ats_checked_at?: string | null;
+  ats_resume_id?: string | null;
   job?: Job;
   candidate?: Candidate;
 }

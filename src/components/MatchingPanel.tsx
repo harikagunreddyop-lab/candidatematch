@@ -94,7 +94,7 @@ export default function MatchingPanel() {
             <Zap size={18} className="text-brand-600" /> Matching Engine
           </h2>
           <p className="text-xs text-surface-500 mt-0.5">
-            AI-powered job matching using Claude — scores candidates against all active jobs
+            Profile-only job matching — fast scoring without AI (ATS checks run on-demand for 50+ profile matches)
           </p>
         </div>
       </div>
@@ -129,8 +129,8 @@ export default function MatchingPanel() {
         </div>
 
         <div className="text-xs text-surface-400 space-y-0.5">
-          <p>⚡ Uses Claude Haiku for speed — ~3 parallel calls per candidate</p>
-          <p>🔍 Title + keyword pre-filter keeps Claude calls minimal</p>
+          <p>⚡ Uses skills/title/location signals (no tokens)</p>
+          <p>🔍 Title + keyword pre-filter keeps scoring fast</p>
           <p>💾 Results saved to candidate_job_matches table in real-time</p>
         </div>
       </div>

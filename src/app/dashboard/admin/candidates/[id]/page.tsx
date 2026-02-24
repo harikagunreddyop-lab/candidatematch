@@ -54,6 +54,11 @@ export default function CandidateDetailPage() {
   const [runningMatch, setRunningMatch] = useState(false);
   const [matchMsg, setMatchMsg] = useState<string | null>(null);
 
+  // On-demand ATS check (only for 50+ profile matches)
+  const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
+  const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+  const [selectedAtsResumeByJob, setSelectedAtsResumeByJob] = useState<Record<string, string>>({});
+
   const load = useCallback(async () => {
     setLoading(true);
     const [cand, mch, apps, rvs, urv, recs, asgn, savedRes, remRes] = await Promise.all([
@@ -118,6 +123,25 @@ export default function CandidateDetailPage() {
       setResumeError('Network error. Try again.');
     }
     setGenerating(null);
+  };
+
+  const runAtsForJob = async (jobId: string, resumeId: string | null) => {
+    setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
+    setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
+    try {
+      const res = await fetch('/api/ats/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id, job_id: jobId, resume_id: resumeId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
+      await load();
+    } catch (e: any) {
+      setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
+    } finally {
+      setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
+    }
   };
 
   const markApplied = async (jobId: string, resumeVersionId?: string) => {
@@ -581,7 +605,14 @@ export default function CandidateDetailPage() {
           ) : matches.map(m => (
             <div key={m.id} className="card p-4">
               <div className="flex items-start gap-4">
-                <FitScore score={m.fit_score} />
+                <div className="shrink-0 flex flex-col items-start gap-1">
+                  <FitScore score={m.fit_score} />
+                  {typeof (m as any).ats_score === 'number' && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-100 text-surface-600 font-semibold">
+                      ATS {(m as any).ats_score}
+                    </span>
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 flex-wrap">
                     <div>
@@ -594,6 +625,42 @@ export default function CandidateDetailPage() {
                           <ExternalLink size={13} />
                         </a>
                       )}
+
+                      {(() => {
+                        const profileScore = Number(m.fit_score ?? 0);
+                        if (profileScore < 50) return null;
+                        const selectedResumeId =
+                          selectedAtsResumeByJob[m.job_id] ||
+                          m.best_resume_id ||
+                          uploadedResumes?.[0]?.id ||
+                          '';
+                        const running = !!atsRunningByJob[m.job_id];
+                        return (
+                          <>
+                            {uploadedResumes?.length > 0 && (
+                              <select
+                                value={selectedResumeId}
+                                onChange={(e) => setSelectedAtsResumeByJob(p => ({ ...p, [m.job_id]: e.target.value }))}
+                                className="input text-xs py-1.5 px-2 w-36"
+                                title="Select resume for ATS check"
+                              >
+                                {uploadedResumes.map((r: any) => (
+                                  <option key={r.id} value={r.id}>{r.label || r.file_name || 'Resume'}</option>
+                                ))}
+                              </select>
+                            )}
+                            <button
+                              onClick={() => runAtsForJob(m.job_id, selectedResumeId || null)}
+                              disabled={running}
+                              className={cn('btn-secondary text-xs py-1.5 px-3 flex items-center gap-1', running && 'opacity-70 cursor-not-allowed')}
+                              title="Runs full ATS scoring (uses tokens). Allowed only for profile score 50+."
+                            >
+                              {running ? <Spinner size={12} /> : <Zap size={12} />} ATS
+                            </button>
+                          </>
+                        );
+                      })()}
+
                       <button
                         onClick={() => generateResume(m.job_id)}
                         disabled={generating === m.job_id || (m.fit_score ?? 0) >= 75}
@@ -605,6 +672,13 @@ export default function CandidateDetailPage() {
                     </div>
                   </div>
                   {m.match_reason && <p className="text-xs text-surface-400 mt-1 italic line-clamp-2">{m.match_reason}</p>}
+
+                  {(atsErrorByJob[m.job_id] || '').trim() && (
+                    <p className="mt-2 text-xs text-red-600">
+                      {atsErrorByJob[m.job_id]}
+                    </p>
+                  )}
+
                   <div className="flex flex-wrap gap-1 mt-2">
                     {safeArray(m.matched_keywords).slice(0, 5).map((k: string, i: number) => (
                       <span key={i} className="px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-[11px]">✓ {k}</span>

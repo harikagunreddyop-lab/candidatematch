@@ -3,7 +3,6 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
 import crypto from 'crypto';
-import { runMatching } from '@/lib/matching';
 import { log as devLog, error as logError, warn as devWarn } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -155,20 +154,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Auto-matching after scrape disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.
   if (!skip_matching && totalNewJobs > 0) {
-    devLog(`[scraping] ${totalNewJobs} new jobs added — starting matching in background.`);
-    runMatching(undefined, (m) => devLog('[MATCH] ' + m)).catch((err: unknown) => {
-      const errMsg = err instanceof Error ? err.message : String(err);
-      logError('[scraping] Background matching failed:', errMsg);
-    });
+    devLog(`[scraping] ${totalNewJobs} new jobs added — auto-matching is disabled. Run matching manually from Admin dashboard if needed.`);
   }
 
   return NextResponse.json({
     results,
     total_new_jobs: totalNewJobs,
-    matching: totalNewJobs > 0 && !skip_matching
-      ? { status: 'started', message: 'Matching is running in the background. Check logs or candidate matches in a few minutes.' }
-      : { status: 'skipped', reason: totalNewJobs === 0 ? 'no new jobs' : 'skip_matching=true' },
+    matching: {
+      status: 'skipped',
+      reason: 'auto_matching_disabled',
+      message: 'Matching is disabled after scrape. Run matching manually from Admin dashboard or per candidate.',
+    },
   });
 }
 

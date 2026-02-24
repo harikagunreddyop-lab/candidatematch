@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
-import { runMatching } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -57,12 +56,9 @@ export async function POST(req: NextRequest) {
       else logError('[upload-jobs] insert error:', error.message);
     }
 
+    // Auto-matching after upload disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.
     if (!skipMatching && inserted > 0) {
-      devLog(`[upload-jobs] ${inserted} new jobs inserted — starting matching in background.`);
-      runMatching(undefined, (m) => devLog('[MATCH] ' + m)).catch((err: unknown) => {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        logError('[upload-jobs] Background matching failed:', errMsg);
-      });
+      devLog(`[upload-jobs] ${inserted} new jobs inserted — auto-matching is disabled. Run matching manually from Admin dashboard if needed.`);
     }
 
     return NextResponse.json({
@@ -70,12 +66,11 @@ export async function POST(req: NextRequest) {
       duplicates,
       skipped,
       total: rows.length,
-      matching: inserted > 0 && !skipMatching
-        ? { status: 'started', message: 'Matching is running in the background. Check logs or candidate matches in a few minutes.' }
-        : {
-            status: 'skipped',
-            reason: inserted === 0 ? 'no new jobs inserted' : 'skip_matching=true',
-          },
+      matching: {
+        status: 'skipped',
+        reason: 'auto_matching_disabled',
+        message: 'Matching is disabled after upload. Run matching manually from Admin dashboard or per candidate.',
+      },
     });
 
   } catch (err: any) {

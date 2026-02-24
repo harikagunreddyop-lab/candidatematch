@@ -457,18 +457,18 @@ export default function CandidateDashboard() {
     setDeleting(false);
   };
 
-  const downloadResume = async (pdfPath: string) => {
+  const downloadResume = async (resumeId: string, fileName: string) => {
     try {
-      const { data, error } = await supabase.storage.from('resumes').download(pdfPath);
-      if (!data || error) {
+      const res = await fetch(`/api/candidate-resumes?resume_id=${encodeURIComponent(resumeId)}`);
+      if (!res.ok) {
         toast('Could not download resume. Please try again.', 'error');
         return;
       }
-      const url = URL.createObjectURL(data);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      const fileName = pdfPath.split('/').pop() || 'resume.pdf';
       a.href = url;
-      a.download = fileName;
+      a.download = fileName || 'resume.pdf';
       a.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -1435,7 +1435,7 @@ export default function CandidateDashboard() {
                     </div>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => downloadResume(r.pdf_path)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors" title="Download"><Download size={16} /></button>
+                    <button onClick={() => downloadResume(r.id, r.file_name)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 transition-colors" title="Download"><Download size={16} /></button>
                     <button onClick={() => setDeletingResume(r)} className="p-2 rounded-xl hover:bg-red-500/10 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors" title="Delete"><Trash2 size={16} /></button>
                   </div>
                 </div>

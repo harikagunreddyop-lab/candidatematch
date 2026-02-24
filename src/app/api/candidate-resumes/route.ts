@@ -27,15 +27,49 @@ async function assertCanAccessCandidate(req: NextRequest, candidateId: string): 
   return null;
 }
 
-// ── GET — list resumes for a candidate ───────────────────────────────────────
+// ── GET — list resumes OR download a specific resume ────────────────────────
 export async function GET(req: NextRequest) {
+  const resumeId = req.nextUrl.searchParams.get('resume_id');
   const candidateId = req.nextUrl.searchParams.get('candidate_id');
+
+  const supabase = createServiceClient();
+
+  // Download a single resume as PDF
+  if (resumeId) {
+    const { data: resume, error } = await supabase
+      .from('candidate_resumes')
+      .select('candidate_id, file_name, pdf_path')
+      .eq('id', resumeId)
+      .single();
+
+    if (error || !resume) {
+      return NextResponse.json({ error: 'Resume not found' }, { status: 404 });
+    }
+
+    const forbidden = await assertCanAccessCandidate(req, resume.candidate_id);
+    if (forbidden) return forbidden;
+
+    const { data: file, error: storageError } = await supabase.storage.from(BUCKET).download(resume.pdf_path);
+    if (!file || storageError) {
+      return NextResponse.json({ error: 'Failed to download resume' }, { status: 500 });
+    }
+
+    const fileName = resume.file_name || 'resume.pdf';
+    return new NextResponse(file, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
+      },
+    });
+  }
+
+  // List resumes for a candidate
   if (!candidateId) return NextResponse.json({ error: 'candidate_id required' }, { status: 400 });
 
   const forbidden = await assertCanAccessCandidate(req, candidateId);
   if (forbidden) return forbidden;
 
-  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('candidate_resumes')
     .select('*')

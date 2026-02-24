@@ -49,7 +49,20 @@ export async function GET(req: NextRequest) {
     const forbidden = await assertCanAccessCandidate(req, resume.candidate_id);
     if (forbidden) return forbidden;
 
-    const { data: file, error: storageError } = await supabase.storage.from(BUCKET).download(resume.pdf_path);
+    let file: Blob | ArrayBuffer | null = null;
+    let storageError: any = null;
+
+    // Try primary bucket first, then fall back to legacy bucket if needed.
+    for (const bucket of [BUCKET, 'candidate-resumes']) {
+      const { data, error } = await supabase.storage.from(bucket).download(resume.pdf_path);
+      if (data) {
+        file = data;
+        storageError = null;
+        break;
+      }
+      storageError = error;
+    }
+
     if (!file || storageError) {
       return NextResponse.json({ error: 'Failed to download resume' }, { status: 500 });
     }

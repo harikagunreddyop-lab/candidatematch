@@ -63,17 +63,54 @@ export async function POST(req: NextRequest) {
 
   let resumeText = (candidate.parsed_resume_text || '').trim();
   if (resumeText.length < 100) {
-    const { data: resumes } = await supabase
+    // 1) Try structured_data from latest resume (fast path if already parsed)
+    const { data: resumesWithStruct } = await supabase
       .from('candidate_resumes')
       .select('structured_data')
       .eq('candidate_id', candidate.id)
       .order('uploaded_at', { ascending: false })
       .limit(1);
-    const sd = resumes?.[0]?.structured_data;
+    const sd = resumesWithStruct?.[0]?.structured_data;
     if (sd && typeof sd === 'object') {
       resumeText = JSON.stringify(sd);
     } else if (sd && typeof sd === 'string') {
       resumeText = sd;
+    }
+  }
+
+  if (resumeText.length < 100) {
+    // 2) Fallback: download up to 3 recent resume PDFs and extract text directly
+    const { data: resumeRows } = await supabase
+      .from('candidate_resumes')
+      .select('pdf_path')
+      .eq('candidate_id', candidate.id)
+      .order('uploaded_at', { ascending: false })
+      .limit(3);
+
+    if (resumeRows && resumeRows.length) {
+      for (const r of resumeRows) {
+        const pdfPath = (r as any).pdf_path as string | null;
+        if (!pdfPath) continue;
+        try {
+          // Try primary 'resumes' bucket first, then legacy 'candidate-resumes'
+          let download = await supabase.storage.from('resumes').download(pdfPath);
+          if (download.error || !download.data) {
+            download = await supabase.storage.from('candidate-resumes').download(pdfPath);
+          }
+          if (download.error || !download.data) continue;
+
+          const arrayBuffer = await download.data.arrayBuffer();
+          const { extractText } = await import('unpdf');
+          const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
+          const cleaned = (text || '').trim();
+          if (cleaned.length > 100) {
+            resumeText = cleaned.slice(0, 12000);
+            break;
+          }
+        } catch {
+          // Ignore this file and try next
+        }
+      }
     }
   }
   if (resumeText.length < 100) {

@@ -407,15 +407,21 @@ export default function CandidateDashboard() {
   };
 
   const downloadTailoredResume = async (pdfPath: string, jobTitle: string) => {
-    const supabase2 = createClient();
-    const { data } = await supabase2.storage.from('resumes').download(pdfPath);
-    if (data) {
+    try {
+      const supabase2 = createClient();
+      const { data, error } = await supabase2.storage.from('resumes').download(pdfPath);
+      if (!data || error) {
+        toast('Could not download tailored resume. Please try again.', 'error');
+        return;
+      }
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
       a.download = `Resume_Tailored_${jobTitle.replace(/\s+/g, '_')}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
+    } catch {
+      toast('Could not download tailored resume. Please try again.', 'error');
     }
   };
 
@@ -452,8 +458,22 @@ export default function CandidateDashboard() {
   };
 
   const downloadResume = async (pdfPath: string) => {
-    const { data } = await supabase.storage.from('resumes').createSignedUrl(pdfPath, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, '_blank');
+    try {
+      const { data, error } = await supabase.storage.from('resumes').download(pdfPath);
+      if (!data || error) {
+        toast('Could not download resume. Please try again.', 'error');
+        return;
+      }
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      const fileName = pdfPath.split('/').pop() || 'resume.pdf';
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast('Could not download resume. Please try again.', 'error');
+    }
   };
 
   const saveProfile = async () => {

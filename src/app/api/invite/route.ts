@@ -47,9 +47,15 @@ export async function POST(req: NextRequest) {
 
   const displayName = name || email.split('@')[0];
 
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+  // Base URL for invite links: prefer env, then derive from request (e.g. Host header in deployment)
+  const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+  const proto = req.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+  const fromRequest = host ? `${proto}://${host}` : '';
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || fromRequest).replace(/\/$/, '');
   if (!baseUrl) {
-    return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL is not set' }, { status: 500 });
+    return NextResponse.json({
+      error: 'Set NEXT_PUBLIC_APP_URL in .env or deployment (e.g. https://your-app.com) so invite links work.',
+    }, { status: 500 });
   }
   // All invited users (candidate, recruiter, admin) must set password first — send them to set-password page
   const redirectTo = `${baseUrl}/auth/reset-password`;

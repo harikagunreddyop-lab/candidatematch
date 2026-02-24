@@ -51,11 +51,10 @@ export async function POST(req: NextRequest) {
   if (!baseUrl) {
     return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL is not set' }, { status: 500 });
   }
-  const redirectTo = role === 'candidate'
-    ? `${baseUrl}/auth/reset-password`
-    : `${baseUrl}/dashboard/recruiter`;
+  // All invited users (candidate, recruiter, admin) must set password first — send them to set-password page
+  const redirectTo = `${baseUrl}/auth/reset-password`;
 
-  // Send invite (candidate receives email to set password; no onboarding)
+  // Send invite (user receives email; link must go to set-password — add this URL in Supabase Auth > URL Configuration > Redirect URLs)
   const { data: inviteData, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
     redirectTo,
     data: { role, name: displayName, phone: phone?.trim() || null },

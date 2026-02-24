@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase-browser';
 import {
@@ -27,6 +27,15 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = createClient();
+
+  // If user landed here with invite/recovery hash (e.g. Supabase sent them to Site URL instead of redirectTo), send to set-password
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash;
+    if (hash && (hash.includes('access_token=') || hash.includes('type=recovery') || hash.includes('type=invite'))) {
+      window.location.replace(`/auth/reset-password${hash}`);
+    }
+  }, []);
 
   const reset = () => { setError(null); setSuccess(null); };
 

@@ -17,7 +17,7 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 |------|--------|------|
 | Login / Signup | `/` (home) | `src/app/page.tsx` |
 | Auth callback (OAuth, magic link, recovery) | `/auth/callback` | `src/app/auth/callback/route.ts` |
-| Set new password (recovery) | `/auth/reset-password` | `src/app/auth/reset-password/page.tsx` |
+| Set new password (invite + recovery) | `/auth/reset-password` | `src/app/auth/reset-password/page.tsx` |
 | Pending approval (no role yet) | `/pending-approval` | `src/app/pending-approval/page.tsx` |
 
 ---
@@ -48,17 +48,16 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 4. Invite Flow (Candidates)
+## 4. Invite Flow (All Roles: Candidate, Recruiter, Admin)
 
-1. Admin sends invite from **Users** → **Invite User** (role = candidate, email, optional name/phone).
+1. Admin sends invite from **Users** → **Invite User** (email, role, optional name/phone).
 2. **POST /api/invite** (admin-only):
-   - `auth.admin.inviteUserByEmail(email, { redirectTo, data: { role, name } })`.
-   - Creates `profiles` and `candidates` rows (name, email, phone, role).
-3. User receives email with magic link → clicks → Supabase redirects to `/auth/callback?code=...`.
-4. Callback exchanges code for session; profile already exists (role = candidate) → redirect to `/dashboard/candidate`.
-5. **Middleware** then enforces **candidate access**:
-   - If candidate has **no** `recruiter_candidate_assignments` → redirect to `/dashboard/candidate/waiting`.
-   - If candidate **has** assignment → allow full `/dashboard/candidate/*` (except waiting).
+   - `auth.admin.inviteUserByEmail(email, { redirectTo: baseUrl + '/auth/reset-password', data: { role, name } })`.
+   - Creates/upserts `profiles` (name, email, phone, role). Candidate/recruiter records are linked when the user sets password (accept-invite).
+3. User receives email with magic link. **They must set a password before they can log in.**
+4. **Redirect URL (required):** In Supabase Dashboard → **Authentication** → **URL Configuration** → **Redirect URLs**, add your set-password URL, e.g. `https://yourdomain.com/auth/reset-password`. If this is missing, Supabase may send users to the Site URL (login page); the app then detects the auth hash on `/` and redirects to `/auth/reset-password` so they can still set a password.
+5. User clicks link → lands on **/auth/reset-password** (with session from the link) → enters and confirms new password → `updateUser({ password })` → **POST /api/invite/accept-invite** (links candidate if role=candidate, sets `invite_accepted_at`) → redirect to role dashboard.
+6. **Middleware** then enforces access (e.g. candidate with no assignment → `/dashboard/candidate/waiting`).
 
 ---
 

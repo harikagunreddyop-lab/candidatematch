@@ -46,6 +46,7 @@ export default function UsersPage() {
   const supabase = createClient();
   const [users, setUsers] = useState<any[]>([]);
   const [totalCandidates, setTotalCandidates] = useState(0);
+  const [candidateAcceptedUserIds, setCandidateAcceptedUserIds] = useState<Set<string>>(new Set());
   const [assignmentCounts, setAssignmentCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,8 +71,12 @@ export default function UsersPage() {
 
     const validIds = (profilesRes.data || []).filter((u: any) => u.role === 'candidate').map((u: any) => u.id);
     const safeIds = validIds.length > 0 ? validIds : ['00000000-0000-0000-0000-000000000000'];
-    const { count } = await supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds);
-    setTotalCandidates(count ?? 0);
+    const [countRes, idsRes] = await Promise.all([
+      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds),
+      supabase.from('candidates').select('user_id').not('invite_accepted_at', 'is', null).in('user_id', safeIds),
+    ]);
+    setTotalCandidates(countRes.count ?? 0);
+    setCandidateAcceptedUserIds(new Set((idsRes.data || []).map((r: any) => r.user_id).filter(Boolean)));
 
     const counts: Record<string, number> = {};
     for (const a of assignRes.data || []) {
@@ -120,7 +125,10 @@ export default function UsersPage() {
     setDeleting(null);
   };
 
-  const filtered = users.filter(u => {
+  // Only show candidate-role users who have an accepted candidate record (matches Candidates page)
+  const displayUsers = users.filter(u => u.role !== 'candidate' || candidateAcceptedUserIds.has(u.id));
+
+  const filtered = displayUsers.filter(u => {
     const matchSearch =
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -128,7 +136,7 @@ export default function UsersPage() {
     return matchSearch && (filterRole === 'all' || u.role === filterRole);
   });
 
-  const roleCount = (role: string) => users.filter(u => u.role === role).length;
+  const roleCount = (role: string) => displayUsers.filter(u => u.role === role).length;
 
   return (
     <div className="space-y-6">
@@ -136,7 +144,7 @@ export default function UsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-surface-900 font-display">Users & Recruiters</h1>
           <p className="text-sm text-surface-500 mt-1">
-            {roleCount('recruiter')} recruiters · {roleCount('admin')} admins · {roleCount('candidate')} portal users
+            {roleCount('recruiter')} recruiters · {roleCount('admin')} admins · {roleCount('candidate')} candidates
           </p>
         </div>
         <div className="flex gap-2">
@@ -156,7 +164,7 @@ export default function UsersPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Users', val: users.length, color: 'text-surface-900', sub: 'portal accounts' },
+          { label: 'Total Users', val: displayUsers.length, color: 'text-surface-900', sub: 'portal accounts' },
           { label: 'Recruiters', val: roleCount('recruiter'), color: 'text-brand-700', sub: 'with access' },
           { label: 'Admins', val: roleCount('admin'), color: 'text-purple-700', sub: 'with access' },
           { label: 'Candidates', val: totalCandidates, color: 'text-green-700', sub: 'total in system' },

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
-import { FileDown, Mail, Phone, MapPin, Linkedin, AlertCircle } from 'lucide-react';
+import { FileDown, Mail, Phone, MapPin, Linkedin, AlertCircle, Sparkles } from 'lucide-react';
 
 export default function CandidateProfilePage() {
   const supabase = createClient();
@@ -13,6 +13,9 @@ export default function CandidateProfilePage() {
   const [profileForm, setProfileForm] = useState<any>({});
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [autofilling, setAutofilling] = useState(false);
+  const [autofillError, setAutofillError] = useState<string | null>(null);
+  const [autofillSuccess, setAutofillSuccess] = useState(false);
 
   const load = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -20,6 +23,7 @@ export default function CandidateProfilePage() {
     const { data: cand } = await supabase.from('candidates').select('*').eq('user_id', session.user.id).single();
     if (!cand) { setNotLinked(true); setLoading(false); return; }
     setCandidate(cand);
+    setAutofillSuccess(false);
     setProfileForm({
       full_name: cand.full_name || '',
       primary_title: cand.primary_title || '',
@@ -38,6 +42,37 @@ export default function CandidateProfilePage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleAutofillWithAI = async () => {
+    setAutofillError(null);
+    setAutofillSuccess(false);
+    setAutofilling(true);
+    try {
+      const res = await fetch('/api/profile/ai-fill', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAutofillError(data.error || 'Autofill failed');
+        return;
+      }
+      setAutofillSuccess(true);
+      await load();
+      setProfileForm((prev: any) => ({
+        ...prev,
+        ...(data.candidate && {
+          full_name: data.candidate.full_name ?? prev.full_name,
+          primary_title: data.candidate.primary_title ?? prev.primary_title,
+          phone: data.candidate.phone ?? prev.phone,
+          location: data.candidate.location ?? prev.location,
+          linkedin_url: data.candidate.linkedin_url ?? prev.linkedin_url,
+          portfolio_url: data.candidate.portfolio_url ?? prev.portfolio_url,
+          summary: data.candidate.summary ?? prev.summary,
+          default_pitch: data.candidate.default_pitch ?? prev.default_pitch,
+        }),
+      }));
+    } finally {
+      setAutofilling(false);
+    }
+  };
 
   const handleExportData = async () => {
     const res = await fetch('/api/candidate-export');
@@ -95,7 +130,16 @@ export default function CandidateProfilePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">My Profile</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleAutofillWithAI}
+            disabled={autofilling}
+            className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
+            title="Extract and fill your profile from your resume using AI"
+          >
+            {autofilling ? <Spinner size={14} /> : <Sparkles size={14} />}
+            Autofill with AI
+          </button>
           <button onClick={handleExportData} className="btn-ghost text-sm py-2 px-4 flex items-center gap-2" title="Download your data as JSON">
             <FileDown size={14} /> Export my data
           </button>
@@ -114,6 +158,16 @@ export default function CandidateProfilePage() {
       {profileError && (
         <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-center gap-2">
           <AlertCircle size={14} /> {profileError}
+        </div>
+      )}
+      {autofillError && (
+        <div className="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-900/30 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
+          <AlertCircle size={14} /> {autofillError}
+        </div>
+      )}
+      {autofillSuccess && (
+        <div className="rounded-xl border border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+          Profile filled from your resume. Review below and edit if needed, then save.
         </div>
       )}
 

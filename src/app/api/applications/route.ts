@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('applications')
     .upsert(payload, { onConflict: 'candidate_id,job_id' })
-    .select()
+    .select('*, job:jobs(id, title, company)')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
@@ -124,24 +124,36 @@ export async function PATCH(req: NextRequest) {
   const appId = body?.id;
   if (!appId) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  const { data: app } = await supabase.from('applications').select('candidate_id').eq('id', appId).single();
+  const { data: app } = await supabase.from('applications').select('candidate_id, status').eq('id', appId).single();
   if (!app) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   if (profile.role === 'recruiter') {
     const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', app.candidate_id).eq('recruiter_id', profile.id).single();
     if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  const fromStatus = app.status;
+  const toStatus = body.status ?? fromStatus;
+
   const { data, error } = await supabase
     .from('applications')
     .update({
-      status: body.status,
+      status: toStatus,
       notes: body.notes,
-      ...(body.status === 'applied' ? { applied_at: new Date().toISOString() } : {}),
+      ...(toStatus === 'applied' ? { applied_at: new Date().toISOString() } : {}),
     })
     .eq('id', body.id)
     .select()
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (fromStatus !== toStatus) {
+    await supabase.from('application_status_history').insert({
+      application_id: appId,
+      from_status: fromStatus,
+      to_status: toStatus,
+      notes: body.notes ?? null,
+      actor_id: profile.id,
+    });
+  }
   return NextResponse.json(data);
 }

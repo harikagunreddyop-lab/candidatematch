@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { EmptyState, Spinner, StatusBadge } from '@/components/ui';
+import { EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
+import { useToast } from '@/hooks';
 import {
   ClipboardList, Briefcase, FileText, User, Upload, Download,
   Trash2, AlertCircle, Plus, ExternalLink, ChevronRight,
@@ -145,6 +146,9 @@ export default function CandidateDashboard() {
 
   // New matches highlight
   const [newMatchesCount, setNewMatchesCount] = useState(0);
+  // Application usage (rate limit display)
+  const [applicationUsage, setApplicationUsage] = useState<{ used_today: number; limit: number } | null>(null);
+  const { toasts, toast, dismiss } = useToast();
 
   // Profile edit + preferences + default pitch
   const [editingProfile, setEditingProfile] = useState(false);
@@ -206,6 +210,13 @@ export default function CandidateDashboard() {
     setNewMatchesCount(newCount);
     await supabase.from('candidates').update({ last_seen_matches_at: new Date().toISOString() }).eq('id', cand.id);
 
+    const tzOffset = new Date().getTimezoneOffset();
+    const usageRes = await fetch(`/api/applications/usage?tz_offset=${-tzOffset}`);
+    if (usageRes.ok) {
+      const u = await usageRes.json();
+      setApplicationUsage({ used_today: u.used_today ?? 0, limit: u.limit ?? CANDIDATE_DAILY_APPLY_LIMIT });
+    }
+
     setLoading(false);
   };
 
@@ -255,6 +266,9 @@ export default function CandidateDashboard() {
       }
       setApplyError(null);
       setConfirmAppliedJobId(null);
+      const jobTitle = (data as any).job?.title;
+      const company = (data as any).job?.company;
+      toast(jobTitle && company ? `Applied to ${jobTitle} at ${company}` : 'Application submitted', 'success');
       await load();
     } finally {
       setApplying(null);
@@ -540,6 +554,7 @@ export default function CandidateDashboard() {
 
   return (
     <div className="space-y-8">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
       {/* ─── Hero: premium welcome + readiness ───────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
@@ -579,6 +594,14 @@ export default function CandidateDashboard() {
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/30">
                   <Zap size={12} className="text-emerald-300" />
                   <span className="text-xs font-semibold text-emerald-100">{applicationsThisWeek} application{applicationsThisWeek !== 1 ? 's' : ''} this week</span>
+                </div>
+              )}
+              {applicationUsage != null && (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/10">
+                  <ClipboardList size={12} className="text-white/80" />
+                  <span className="text-xs font-semibold text-white/90">
+                    {applicationUsage.used_today} of {applicationUsage.limit} applications today
+                  </span>
                 </div>
               )}
             </div>

@@ -288,6 +288,16 @@ export async function runMatching(
   if (jErr) { log('Error fetching jobs: ' + jErr.message); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
   if (!jobs?.length) { log('No active jobs.'); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
 
+  const candidateIds = (candidates as Candidate[]).map((c) => c.id);
+  const hiddenByCandidate = new Map<string, Set<string>>();
+  try {
+    const { data: hiddenRows } = await supabase.from('candidate_hidden_jobs').select('candidate_id, job_id').in('candidate_id', candidateIds);
+    for (const h of hiddenRows || []) {
+      if (!hiddenByCandidate.has(h.candidate_id)) hiddenByCandidate.set(h.candidate_id, new Set());
+      hiddenByCandidate.get(h.candidate_id)!.add(h.job_id);
+    }
+  } catch (_) {}
+
   log(`Starting: ${candidates.length} candidates × ${jobs.length} jobs (multi-dimensional ATS engine, concurrency=${CONCURRENCY}).`);
 
   // ── Elite ATS path (Batches API, Claude Sonnet) ─────────────────────────────
@@ -352,7 +362,10 @@ export async function runMatching(
       const toUpsert: any[] = [];
       for (const list of Array.from(byCandidate.values())) {
         const sorted = list.sort((a: MatchResult, b: MatchResult) => b.fit_score - a.fit_score).slice(0, MAX_MATCHES_PER_CANDIDATE);
-        for (const m of sorted) toUpsert.push(matchToDbRow(m));
+        for (const m of sorted) {
+          if (hiddenByCandidate.get(m.candidate_id)?.has(m.job_id)) continue;
+          toUpsert.push(matchToDbRow(m));
+        }
       }
 
       if (toUpsert.length > 0) {
@@ -487,6 +500,7 @@ export async function runMatching(
     const now = new Date().toISOString();
 
     for (const job of potentialJobs) {
+      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) continue;
       const best = bestByJob.get(job.id);
       if (!best || best.score < SCORE_MIN_STORED) continue;
 

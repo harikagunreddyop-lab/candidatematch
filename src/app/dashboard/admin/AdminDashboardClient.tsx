@@ -1,10 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Users, Briefcase, FileText, ClipboardList, TrendingUp,
-  Star, ChevronRight, Zap, Search, MapPin, ArrowRight, UserCheck,
+  Star, ChevronRight, Zap, Search, MapPin, ArrowRight, UserCheck, Clock,
 } from 'lucide-react';
 import { StatusBadge, Spinner } from '@/components/ui';
 import { formatRelative, cn } from '@/utils/helpers';
@@ -100,7 +100,15 @@ export default function AdminDashboardClient({
   const [recruiterSearch, setRecruiterSearch] = useState('');
   const [matching, setMatching] = useState(false);
   const [matchMsg, setMatchMsg] = useState<string | null>(null);
+  const [cronRuns, setCronRuns] = useState<Array<{ id: string; started_at: string; ended_at?: string; status: string; mode?: string; candidates_processed?: number; total_matches_upserted?: number; error_message?: string }>>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/cron/history?limit=5')
+      .then(r => r.ok ? r.json() : { runs: [] })
+      .then(d => setCronRuns(d.runs || []))
+      .catch(() => setCronRuns([]));
+  }, []);
 
   const runMatching = async () => {
     setMatching(true);
@@ -152,6 +160,32 @@ export default function AdminDashboardClient({
       {matchMsg && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">
           {matchMsg}
+        </div>
+      )}
+
+      {cronRuns.length > 0 && (
+        <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800/50 px-4 py-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+          <span className="font-medium text-surface-700 dark:text-surface-200 flex items-center gap-1.5">
+            <Clock size={14} /> Last cron run
+          </span>
+          <span className="text-surface-600 dark:text-surface-400">
+            {cronRuns[0].ended_at
+              ? new Date(cronRuns[0].ended_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+              : new Date(cronRuns[0].started_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) + ' (running)'}
+          </span>
+          <span className={cn(
+            'px-1.5 py-0.5 rounded text-xs font-medium',
+            cronRuns[0].status === 'ok' && 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200',
+            cronRuns[0].status === 'failed' && 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200',
+            cronRuns[0].status === 'running' && 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
+          )}>
+            {cronRuns[0].status}
+          </span>
+          {cronRuns[0].status === 'ok' && (cronRuns[0].candidates_processed != null || cronRuns[0].total_matches_upserted != null) && (
+            <span className="text-surface-500 dark:text-surface-400 text-xs">
+              {cronRuns[0].candidates_processed ?? 0} candidates · {cronRuns[0].total_matches_upserted ?? 0} matches
+            </span>
+          )}
         </div>
       )}
 

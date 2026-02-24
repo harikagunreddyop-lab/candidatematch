@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 /** POST { candidate_id, job_id, reason? } — candidate marks job as "not interested" / hidden. */
 export async function POST(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['candidate'] });

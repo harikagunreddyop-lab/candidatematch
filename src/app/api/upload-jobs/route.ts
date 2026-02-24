@@ -6,6 +6,8 @@ import { runMatching } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 /** GET — admin: last cron run and recent history (e.g. last 10). */
 export async function GET(req: NextRequest) {
   const authResult = await requireAdmin(req);

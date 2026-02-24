@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { canApply, SCORE_APPLY_CAUTION } from '@/lib/ats-score';
 
+export const dynamic = 'force-dynamic';
+
 /** Candidates: max 40 new applications per calendar day (user's local time). */
 const CANDIDATE_DAILY_APPLY_LIMIT = 40;
 /** Recruiters: max 60 new applications per candidate per calendar day (user's local time). */

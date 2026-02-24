@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 const MAX_RESUMES_PER_CANDIDATE = 5;
 const MAX_FILE_SIZE_MB = 10;
 const raw = process.env.RESUME_WORKER_URL?.trim();

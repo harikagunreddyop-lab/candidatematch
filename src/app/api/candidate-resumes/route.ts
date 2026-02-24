@@ -6,6 +6,8 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { runMatching } from '@/lib/matching';
 
+export const dynamic = 'force-dynamic';
+
 const MAX_RESUMES_PER_CANDIDATE = 5;
 const MAX_FILE_SIZE_MB = 10;
 const BUCKET = 'resumes'; // Must match the bucket in 001_initial.sql

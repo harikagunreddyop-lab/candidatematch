@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 const CANDIDATE_DAILY_APPLY_LIMIT = 40;
 const RECRUITER_DAILY_APPLICATIONS_PER_CANDIDATE_LIMIT = 60;
 

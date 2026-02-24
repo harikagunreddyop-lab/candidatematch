@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 /** GET ?application_id= — returns status history for an application (admin/recruiter or candidate who owns it). */
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });

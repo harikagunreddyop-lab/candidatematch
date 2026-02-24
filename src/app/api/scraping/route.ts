@@ -6,6 +6,8 @@ import crypto from 'crypto';
 import { runMatching } from '@/lib/matching';
 import { log as devLog, error as logError, warn as devWarn } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
+
 const APIFY_TOKEN = process.env.APIFY_API_TOKEN;
 
 const INDEED_ACTOR  = 'misceres/indeed-scraper';

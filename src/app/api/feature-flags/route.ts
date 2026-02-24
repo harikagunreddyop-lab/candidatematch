@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 /** GET — returns feature flags for the current user's role (and role=null for all). */
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });

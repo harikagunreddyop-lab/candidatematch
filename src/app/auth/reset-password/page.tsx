@@ -1,13 +1,37 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase-browser';
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-export default function ResetPasswordPage() {
+function ResetPasswordFallback() {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-surface-50 dark:bg-surface-900 px-4">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-12 h-12 rounded-2xl overflow-hidden bg-white dark:bg-surface-800 flex items-center justify-center shadow-lg shadow-brand-500/25 border border-surface-200 dark:border-surface-600">
+          <Image src="/logo.png" alt="Logo" width={48} height={48} className="object-contain" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">Orion CMOS</h1>
+          <p className="text-xs text-surface-500 dark:text-surface-300 font-medium tracking-wide uppercase">Set new password</p>
+        </div>
+      </div>
+      <div className="card p-8 max-w-md w-full dark:bg-surface-800 dark:border-surface-600">
+        <div className="text-center py-10 space-y-3">
+          <div className="flex justify-center">
+            <span className="w-8 h-8 border-[3px] border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+          </div>
+          <p className="text-sm text-surface-700 dark:text-surface-300 font-medium">Loading…</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -345,5 +369,13 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<ResetPasswordFallback />}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }

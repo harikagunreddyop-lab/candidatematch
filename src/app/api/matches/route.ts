@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runMatching } from '@/lib/matching';
 import { requireAdmin } from '@/lib/api-auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;

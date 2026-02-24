@@ -164,7 +164,8 @@ export default function CandidateDetailPage() {
   };
 
   const downloadUploadedResume = async (pdfPath: string) => {
-    const { data } = await supabase.storage.from('candidate-resumes').createSignedUrl(pdfPath, 300);
+    // Uploaded resumes are stored in the same 'resumes' bucket as generated ones.
+    const { data } = await supabase.storage.from('resumes').createSignedUrl(pdfPath, 300);
     if (data?.signedUrl) window.open(data.signedUrl, '_blank');
   };
 

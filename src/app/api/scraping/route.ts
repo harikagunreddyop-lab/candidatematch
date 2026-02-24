@@ -3,6 +3,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
 import crypto from 'crypto';
+import { precomputeJobRequirements } from '@/lib/matching';
 import { log as devLog, error as logError, warn as devWarn } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
 
   const results: any[] = [];
   let totalNewJobs = 0;
+  const newJobIds: string[] = [];
 
   for (const query of search_queries) {
     for (const source of sources) {
@@ -117,18 +119,25 @@ export async function POST(req: NextRequest) {
 
           if (existing?.length) { jobsDupe++; continue; }
 
-          const { error: insertErr } = await supabase.from('jobs').insert({
-            ...normalized,
-            dedupe_hash: hash,
-            is_active: true,
-            scraped_at: new Date().toISOString(),
-          });
+          const { data: insertedRow, error: insertErr } = await supabase
+            .from('jobs')
+            .insert({
+              ...normalized,
+              dedupe_hash: hash,
+              is_active: true,
+              scraped_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
 
-          if (insertErr) {
-            logError(`[scraping] insert error for "${normalized.title}":`, insertErr.message);
+          if (insertErr || !insertedRow?.id) {
+            if (insertErr) {
+              logError(`[scraping] insert error for "${normalized.title}":`, insertErr.message);
+            }
           } else {
             jobsNew++;
             totalNewJobs++;
+            newJobIds.push(insertedRow.id);
           }
         }
 
@@ -154,10 +163,13 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Auto-matching after scrape disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.
-  if (!skip_matching && totalNewJobs > 0) {
-    devLog(`[scraping] ${totalNewJobs} new jobs added — auto-matching is disabled. Run matching manually from Admin dashboard if needed.`);
+  // Precompute job requirements immediately for newly scraped jobs so later matching runs are faster.
+  if (!skip_matching && newJobIds.length > 0) {
+    devLog(`[scraping] Precomputing requirements for ${newJobIds.length} new jobs.`);
+    await precomputeJobRequirements(supabase, newJobIds);
   }
+
+  // Auto-matching after scrape disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.
 
   return NextResponse.json({
     results,

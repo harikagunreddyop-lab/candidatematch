@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
+import { precomputeJobRequirements } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -25,6 +26,7 @@ export async function POST(req: NextRequest) {
     let inserted = 0;
     let duplicates = 0;
     let skipped = 0;
+    const newJobIds: string[] = [];
 
     for (const row of rows) {
       const job = normalizeRow(row);
@@ -45,15 +47,29 @@ export async function POST(req: NextRequest) {
 
       if (existing?.length) { duplicates++; continue; }
 
-      const { error } = await supabase.from('jobs').insert({
-        ...job,
-        dedupe_hash: hash,
-        is_active: true,
-        scraped_at: new Date().toISOString(),
-      });
+      const { data: insertedRow, error } = await supabase
+        .from('jobs')
+        .insert({
+          ...job,
+          dedupe_hash: hash,
+          is_active: true,
+          scraped_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single();
 
-      if (!error) inserted++;
-      else logError('[upload-jobs] insert error:', error.message);
+      if (!error && insertedRow?.id) {
+        inserted++;
+        newJobIds.push(insertedRow.id);
+      } else if (error) {
+        logError('[upload-jobs] insert error:', error.message);
+      }
+    }
+
+    // Precompute job requirements immediately for newly inserted jobs so later matching runs are faster.
+    if (!skipMatching && newJobIds.length > 0) {
+      devLog(`[upload-jobs] Precomputing requirements for ${newJobIds.length} new jobs.`);
+      await precomputeJobRequirements(supabase, newJobIds);
     }
 
     // Auto-matching after upload disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.

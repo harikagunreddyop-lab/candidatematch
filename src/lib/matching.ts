@@ -72,39 +72,81 @@ type ProfileScoreResult = {
 // ── Domain classification ────────────────────────────────────────────────────
 
 type Domain =
-  | 'data-engineering' | 'data-science' | 'devops' | 'fullstack'
-  | 'frontend' | 'mobile' | 'qa' | 'security'
-  | 'management' | 'design' | 'software-engineering' | 'general';
+  | 'data-engineering' | 'data-science' | 'data-analytics' | 'bi'
+  | 'devops' | 'fullstack' | 'frontend' | 'mobile' | 'qa' | 'security'
+  | 'management' | 'design' | 'software-engineering'
+  | 'product' | 'finance-analyst' | 'general';
 
+// Domains that can match each other. Non-symmetric by design so a Java Developer
+// never matches an Analyst role and vice-versa.
 const DOMAIN_COMPATIBILITY: Record<Domain, Domain[]> = {
-  'software-engineering': ['software-engineering', 'fullstack', 'frontend', 'general'],
-  'frontend':            ['frontend', 'fullstack', 'software-engineering', 'mobile', 'general'],
-  'fullstack':           ['fullstack', 'frontend', 'software-engineering', 'mobile', 'general'],
-  'data-engineering':    ['data-engineering', 'data-science', 'general'],
-  'data-science':        ['data-science', 'data-engineering', 'general'],
-  'devops':              ['devops', 'software-engineering', 'general'],
-  'mobile':              ['mobile', 'frontend', 'fullstack', 'software-engineering', 'general'],
-  'qa':                  ['qa', 'software-engineering', 'general'],
-  'security':            ['security', 'devops', 'general'],
-  'management':          ['management', 'general'],
-  'design':              ['design', 'frontend', 'general'],
-  'general':             Object.keys({}) as Domain[], // accepts all
+  'software-engineering': ['software-engineering', 'fullstack', 'frontend'],
+  'frontend':             ['frontend', 'fullstack', 'software-engineering', 'mobile'],
+  'fullstack':            ['fullstack', 'frontend', 'software-engineering', 'mobile'],
+  'data-engineering':     ['data-engineering', 'data-science'],
+  'data-science':         ['data-science', 'data-engineering', 'data-analytics'],
+  'data-analytics':       ['data-analytics', 'data-science', 'bi'],
+  'bi':                   ['bi', 'data-analytics'],
+  'devops':               ['devops', 'software-engineering'],
+  'mobile':               ['mobile', 'frontend', 'fullstack', 'software-engineering'],
+  'qa':                   ['qa', 'software-engineering'],
+  'security':             ['security', 'devops'],
+  'management':           ['management'],
+  'design':               ['design', 'frontend'],
+  'product':              ['product'],
+  'finance-analyst':      ['finance-analyst'],
+  'general':              ['general'],
 };
 
 function classifyDomain(title: string): Domain {
   const t = (title || '').toLowerCase().trim();
   if (!t) return 'general';
+
+  // Data Engineering — must come before generic "data" checks
   if (/data\s*(engineer|architect|platform|infrastructure|pipeline|warehouse)|etl\s*(dev|eng)|big\s*data/i.test(t)) return 'data-engineering';
-  if (/data\s*(scien|analy)|machine\s*learn|\bml\s*(eng|dev)|\bai\s*(eng|dev)|deep\s*learn|\bnlp\b|computer\s*vision|research\s*scien/i.test(t)) return 'data-science';
+
+  // Data Science / ML
+  if (/data\s*scien|machine\s*learn|\bml\s*(eng|dev|scientist)|\bai\s*(eng|dev)|deep\s*learn|\bnlp\b|computer\s*vision|research\s*scien/i.test(t)) return 'data-science';
+
+  // BI / Reporting
+  if (/\bpow(er)?\s*bi\b|\btableau\b|\blooker\b|bi\s*(dev|analyst|engineer|spec)|business\s*intel/i.test(t)) return 'bi';
+
+  // Data Analytics / Business Analyst — MUST come before 'software-engineering' to avoid token bleed
+  if (/data\s*anal|business\s*anal|operations?\s*anal|marketing\s*anal|product\s*anal|financial\s*anal(?!yst\s*(dev|eng))|analyst/i.test(t)) return 'data-analytics';
+
+  // Finance / investment analyst
+  if (/financ(ial)?\s*anal|investment\s*anal|credit\s*anal|equity\s*anal|risk\s*anal/i.test(t)) return 'finance-analyst';
+
+  // Product Management
+  if (/product\s*manag|program\s*manag|project\s*manag|engineering\s*manag|\bscrum\b|\bpmo\b/i.test(t)) return 'management';
+
+  // Product roles that aren't PMs
+  if (/\bproduct\s*(owner|lead|strategist)\b/i.test(t)) return 'product';
+
+  // DevOps / SRE / Cloud
   if (/devops|\bsre\b|site\s*reliab|cloud\s*(eng|arch)|platform\s*eng/i.test(t)) return 'devops';
+
+  // Fullstack
   if (/full[\s-]*stack/i.test(t)) return 'fullstack';
+
+  // Mobile
   if (/\bios\s*(dev|eng)|android\s*(dev|eng)|mobile\s*(dev|eng)|react\s*native|flutter/i.test(t)) return 'mobile';
+
+  // Frontend
   if (/front[\s-]*end|ui\s*(dev|eng)|react\s*(dev|eng)|angular\s*(dev|eng)|vue\s*(dev|eng)/i.test(t)) return 'frontend';
+
+  // QA
   if (/\bqa\b|quality\s*assur|test\s*(auto|eng)|\bsdet\b/i.test(t)) return 'qa';
+
+  // Security
   if (/secur|cyber|infosec|penetration/i.test(t)) return 'security';
-  if (/product\s*manag|program\s*manag|project\s*manag|engineering\s*manag|\bscrum\b/i.test(t)) return 'management';
+
+  // Design
   if (/\bux\b|ui\s*design|product\s*design/i.test(t)) return 'design';
-  if (/software|developer|engineer|programmer|back[\s-]*end|java(?!script)|python|\.net|c#|ruby|php|\bnode\b|spring|golang|\bgo\b/i.test(t)) return 'software-engineering';
+
+  // Software Engineering (must be last to not swallow analysts, etc.)
+  if (/software|developer|programmer|back[\s-]*end|java(?!script)|python|\.net|c#|ruby|php|\bnode\b|spring|golang|\bgo\b/i.test(t)) return 'software-engineering';
+
   return 'general';
 }
 
@@ -112,14 +154,15 @@ function getCandidateDomains(candidate: Candidate): Domain[] {
   const domains = new Set<Domain>();
   domains.add(classifyDomain(candidate.primary_title || ''));
   for (const t of candidate.secondary_titles || []) domains.add(classifyDomain(t));
+  for (const t of candidate.target_job_titles || []) domains.add(classifyDomain(t));
   return Array.from(domains);
 }
 
 function isDomainCompatible(candidateDomains: Domain[], jobDomain: Domain): boolean {
-  if (jobDomain === 'general') return true;
   return candidateDomains.some(cd => {
+    if (cd === jobDomain) return true;
     const compatible = DOMAIN_COMPATIBILITY[cd] || [];
-    return compatible.includes(jobDomain) || cd === jobDomain;
+    return compatible.includes(jobDomain);
   });
 }
 
@@ -505,10 +548,6 @@ function prefilterJobs(jobs: Job[], candidate: Candidate, combinedResumeText: st
 
 // ── Title-based matching (no score, no LLM) ──────────────────────────────────
 
-/**
- * Normalises a job title string into a set of lowercase tokens for fuzzy matching.
- * Short tokens (< 3 chars) are excluded unless they are known abbreviations.
- */
 const KEEP_SHORT = new Set(['qa', 'ai', 'ml', 'bi', 'ux', 'pm', 'vp', 'cto', 'ceo', 'cfo', 'sre']);
 
 function titleTokens(title: string): string[] {
@@ -517,15 +556,45 @@ function titleTokens(title: string): string[] {
 }
 
 /**
- * Returns true when the candidate's title pool (primary + secondary + target)
- * has meaningful overlap with the job title.
+ * Generic seniority/role words that appear in many unrelated titles and must NOT
+ * be used as matching signals on their own (e.g. "data" in "Data Engineer" vs
+ * "Data Analyst", "engineer" in "Software Engineer" vs "QA Engineer").
  *
- * Match criteria (any one sufficient):
- *  1. At least 1 non-trivial token shared between any candidate title and job title
- *  2. Domain is compatible between any candidate title and job title
+ * NOTE: "analyst", "data", "product", "business", "technical", "solutions" are
+ * intentionally listed here because they appear across completely different roles.
+ * Matching is done at the DOMAIN level for these cases.
  */
-const TRIVIAL_TOKENS = new Set(['senior', 'junior', 'lead', 'staff', 'principal', 'associate', 'head', 'director', 'manager', 'engineer', 'developer', 'specialist', 'consultant']);
+const TRIVIAL_TOKENS = new Set([
+  // Seniority / level
+  'senior', 'junior', 'lead', 'staff', 'principal', 'associate', 'head',
+  'director', 'manager', 'specialist', 'consultant', 'advisor',
+  // Generic role words that span many domains
+  'engineer', 'developer', 'programmer',
+  'analyst',      // Java dev must NOT match "Analyst" roles via this token
+  'data',         // "Data Engineer" must NOT match "Data Analyst" via this token
+  'product',      // "Product Manager" must NOT match "Product Analyst"
+  'business',     // "Business Analyst" ≠ "Business Development Manager"
+  'technical',
+  'solutions',
+  'digital',
+  'operations',
+  'platform',
+  'cloud',        // "Cloud Engineer" vs "Cloud Architect" – different sub-roles
+  'application',
+  'systems',
+  'information',
+  'technology',
+]);
 
+/**
+ * Returns true only when BOTH of these hold for at least one candidate title:
+ *   1. The domain of the candidate title is compatible with the job domain.
+ *   2. At least one meaningful (non-trivial) token is shared between candidate
+ *      title and job title — OR both titles are in the same specific domain
+ *      (e.g. both 'data-engineering' → allow domain-only match for close roles).
+ *
+ * This prevents "Java Developer" → "Analyst" and "Data Engineer" → "Data Analyst".
+ */
 function isTitleMatch(candidate: Candidate, job: Job): boolean {
   const candidateTitles = [
     candidate.primary_title || '',
@@ -535,17 +604,33 @@ function isTitleMatch(candidate: Candidate, job: Job): boolean {
 
   if (candidateTitles.length === 0) return false;
 
-  const jobToksArr = titleTokens(job.title);
-  const jobToksSet = new Set(jobToksArr);
   const jobDomain = classifyDomain(job.title);
+  const jobToksSet = new Set(titleTokens(job.title));
 
   for (const ct of candidateTitles) {
     const cdDomain = classifyDomain(ct);
-    if (isDomainCompatible([cdDomain], jobDomain)) return true;
 
+    // Step 1: domain must be compatible — if not, skip this title entirely.
+    if (!isDomainCompatible([cdDomain], jobDomain)) continue;
+
+    // Step 2a: exact same specific domain → allow (e.g. both are data-engineering).
+    // This lets "Data Engineer" match "Senior Data Engineer" without needing token
+    // overlap (which would fail because "data" and "engineer" are both trivial).
+    if (cdDomain === jobDomain && cdDomain !== 'general') return true;
+
+    // Step 2b: compatible but different domains → require at least one non-trivial
+    // shared token (e.g. "React Developer" matching "Frontend React Engineer").
     const ctToks = titleTokens(ct);
     for (const tok of ctToks) {
       if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && jobToksSet.has(tok)) return true;
+    }
+
+    // Step 2c: both classified as 'general' (e.g. "Coordinator") → require token overlap.
+    if (cdDomain === 'general' && jobDomain === 'general') {
+      const ctToksSet = new Set(ctToks);
+      for (const tok of titleTokens(job.title)) {
+        if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && ctToksSet.has(tok)) return true;
+      }
     }
   }
 

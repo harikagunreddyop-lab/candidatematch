@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
-import { precomputeJobRequirements } from '@/lib/matching';
+import { runMatching } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -66,15 +66,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Precompute job requirements immediately for newly inserted jobs so later matching runs are faster.
-    if (!skipMatching && newJobIds.length > 0) {
-      devLog(`[upload-jobs] Precomputing requirements for ${newJobIds.length} new jobs.`);
-      await precomputeJobRequirements(supabase, newJobIds);
-    }
-
-    // Auto-matching after upload disabled to save tokens. Use Admin "Run Matching" or per-candidate matching instead.
+    // Run title-based matching for all candidates against all jobs (fast, no LLM).
+    let matchingResult: any = { status: 'skipped' };
     if (!skipMatching && inserted > 0) {
-      devLog(`[upload-jobs] ${inserted} new jobs inserted — auto-matching is disabled. Run matching manually from Admin dashboard if needed.`);
+      devLog(`[upload-jobs] ${inserted} new jobs inserted — running title-based matching for all candidates.`);
+      try {
+        const result = await runMatching(undefined, (msg) => devLog('[upload-jobs:match] ' + msg), { jobsSince: undefined });
+        matchingResult = {
+          status: 'done',
+          candidates_processed: result.candidates_processed,
+          total_matches_upserted: result.total_matches_upserted,
+        };
+        devLog(`[upload-jobs] Matching complete: ${result.total_matches_upserted} matches upserted.`);
+      } catch (e: any) {
+        logError('[upload-jobs] Matching failed after upload:', e?.message);
+        matchingResult = { status: 'error', message: e?.message };
+      }
     }
 
     return NextResponse.json({
@@ -82,11 +89,7 @@ export async function POST(req: NextRequest) {
       duplicates,
       skipped,
       total: rows.length,
-      matching: {
-        status: 'skipped',
-        reason: 'auto_matching_disabled',
-        message: 'Matching is disabled after upload. Run matching manually from Admin dashboard or per candidate.',
-      },
+      matching: matchingResult,
     });
 
   } catch (err: any) {

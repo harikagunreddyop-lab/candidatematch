@@ -540,7 +540,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
     <div className="flex flex-col items-center justify-center py-12 gap-4">
       <Spinner size={28} />
       <p className="text-sm font-semibold text-surface-700">Running matching engine...</p>
-      <p className="text-xs text-surface-400">Scoring new jobs against all active candidates (profile-only)</p>
+      <p className="text-xs text-surface-400">Matching new jobs to candidates by title (fast, no AI)</p>
     </div>
   );
 

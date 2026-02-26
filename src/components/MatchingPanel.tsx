@@ -94,7 +94,7 @@ export default function MatchingPanel() {
             <Zap size={18} className="text-brand-600" /> Matching Engine
           </h2>
           <p className="text-xs text-surface-500 mt-0.5">
-            Profile-only job matching — fast scoring without AI (ATS checks run on-demand for 50+ profile matches)
+            Title-based matching — matches candidates to jobs by primary, secondary, and target job titles (no AI, instant)
           </p>
         </div>
       </div>
@@ -129,9 +129,9 @@ export default function MatchingPanel() {
         </div>
 
         <div className="text-xs text-surface-400 space-y-0.5">
-          <p>⚡ Uses skills/title/location signals (no tokens)</p>
-          <p>🔍 Title + keyword pre-filter keeps scoring fast</p>
-          <p>💾 Results saved to candidate_job_matches table in real-time</p>
+          <p>⚡ Matches by primary title, secondary titles, and target job titles</p>
+          <p>🔍 Domain-level matching (e.g. frontend ↔ fullstack) for broad coverage</p>
+          <p>💾 Results saved to candidate_job_matches — auto-runs on job upload</p>
         </div>
       </div>
 

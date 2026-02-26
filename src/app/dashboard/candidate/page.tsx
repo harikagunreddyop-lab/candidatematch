@@ -12,7 +12,6 @@ import {
   ArrowRight, Lightbulb, Award, Brain,
 } from 'lucide-react';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
-import { getScoreLabel, getScoreBadgeClasses, canApply, SCORE_APPLY_OK, SCORE_APPLY_CAUTION } from '@/lib/ats-score';
 
 interface CandidateResume {
   id: string;
@@ -32,17 +31,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function ATSScoreBadge({ score, decision }: { score: number; decision?: string }) {
-  const { bg, text } = getScoreBadgeClasses(score);
-  const label = decision ?? getScoreLabel(score);
-  return (
-    <div className={cn('flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 ring-1', bg, text)}>
-      <span className="text-base font-bold tabular-nums">{score}</span>
-      <span className="font-medium">{label}</span>
-    </div>
-  );
-}
-
 function StatCard({ label, value, icon, color, subtext }: { label: string; value: any; icon: React.ReactNode; color: string; subtext?: string }) {
   return (
     <div className="group rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3">
@@ -54,16 +42,6 @@ function StatCard({ label, value, icon, color, subtext }: { label: string; value
       </div>
     </div>
   );
-}
-
-function parseMatchReason(reason: string) {
-  const parts = (reason || '').split('|').map(s => s.trim());
-  return {
-    strength: parts.find(p => p.startsWith('[STRENGTH]'))?.replace('[STRENGTH]', '').trim() || '',
-    gap: parts.find(p => p.startsWith('[GAP]'))?.replace('[GAP]', '').trim() || '',
-    risk: parts.find(p => p.startsWith('[RISK]'))?.replace('[RISK]', '').trim() || '',
-    resume: parts.find(p => p.startsWith('[RESUME]'))?.replace('[RESUME]', '').trim() || '',
-  };
 }
 
 function SendPasswordReset() {
@@ -513,10 +491,6 @@ export default function CandidateDashboard() {
   const greeting = (() => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })();
   const firstName = candidate.full_name?.split(' ')[0] || 'there';
 
-  const topScore = matches[0]?.fit_score || 0;
-  const avgScore = matches.length > 0 ? Math.round(matches.reduce((s, m) => s + m.fit_score, 0) / matches.length) : 0;
-  const interviewPossible = matches.filter(m => m.fit_score >= SCORE_APPLY_OK).length;
-  const cautionCount = matches.filter(m => m.fit_score >= SCORE_APPLY_CAUTION && m.fit_score < SCORE_APPLY_OK).length;
   const alreadyApplied = new Set(applications.map(a => a.job_id));
   const availableMatches = matches.filter(m => !alreadyApplied.has(m.job_id));
   const appliedMatches = matches.filter(m => alreadyApplied.has(m.job_id));
@@ -550,17 +524,16 @@ export default function CandidateDashboard() {
   const profileCompleteCount = profileCompletenessItems.filter(Boolean).length;
   const profileCompletenessPct = Math.round((profileCompleteCount / profileCompletenessItems.length) * 100);
 
-  const topUnappliedMatch = matches.find(m => !alreadyApplied.has(m.job_id) && canApply(m.fit_score));
+  const topUnappliedMatch = availableMatches[0] ?? null;
   const offerCount = applications.filter((a: any) => a.status === 'offer').length;
 
   const quickWinTip = (() => {
-    if (uploadedResumes.length < 2 && matches.length > 0) return 'Upload 2+ resume versions — we pick the best fit per job.';
-    if (profileCompletenessPct < 80) return 'Complete your profile for better match quality and visibility.';
+    if (profileCompletenessPct < 80) return 'Complete your profile for better job visibility.';
     if (applicationsThisWeek === 0 && topUnappliedMatch) return 'Apply within 48h of a match for better response rates.';
     if (interviewApps.length > 0) return 'Prep for interviews: add dates and notes on the Interviews page.';
     if (savedJobIds.size > 0 && savedMatches.some(m => !alreadyApplied.has(m.job_id))) return 'You have saved jobs ready to apply — check Matched Jobs.';
-    if (matches.length > 0) return 'Strong matches (82+ ATS) are apply-ready. Focus there first.';
-    return 'Complete your profile and add a resume to get personalized matches.';
+    if (matches.length > 0) return 'Start applying to your matched jobs.';
+    return 'Complete your profile to get job matches based on your target titles.';
   })();
 
   const TABS = [
@@ -652,9 +625,7 @@ export default function CandidateDashboard() {
               <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
                 {topUnappliedMatch
                   ? `Apply to ${topUnappliedMatch.job?.title} at ${topUnappliedMatch.job?.company}`
-                  : !uploadedResumes.length && matches.length > 0
-                    ? 'Upload a resume to get accurate ATS scores for every match'
-                    : 'Complete your profile to improve match quality'}
+                  : 'Complete your profile to get matched to more jobs'}
               </p>
             </div>
           </div>
@@ -671,11 +642,6 @@ export default function CandidateDashboard() {
                 )}
               </>
             )}
-            {!uploadedResumes.length && matches.length > 0 && (
-              <button onClick={() => setTab('resumes')} className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
-                <Upload size={14} /> Upload resume
-              </button>
-            )}
             {profileCompletenessPct < 80 && uploadedResumes.length > 0 && !topUnappliedMatch && (
               <a href="/dashboard/candidate/profile" className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
                 <User size={14} /> Complete profile
@@ -689,8 +655,8 @@ export default function CandidateDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard label="Matched Jobs" value={matches.length} icon={<Briefcase size={22} className="text-brand-600 dark:text-brand-400" />} color="bg-brand-500/10 dark:bg-brand-500/20" subtext={applicationsThisWeek > 0 ? `${applicationsThisWeek} applied this week` : undefined} />
         <StatCard label="Applications" value={applications.length} icon={<ClipboardList size={22} className="text-violet-600 dark:text-violet-400" />} color="bg-violet-500/10 dark:bg-violet-500/20" />
-        <StatCard label="Strong matches" value={interviewPossible} icon={<Star size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="82+ ATS · apply ready" />
-        <StatCard label="Avg ATS score" value={avgScore || '—'} icon={<TrendingUp size={22} className="text-amber-600 dark:text-amber-400" />} color="bg-amber-500/10 dark:bg-amber-500/20" />
+        <StatCard label="Saved Jobs" value={savedJobIds.size} icon={<BookmarkCheck size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="jobs you bookmarked" />
+        <StatCard label="Interviews" value={interviewApps.length} icon={<Calendar size={22} className="text-amber-600 dark:text-amber-400" />} color="bg-amber-500/10 dark:bg-amber-500/20" />
       </div>
 
       {/* New matches highlight */}
@@ -778,43 +744,6 @@ export default function CandidateDashboard() {
             </div>
           </div>
 
-          {/* ATS distribution */}
-          {matches.length > 0 && (
-            <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center"><Zap size={16} className="text-brand-600 dark:text-brand-400" /></span>
-                  Your ATS score distribution
-                </h3>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">See how your matches stack up — aim for 82+ for strong fit.</p>
-              </div>
-              <div className="flex items-end gap-1.5 h-20 mb-4">
-                {[
-                  { from: 0, to: 40 }, { from: 40, to: 50 }, { from: 50, to: 60 },
-                  { from: 60, to: 70 }, { from: 70, to: 80 }, { from: 80, to: 90 }, { from: 90, to: 101 }
-                ].map(({ from, to }, i) => {
-                  const count = matches.filter(m => m.fit_score >= from && m.fit_score < to).length;
-                  const max = Math.max(1, ...([0,40,50,60,70,80,90].map((f, j, arr) =>
-                    matches.filter(m => m.fit_score >= f && m.fit_score < (arr[j+1] || 101)).length
-                  )));
-                  const height = Math.max(6, (count / max) * 64);
-                  const barColor = to >= SCORE_APPLY_OK ? 'bg-emerald-500' : to >= SCORE_APPLY_CAUTION ? 'bg-amber-500' : 'bg-red-400';
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
-                      <span className="text-[10px] font-medium text-surface-500 dark:text-surface-400 tabular-nums">{count || ''}</span>
-                      <div className={cn('w-full rounded-t-lg transition-all', barColor)} style={{ height }} />
-                      <span className="text-[9px] text-surface-400 dark:text-surface-500">{from}+</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex gap-6 text-xs flex-wrap">
-                <span className="flex items-center gap-1.5 text-surface-600 dark:text-surface-300"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Strong match (82+)</span>
-                <span className="flex items-center gap-1.5 text-surface-600 dark:text-surface-300"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" />Apply with caution (75–81)</span>
-                <span className="flex items-center gap-1.5 text-surface-600 dark:text-surface-300"><span className="w-2.5 h-2.5 rounded-full bg-red-400" />Cannot apply (&lt;75)</span>
-              </div>
-            </div>
-          )}
 
           {/* Top matches + Recent applications row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -826,7 +755,7 @@ export default function CandidateDashboard() {
                       <span className="w-8 h-8 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center"><Sparkles size={16} className="text-emerald-600 dark:text-emerald-400" /></span>
                       Top matches
                     </h3>
-                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Your highest-scoring opportunities</p>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Jobs matched to your target titles</p>
                   </div>
                   <button onClick={() => setTab('matches')} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1 shrink-0">
                     View all <ChevronRight size={12} />
@@ -834,41 +763,32 @@ export default function CandidateDashboard() {
                 </div>
                 <div className="divide-y divide-surface-100 dark:divide-surface-700">
                   {availableMatches.slice(0, 5).map(m => {
-                    const reason = parseMatchReason(m.match_reason);
                     const applied = alreadyApplied.has(m.job_id);
                     return (
                       <div key={m.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors">
-                        <ATSScoreBadge score={m.fit_score} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">{m.job?.title}</p>
                           <p className="text-xs text-surface-500 dark:text-surface-400 truncate">{m.job?.company} · {m.job?.location || '—'}</p>
-                          {reason.strength && <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 truncate">✓ {reason.strength}</p>}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                          <button onClick={() => { setBriefJobId(m.job_id); setBriefText(null); setBriefError(null); generateJobBrief(m.job_id); }} disabled={briefLoading && briefJobId === m.job_id} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title="AI brief">
-                            {briefLoading && briefJobId === m.job_id ? <Spinner size={14} /> : <Brain size={14} />}
-                          </button>
                           {applied
                             ? <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><CheckCircle2 size={12} /> Applied</span>
-                            : (() => {
-                                const allowApply = canApply(m.fit_score);
-                                return (
-                                  <>
-                                    <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                      {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
-                                    </button>
-                                    {m.job?.url ? (
-                                      <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-1.5 px-3 flex items-center gap-1', !allowApply && 'opacity-50 pointer-events-none')} title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                        <ExternalLink size={12} /> Apply
-                                      </a>
-                                    ) : <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No link</span>}
-                                    <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || !allowApply}
-                                      className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1" title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                      {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm</>}
-                                    </button>
-                                  </>
-                                );
-                              })()}
+                            : (
+                                <>
+                                  <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                    {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
+                                  </button>
+                                  {m.job?.url ? (
+                                    <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
+                                      <ExternalLink size={12} /> Apply
+                                    </a>
+                                  ) : <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No link</span>}
+                                  <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
+                                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+                                    {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm</>}
+                                  </button>
+                                </>
+                              )}
                         </div>
                       </div>
                     );
@@ -909,23 +829,6 @@ export default function CandidateDashboard() {
             )}
           </div>
 
-          {/* Upload nudge */}
-          {uploadedResumes.length === 0 && (
-            <div className="rounded-2xl border border-amber-200 dark:border-amber-500/40 bg-gradient-to-br from-amber-50 to-white dark:from-amber-500/10 dark:to-surface-800 p-6 flex items-start gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/20 dark:bg-amber-500/30 flex items-center justify-center shrink-0">
-                <Upload size={22} className="text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Upload your resume to improve ATS scores</p>
-                <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-1">
-                  Our AI reads your full resume to score matches more accurately. Without it, scoring uses only your profile.
-                </p>
-                <button onClick={() => setTab('resumes')} className="mt-4 btn-primary text-sm py-2 px-4 flex items-center gap-2 w-fit">
-                  <Upload size={16} /> Upload resume
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Activity timeline */}
           {(applications.length > 0 || matches.length > 0) && (
@@ -950,7 +853,7 @@ export default function CandidateDashboard() {
                       <span className="text-surface-400 dark:text-surface-500 text-xs shrink-0 w-20">{formatRelative(item.at)}</span>
                       {item.type === 'application'
                         ? <span className="text-surface-700 dark:text-surface-200">Applied to <strong>{item.app.job?.title}</strong> at {item.app.job?.company}</span>
-                        : <span className="text-surface-700 dark:text-surface-200">New match: <strong>{item.match.job?.title}</strong> at {item.match.job?.company} ({item.match.fit_score})</span>
+                        : <span className="text-surface-700 dark:text-surface-200">New match: <strong>{item.match.job?.title}</strong> at {item.match.job?.company}</span>
                       }
                     </div>
                   ))}
@@ -986,13 +889,11 @@ export default function CandidateDashboard() {
             <EmptyState icon={<Briefcase size={24} />} title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
               description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all matched jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'} />
           ) : filteredAvailableForSaved.map(m => {
-            const reason = parseMatchReason(m.match_reason);
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;
             return (
-              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
+              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
                 <div className="flex items-start gap-4 flex-wrap">
-                  <ATSScoreBadge score={m.fit_score} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div>
@@ -1011,36 +912,28 @@ export default function CandidateDashboard() {
                           ? <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl">
                               <CheckCircle2 size={12} /> {appStatus || 'Applied'}
                             </span>
-                          : (() => {
-                              const allowApply = canApply(m.fit_score);
-                              return (
-                                <>
-                                  <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                    {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
-                                  </button>
-                                  <button onClick={() => { setBriefJobId(m.job_id); setBriefText(null); setBriefError(null); generateJobBrief(m.job_id); }} disabled={briefLoading && briefJobId === m.job_id} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title="AI brief: why this score, what matched, what to improve">
-                                    {briefLoading && briefJobId === m.job_id ? <Spinner size={16} /> : <Brain size={16} />}
-                                  </button>
-                                  {m.job?.url ? (
-                                    <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', !allowApply && 'opacity-50 pointer-events-none')} title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                      <ExternalLink size={12} /> Apply now
-                                    </a>
-                                  ) : (
-                                    <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
-                                  )}
-                                  <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || !allowApply}
-                                    className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5" title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                    {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
-                                  </button>
-                                </>
-                              );
-                            })()
+                          : (
+                              <>
+                                <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                  {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
+                                </button>
+                                {m.job?.url ? (
+                                  <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+                                    <ExternalLink size={12} /> Apply now
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
+                                )}
+                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
+                                  className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
+                                  {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                                </button>
+                              </>
+                            )
                         }
                         {(() => {
                           const tr = tailoredResumes[m.job_id];
                           const status = tr?.generation_status;
-                          // Candidates can only download recruiter-generated tailored resumes;
-                          // they cannot trigger or retry generation themselves.
                           if (status === 'done' || status === 'completed') {
                             return (
                               <button
@@ -1058,144 +951,12 @@ export default function CandidateDashboard() {
                               </span>
                             );
                           }
-                          // No button when there is no tailored resume yet or it failed;
-                          // candidates must rely on recruiters to trigger tailoring.
                           return null;
                         })()}
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {m.fit_score >= SCORE_APPLY_CAUTION && m.fit_score < SCORE_APPLY_OK && (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-500/10 dark:bg-amber-500/20 rounded-lg px-3 py-2">
-                    ⚠ Moderate match — you can apply with caution.
-                  </p>
-                )}
-                {m.fit_score < SCORE_APPLY_CAUTION && (
-                  <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 rounded-lg px-3 py-2">
-                    Score below 75 — applying is not recommended.
-                  </p>
-                )}
-
-                {(m.score_breakdown?.version === 2 || m.score_breakdown?.version === 3) && m.score_breakdown.dimensions && (
-                  <div className="pt-3 border-t border-surface-100 dark:border-surface-700 space-y-2.5">
-                    <p className="text-[11px] font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide">ATS Score Breakdown {m.score_breakdown.version === 3 ? '(v3 — Elite)' : ''}</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-                      {[
-                        { key: 'keyword', label: 'Keywords', icon: '🔑' },
-                        { key: 'experience', label: 'Experience', icon: '💼' },
-                        { key: 'title', label: 'Role Fit', icon: '🎯' },
-                        { key: 'education', label: 'Education', icon: '🎓' },
-                        { key: 'location', label: 'Location', icon: '📍' },
-                        { key: 'formatting', label: 'ATS Format', icon: '📄' },
-                        { key: 'behavioral', label: 'Behavioral', icon: '🤝' },
-                        { key: 'soft', label: 'Soft Factors', icon: '✨' },
-                      ].map(dim => {
-                        const d = m.score_breakdown.dimensions[dim.key];
-                        if (!d) return null;
-                        const dimWeight = m.score_breakdown.weights?.[dim.key];
-                        const barColor = d.score >= 80 ? 'bg-emerald-500' : d.score >= 60 ? 'bg-amber-500' : d.score >= 40 ? 'bg-orange-500' : 'bg-red-500';
-                        return (
-                          <div key={dim.key} className="flex items-center gap-2 group" title={d.details}>
-                            <span className="text-[10px] w-3 shrink-0">{dim.icon}</span>
-                            <span className="text-[10px] text-surface-500 dark:text-surface-400 w-16 shrink-0 truncate">{dim.label}</span>
-                            <div className="flex-1 h-2 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden">
-                              <div className={cn('h-full rounded-full transition-all', barColor)} style={{ width: `${d.score}%` }} />
-                            </div>
-                            <span className={cn('text-[10px] font-bold tabular-nums w-7 text-right', d.score >= 80 ? 'text-emerald-600 dark:text-emerald-400' : d.score >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400')}>{d.score}</span>
-                            {dimWeight && <span className="text-[8px] text-surface-400 w-5 shrink-0">{dimWeight}%</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                    {m.score_breakdown.dimensions.keyword?.matched?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {m.score_breakdown.dimensions.keyword.matched.slice(0, 8).map((k: string, i: number) => (
-                          <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">{k}</span>
-                        ))}
-                        {m.score_breakdown.dimensions.keyword.missing?.slice(0, 4).map((k: string, i: number) => (
-                          <span key={`m${i}`} className="text-[9px] px-1.5 py-0.5 rounded bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 line-through">{k}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {!m.score_breakdown?.dimensions && (reason.strength || reason.gap || reason.risk) && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-surface-100 dark:border-surface-700">
-                    {reason.strength && (
-                      <div className="flex items-start gap-2 text-xs rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 px-3 py-2">
-                        <span className="text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0">✓</span>
-                        <span className="text-surface-700 dark:text-surface-200"><span className="font-semibold text-emerald-700 dark:text-emerald-300">Strength: </span>{reason.strength}</span>
-                      </div>
-                    )}
-                    {reason.gap && (
-                      <div className="flex items-start gap-2 text-xs rounded-lg bg-amber-500/10 dark:bg-amber-500/20 px-3 py-2">
-                        <span className="text-amber-600 dark:text-amber-400 mt-0.5 shrink-0">△</span>
-                        <span className="text-surface-700 dark:text-surface-200"><span className="font-semibold text-amber-700 dark:text-amber-300">Gap: </span>{reason.gap}</span>
-                      </div>
-                    )}
-                    {reason.risk && reason.risk !== 'None' && (
-                      <div className="flex items-start gap-2 text-xs rounded-lg bg-red-500/10 dark:bg-red-500/20 px-3 py-2">
-                        <span className="text-red-500 dark:text-red-400 mt-0.5 shrink-0">⚠</span>
-                        <span className="text-surface-700 dark:text-surface-200"><span className="font-semibold text-red-600 dark:text-red-300">Risk: </span>{reason.risk}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {m.score_breakdown?.variant_scores && m.score_breakdown.variant_scores.length > 1 && (
-                  <div className="pt-3 border-t border-surface-100 dark:border-surface-700 space-y-2">
-                    <p className="text-[11px] font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide flex items-center gap-1">
-                      <FileText size={10} /> Score per resume
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {m.score_breakdown.variant_scores.map((vs: any, vi: number) => {
-                        const rLabel = vs.resume_id
-                          ? (uploadedResumes.find((r: any) => r.id === vs.resume_id)?.label || `Resume ${vi + 1}`)
-                          : 'Profile only';
-                        const isBest = vs.resume_id === m.best_resume_id;
-                        const { bg, text: textCls } = getScoreBadgeClasses(vs.score);
-                        return (
-                          <div key={vi} className={cn('flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs border', isBest ? 'border-brand-300 dark:border-brand-500/50 bg-brand-50/50 dark:bg-brand-500/10' : 'border-surface-150 dark:border-surface-700 bg-surface-50 dark:bg-surface-800')}>
-                            <span className={cn('font-bold tabular-nums w-8 text-center px-1.5 py-0.5 rounded-lg', bg, textCls)}>{vs.score}</span>
-                            <span className="text-surface-700 dark:text-surface-200 font-medium truncate flex-1">{rLabel}</span>
-                            {isBest && <span className="text-[9px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-500/20 px-1.5 py-0.5 rounded-md uppercase">Best</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {m.score_breakdown?.variant_scores?.length === 1 && m.best_resume_id && (
-                  <p className="text-[10px] text-surface-400 dark:text-surface-500 flex items-center gap-1">
-                    <FileText size={10} />
-                    Scored with: {uploadedResumes.find((r: any) => r.id === m.best_resume_id)?.label || 'your resume'}
-                  </p>
-                )}
-
-                {!m.score_breakdown?.variant_scores && m.best_resume_id && (
-                  <p className="text-[10px] text-surface-400 dark:text-surface-500 flex items-center gap-1">
-                    <FileText size={10} />
-                    Best match used: {uploadedResumes.find((r: any) => r.id === m.best_resume_id)?.label || 'your resume'}
-                  </p>
-                )}
-
-                {(m.matched_keywords?.length || m.missing_keywords?.length) ? (
-                  <div className="flex flex-wrap gap-2">
-                    {m.matched_keywords?.slice(0, 5).map((k: string, i: number) => (
-                      <span key={i} className="px-2 py-1 bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 rounded-lg text-[11px] font-medium">✓ {k}</span>
-                    ))}
-                    {m.missing_keywords?.slice(0, 4).map((k: string, i: number) => (
-                      <span key={i} className="px-2 py-1 bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-300 rounded-lg text-[11px] font-medium">✗ {k}</span>
-                    ))}
-                  </div>
-                ) : null}
-                {reason.resume && (
-                  <p className="text-[10px] text-surface-400 dark:text-surface-500 italic">Scored using: {reason.resume}</p>
-                )}
               </div>
             );
           })}
@@ -1214,59 +975,40 @@ export default function CandidateDashboard() {
             <p className="text-sm text-surface-500 dark:text-surface-400">{savedMatches.length} saved job{savedMatches.length !== 1 ? 's' : ''}</p>
           )}
           {savedMatches.length > 0 && savedMatches.map(m => {
-            const reason = parseMatchReason(m.match_reason);
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;
             return (
-              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
-                <div className="flex items-start gap-4 flex-wrap">
-                  <ATSScoreBadge score={m.fit_score} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
-                      <div>
-                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg">{m.job?.title}</p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-surface-500 dark:text-surface-400">
-                          <span>{m.job?.company}</span>
-                          {m.job?.location && <span className="flex items-center gap-0.5"><MapPin size={10} />{m.job.location}</span>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-300" title="Unsave">
-                          <BookmarkCheck size={16} />
-                        </button>
-                        <button onClick={() => { setBriefJobId(m.job_id); setBriefText(null); setBriefError(null); generateJobBrief(m.job_id); }} disabled={briefLoading && briefJobId === m.job_id} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title="AI brief">
-                          {briefLoading && briefJobId === m.job_id ? <Spinner size={16} /> : <Brain size={16} />}
-                        </button>
-                        {applied ? (
-                          <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 rounded-xl">
-                            <CheckCircle2 size={12} /> {appStatus || 'Applied'}
-                          </span>
-                        ) : (() => {
-                            const allowApply = canApply(m.fit_score);
-                            return (
-                              <>
-                                {m.job?.url && (
-                                  <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', !allowApply && 'opacity-50 pointer-events-none')} title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                    <ExternalLink size={12} /> Apply now
-                                  </a>
-                                )}
-                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || !allowApply} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5" title={!allowApply ? 'Score must be 75+ to apply' : undefined}>
-                                  {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
-                                </button>
-                              </>
-                            );
-                          })()
-                        }
-                      </div>
+              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg">{m.job?.title}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-surface-500 dark:text-surface-400">
+                      <span>{m.job?.company}</span>
+                      {m.job?.location && <span className="flex items-center gap-0.5"><MapPin size={10} />{m.job.location}</span>}
                     </div>
                   </div>
-                </div>
-                {(reason.strength || reason.gap) && (
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-surface-100 dark:border-surface-700">
-                    {reason.strength && <span className="text-xs text-emerald-700 dark:text-emerald-300">✓ {reason.strength}</span>}
-                    {reason.gap && <span className="text-xs text-amber-700 dark:text-amber-300">△ {reason.gap}</span>}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-300" title="Unsave">
+                      <BookmarkCheck size={16} />
+                    </button>
+                    {applied ? (
+                      <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 rounded-xl">
+                        <CheckCircle2 size={12} /> {appStatus || 'Applied'}
+                      </span>
+                    ) : (
+                      <>
+                        {m.job?.url && (
+                          <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+                            <ExternalLink size={12} /> Apply now
+                          </a>
+                        )}
+                        <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id} className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
+                          {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                        </button>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}

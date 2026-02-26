@@ -27,6 +27,7 @@ export default function CandidateProfilePage() {
     setProfileForm({
       full_name: cand.full_name || '',
       primary_title: cand.primary_title || '',
+      target_job_titles: (cand.target_job_titles || []).join(', '),
       phone: cand.phone || '',
       location: cand.location || '',
       linkedin_url: cand.linkedin_url || '',
@@ -91,9 +92,14 @@ export default function CandidateProfilePage() {
     if (!candidate) return;
     setSavingProfile(true);
     setProfileError(null);
+    const targetTitlesArr = (profileForm.target_job_titles || '')
+      .split(',')
+      .map((t: string) => t.trim())
+      .filter(Boolean);
     const payload = {
       full_name: profileForm.full_name,
       primary_title: profileForm.primary_title?.trim() || null,
+      target_job_titles: targetTitlesArr,
       phone: profileForm.phone || null,
       location: profileForm.location || null,
       linkedin_url: profileForm.linkedin_url || null,
@@ -186,6 +192,32 @@ export default function CandidateProfilePage() {
                 />
               )
               : <p className="text-sm text-surface-600 dark:text-surface-300">{candidate.primary_title?.trim() || <span className="text-surface-400 dark:text-surface-500 italic">Not set — add in edit mode</span>}</p>
+            }
+          </div>
+
+          <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-white dark:bg-surface-800 p-6 shadow-sm">
+            <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-1">Target job titles</h3>
+            <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Jobs matching these titles will appear in your Matched Jobs. Separate with commas.</p>
+            {editingProfile
+              ? (
+                <input
+                  type="text"
+                  value={profileForm.target_job_titles || ''}
+                  onChange={e => setProfileForm((p: any) => ({ ...p, target_job_titles: e.target.value }))}
+                  className="input text-sm w-full dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 dark:placeholder:text-surface-400"
+                  placeholder="e.g. Software Engineer, Backend Developer, Full Stack Engineer"
+                />
+              )
+              : (
+                <div className="flex flex-wrap gap-2">
+                  {(candidate.target_job_titles as string[] | undefined)?.length
+                    ? (candidate.target_job_titles as string[]).map((t, i) => (
+                        <span key={i} className="px-2.5 py-1 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 text-xs font-medium">{t}</span>
+                      ))
+                    : <span className="text-surface-400 dark:text-surface-500 italic text-sm">None set — add titles to get matched to jobs</span>
+                  }
+                </div>
+              )
             }
           </div>
 

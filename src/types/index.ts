@@ -50,6 +50,7 @@ export interface Candidate {
   visa_status?: string;
   primary_title: string;
   secondary_titles: string[];
+  target_job_titles?: string[];
   skills: string[];
   tools?: string[];
   soft_skills?: string[];

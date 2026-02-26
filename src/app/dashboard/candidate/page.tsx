@@ -899,7 +899,7 @@ export default function CandidateDashboard() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div>
-                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg">{m.job?.title}</p>
+                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg truncate">{m.job?.title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-surface-500 dark:text-surface-400">
                           <span>{m.job?.company}</span>
                           {m.job?.location && <span className="flex items-center gap-0.5"><MapPin size={10} />{m.job.location}</span>}

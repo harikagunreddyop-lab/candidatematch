@@ -178,7 +178,7 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: '70vh' }}>
+      <div className="flex gap-3 overflow-x-auto pb-4 min-h-[70vh]">
         {STAGES.map(stage => {
           const stageCards = cards[stage.key] || [];
           const isOver = dragOver === stage.key;
@@ -262,7 +262,7 @@ function PipelineCard({ card, stage, onDragStart, onMove }: {
     <div
       draggable
       onDragStart={onDragStart}
-      className="bg-white dark:bg-surface-800 rounded-lg p-3 shadow-sm border border-surface-100 dark:border-surface-600 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group"
+      className="bg-white dark:bg-surface-800 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group"
     >
       {/* Candidate row */}
       <div className="flex items-start gap-2">
@@ -283,7 +283,7 @@ function PipelineCard({ card, stage, onDragStart, onMove }: {
       </div>
 
       {/* Job row */}
-      <div className="mt-2 pt-2 border-t border-surface-50 dark:border-surface-600">
+      <div className="mt-2 pt-2 border-t border-surface-100 dark:border-surface-600">
         <p className="text-[11px] font-medium text-surface-800 dark:text-surface-200 truncate">{job?.title}</p>
         <p className="text-[10px] text-surface-500 dark:text-surface-400 truncate">{job?.company}</p>
         {job?.location && (

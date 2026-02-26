@@ -271,10 +271,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime subscription for live updates across all key tables
   useEffect(() => {
-    const interval = setInterval(() => load(true), 15000);
-    return () => clearInterval(interval);
-  }, [load]);
+    const channel = supabase.channel('admin-dashboard')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load(true))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [load, supabase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (

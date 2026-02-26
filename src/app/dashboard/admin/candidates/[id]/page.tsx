@@ -92,6 +92,7 @@ export default function CandidateDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments', filter: `candidate_id=eq.${id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications', filter: `candidate_id=eq.${id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resume_versions', filter: `candidate_id=eq.${id}` }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [id, load]);
@@ -269,7 +270,7 @@ export default function CandidateDetailPage() {
           <div className="flex items-center gap-3 flex-wrap min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
-              candidate.active ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-surface-500')}>
+              candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}
             </span>
             {candidate.rating > 0 && (
@@ -298,7 +299,7 @@ export default function CandidateDetailPage() {
         <button onClick={load} className="btn-ghost p-2"><RefreshCw size={14} /></button>
       </div>
       {matchMsg && (
-        <div className={cn('rounded-xl border px-4 py-2.5 text-sm', matchMsg.startsWith('✅') ? 'border-green-200 bg-green-50 text-green-700' : 'border-red-200 bg-red-50 text-red-700')}>
+        <div className={cn('rounded-xl border px-4 py-2.5 text-sm', matchMsg.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300')}>
           {matchMsg}
         </div>
       )}
@@ -401,8 +402,8 @@ export default function CandidateDetailPage() {
               <div className="card p-5">
                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Skills</h3>
                 <div className="flex flex-wrap gap-1.5">
-                  {skills.map((s: string, i: number) => (
-                    <span key={i} className="px-2.5 py-1 bg-brand-50 text-brand-700 rounded-lg text-xs font-medium">{s}</span>
+                    {skills.map((s: string, i: number) => (
+                    <span key={i} className="px-2.5 py-1 bg-brand-50 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 rounded-lg text-xs font-medium">{s}</span>
                   ))}
                 </div>
               </div>
@@ -413,7 +414,7 @@ export default function CandidateDetailPage() {
                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Soft Skills</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {softSkills.map((s: string, i: number) => (
-                    <span key={i} className="px-2 py-0.5 bg-surface-100 text-surface-600 rounded text-xs">{s}</span>
+                    <span key={i} className="px-2 py-0.5 bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded-md text-xs">{s}</span>
                   ))}
                 </div>
               </div>
@@ -424,7 +425,7 @@ export default function CandidateDetailPage() {
                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Tools</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {tools.map((s: string, i: number) => (
-                    <span key={i} className="px-2 py-0.5 bg-surface-100 text-surface-600 rounded text-xs">{s}</span>
+                    <span key={i} className="px-2 py-0.5 bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded-md text-xs">{s}</span>
                   ))}
                 </div>
               </div>
@@ -604,10 +605,10 @@ export default function CandidateDetailPage() {
       {tab === 'matches' && (
         <div className="space-y-3">
           {resumeError && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
+            <div className="rounded-xl border border-amber-200 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-900/20 px-4 py-3 text-sm text-amber-800 dark:text-amber-300 flex items-center gap-2">
               <AlertCircle size={16} className="shrink-0" />
               <span>{resumeError}</span>
-              <button type="button" onClick={() => setResumeError(null)} className="ml-auto text-amber-600 hover:text-amber-800 p-1" aria-label="Dismiss">✕</button>
+              <button type="button" onClick={() => setResumeError(null)} className="ml-auto text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 p-1" aria-label="Dismiss">✕</button>
             </div>
           )}
           {matches.length === 0 ? (
@@ -619,9 +620,9 @@ export default function CandidateDetailPage() {
                 {typeof (m as any).ats_score === 'number' && (
                   <div className="shrink-0 flex flex-col items-center gap-0.5">
                     <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
-                      (m as any).ats_score >= 75 ? 'bg-emerald-500/15 text-emerald-700' :
-                      (m as any).ats_score >= 50 ? 'bg-amber-500/15 text-amber-700' :
-                      'bg-red-500/15 text-red-600'
+                      (m as any).ats_score >= 75 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                      (m as any).ats_score >= 50 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                      'bg-red-500/15 text-red-600 dark:text-red-400'
                     )}>
                       {(m as any).ats_score}
                     </span>
@@ -630,9 +631,9 @@ export default function CandidateDetailPage() {
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <div>
-                      <p className="font-semibold text-surface-900">{m.job?.title}</p>
-                      <p className="text-sm text-surface-500">{m.job?.company} · {m.job?.location || 'Location not listed'}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-surface-900 dark:text-surface-100 truncate">{m.job?.title}</p>
+                      <p className="text-sm text-surface-500 dark:text-surface-400 truncate">{m.job?.company} · {m.job?.location || 'Location not listed'}</p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {m.job?.url && (
@@ -708,25 +709,25 @@ export default function CandidateDetailPage() {
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-surface-50 border-b border-surface-200">
+                <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-600">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Job</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Applied</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Candidate note</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Interview notes</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Job</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Company</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Applied</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Candidate note</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Interview notes</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-surface-50">
+                <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
                   {applications.map(a => (
-                    <tr key={a.id} className="hover:bg-surface-50">
-                      <td className="px-4 py-3 font-medium text-surface-900">{a.job?.title}</td>
-                      <td className="px-4 py-3 text-surface-500">{a.job?.company}</td>
+                    <tr key={a.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/40">
+                      <td className="px-4 py-3 font-medium text-surface-900 dark:text-surface-100">{a.job?.title}</td>
+                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400">{a.job?.company}</td>
                       <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
-                      <td className="px-4 py-3 text-surface-400 text-xs">{a.applied_at ? formatDate(a.applied_at) : '—'}</td>
-                      <td className="px-4 py-3 text-surface-500 text-xs max-w-[160px] truncate" title={a.candidate_notes || ''}>{a.candidate_notes || '—'}</td>
-                      <td className="px-4 py-3 text-surface-500 text-xs max-w-[160px] truncate" title={a.interview_notes || ''}>{a.interview_notes || '—'}</td>
+                      <td className="px-4 py-3 text-surface-400 dark:text-surface-500 text-xs">{a.applied_at ? formatDate(a.applied_at) : '—'}</td>
+                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.candidate_notes || ''}>{a.candidate_notes || '—'}</td>
+                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.interview_notes || ''}>{a.interview_notes || '—'}</td>
                     </tr>
                   ))}
                 </tbody>

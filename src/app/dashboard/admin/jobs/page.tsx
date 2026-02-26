@@ -133,8 +133,8 @@ export default function JobsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 font-display">Jobs</h1>
-          <p className="text-sm text-surface-500 mt-1">
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Jobs</h1>
+          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
             {totalCount.toLocaleString()} active jobs · page {page + 1} ·{' '}
             {lastRefreshed && (
               <span className="text-surface-400">
@@ -242,7 +242,7 @@ export default function JobsPage() {
               ))}
             </tbody>
           </table>
-          <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200">
+          <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200 dark:border-surface-700">
             <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="btn-ghost text-xs">← Prev</button>
             <span className="text-xs text-surface-500">
               Showing {page * 10 + 1}–{Math.min((page + 1) * 10, totalCount)} of {totalCount.toLocaleString()}
@@ -272,7 +272,7 @@ export default function JobsPage() {
               </a>
             )}
             <div className="mt-4 p-4 bg-surface-50 dark:bg-surface-800 rounded-xl max-h-[400px] overflow-y-auto">
-              <p className="text-sm text-surface-700 whitespace-pre-wrap">
+              <p className="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
                 {viewing.jd_clean || 'No description available'}
               </p>
             </div>

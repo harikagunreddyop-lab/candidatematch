@@ -54,6 +54,7 @@ export default function RecruiterCandidatesPage() {
     const channel = supabase.channel('recruiter-candidates-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
@@ -70,8 +71,8 @@ export default function RecruiterCandidatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 font-display">My Candidates</h1>
-        <p className="text-sm text-surface-500 mt-1">{candidates.length} assigned to you</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">My Candidates</h1>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">{candidates.length} assigned to you</p>
       </div>
 
       <div className="flex gap-3 flex-wrap">
@@ -94,7 +95,7 @@ export default function RecruiterCandidatesPage() {
         <EmptyState icon={<Users size={24} />} title="No matches" description="Try a different search or filter" />
       ) : (
         <div className="card overflow-hidden">
-          <div className="divide-y divide-surface-50">
+          <div className="divide-y divide-surface-100 dark:divide-surface-700">
             {filtered.map(c => {
               const sortedApps = [...(c.applications || [])].sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
               const latestStatus = sortedApps[0]?.status;
@@ -128,7 +129,7 @@ export default function RecruiterCandidatesPage() {
                     {skills.length > 0 && (
                       <div className="flex gap-1 mt-1.5 flex-wrap">
                         {skills.map((s: string, i: number) => (
-                          <span key={i} className="px-1.5 py-0.5 bg-brand-50 text-brand-600 rounded text-[10px]">{s}</span>
+                          <span key={i} className="px-1.5 py-0.5 bg-brand-50 dark:bg-brand-500/20 text-brand-600 dark:text-brand-300 rounded text-[10px]">{s}</span>
                         ))}
                         {safeArray(c.skills).length > 4 && (
                           <span className="text-[10px] text-surface-400">+{safeArray(c.skills).length - 4}</span>
@@ -139,7 +140,7 @@ export default function RecruiterCandidatesPage() {
 
                   <div className="shrink-0 flex items-center gap-3">
                     {latestStatus && (
-                      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 hidden sm:block">
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 hidden sm:block">
                         {latestStatus}
                       </span>
                     )}

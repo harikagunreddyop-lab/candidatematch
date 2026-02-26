@@ -170,8 +170,8 @@ function CandidatesPageContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 font-display">Candidates</h1>
-          <p className="text-sm text-surface-500 mt-1">
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Candidates</h1>
+          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
             {candidates.length} total
             {lastRefreshed && (
               <span className="text-surface-400">

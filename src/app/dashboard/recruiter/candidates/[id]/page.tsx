@@ -51,7 +51,7 @@ function TagInput({ value, onChange, placeholder }: {
   };
   return (
     <div
-      className="flex flex-wrap gap-1.5 p-2 border border-surface-600 rounded-lg min-h-[40px] cursor-text bg-surface-800"
+      className="flex flex-wrap gap-1.5 p-2 border border-surface-200 dark:border-surface-600 rounded-lg min-h-[40px] cursor-text bg-white dark:bg-surface-800"
       onClick={() => document.getElementById(inputId)?.focus()}
     >
       {value.map((tag, i) => (
@@ -224,6 +224,8 @@ export default function RecruiterCandidateDetail() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications', filter: `candidate_id=eq.${id}` },
         () => load(false))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resume_versions', filter: `candidate_id=eq.${id}` },
+        () => load(false))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` },
         () => load(false))
       .subscribe();
     return () => { supabase.removeChannel(channel); };

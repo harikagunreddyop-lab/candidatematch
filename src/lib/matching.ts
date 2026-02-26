@@ -52,22 +52,6 @@ type Candidate = {
   active: boolean;
 };
 
-type ResumeVariant = { resumeId: string | null; text: string };
-
-type ProfileScoreResult = {
-  total_score: number;
-  reason: string;
-  matched_keywords: string[];
-  missing_keywords: string[];
-  breakdown: {
-    skill_score: number;
-    title_score: number;
-    experience_score: number;
-    location_score: number;
-    resume_signal_score: number;
-    matched_skills: string[];
-  };
-};
 
 // ── Domain classification ────────────────────────────────────────────────────
 
@@ -198,86 +182,6 @@ function canonicalTerm(s: string): string {
     .trim();
 }
 
-function computeProfileScore(job: Job, candidate: Candidate, resumeText: string): ProfileScoreResult {
-  const jobText = canonicalTerm(`${job.title || ''} ${(job.jd_clean || job.jd_raw || '').slice(0, 6000)}`);
-  const jobTitle = canonicalTerm(job.title || '');
-
-  const skills = [...parseSkills(candidate.skills), ...(candidate.tools || [])]
-    .map(canonicalTerm)
-    .filter(Boolean);
-  const uniqueSkills = Array.from(new Set(skills)).filter(s => s.length >= 2);
-
-  const matchedSkills = uniqueSkills.filter(s => jobText.includes(s)).slice(0, 20);
-
-  const must = (job.must_have_skills || []).map(canonicalTerm).filter(Boolean);
-  const missing = must.length
-    ? must.filter(s => !matchedSkills.includes(s)).slice(0, 10)
-    : [];
-
-  const denom = Math.max(5, Math.min(12, uniqueSkills.length || 5));
-  const skillScore = Math.max(0, Math.min(60, Math.round((matchedSkills.length / denom) * 60)));
-
-  const candidateDomains = getCandidateDomains(candidate);
-  const jobDomain = classifyDomain(job.title);
-  const domainOk = isDomainCompatible(candidateDomains, jobDomain);
-
-  const titleTokens = Array.from(new Set(
-    [candidate.primary_title, ...(candidate.secondary_titles || [])]
-      .map(t => canonicalTerm(t || ''))
-      .join(' ')
-      .split(' ')
-      .filter(t => t.length >= 4)
-  ));
-  const titleOverlap = titleTokens.filter(t => jobTitle.includes(t)).length;
-  const titleScore = Math.max(0, Math.min(20, (domainOk ? 10 : 0) + (titleOverlap > 0 ? 10 : 0)));
-
-  const jobMin = typeof job.min_years_experience === 'number' ? job.min_years_experience : null;
-  const candYears = typeof candidate.years_of_experience === 'number' ? candidate.years_of_experience : null;
-  let experienceScore = 5;
-  if (jobMin !== null && candYears !== null) {
-    if (candYears >= jobMin) experienceScore = 10;
-    else experienceScore = Math.max(0, Math.min(10, Math.round((candYears / Math.max(1, jobMin)) * 10)));
-  }
-
-  const remoteType = canonicalTerm((job as any).remote_type || '');
-  const openRemote = (candidate as any).open_to_remote ?? true;
-  const openRelocate = (candidate as any).open_to_relocation ?? false;
-  let locationScore = 0;
-  if (remoteType.includes('remote') && openRemote) locationScore = 10;
-  else if (remoteType.includes('hybrid') && (openRemote || openRelocate)) locationScore = 6;
-  else if (remoteType.includes('onsite') && openRelocate) locationScore = 6;
-
-  const resumeSignalScore = (resumeText || '').trim().length >= 300 ? 5 : 0;
-
-  const total = Math.max(0, Math.min(
-    100,
-    Math.round(skillScore + titleScore + experienceScore + locationScore + resumeSignalScore)
-  ));
-
-  const matchedKeywords = matchedSkills.slice(0, 8);
-  const missingKeywords = missing.slice(0, 6);
-
-  const reason = [
-    `Profile match ${total}`,
-    matchedKeywords.length ? `matched: ${matchedKeywords.slice(0, 5).join(', ')}` : 'matched: —',
-    candYears !== null ? `exp: ${candYears}y` : null,
-  ].filter(Boolean).join(' · ');
-
-  return {
-    total_score: total,
-    reason,
-    matched_keywords: matchedKeywords,
-    missing_keywords: missingKeywords,
-    breakdown: {
-      skill_score: skillScore,
-      title_score: titleScore,
-      experience_score: experienceScore,
-      location_score: locationScore,
-      resume_signal_score: resumeSignalScore,
-      matched_skills: matchedSkills.slice(0, 12),
-    },
-  };
-}
 
 // ── Resume extraction ────────────────────────────────────────────────────────
 
@@ -305,32 +209,6 @@ async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise
   }
 }
 
-async function getResumeVariants(supabase: any, candidateId: string, candidate: Candidate): Promise<ResumeVariant[]> {
-  const { data: resumes } = await supabase
-    .from('candidate_resumes')
-    .select('id, pdf_path')
-    .eq('candidate_id', candidateId)
-    .order('uploaded_at', { ascending: false });
-
-  const variants: ResumeVariant[] = [];
-  if (resumes?.length) {
-    for (const r of resumes) {
-      const text = await getResumeTextFromStorage(supabase, r.pdf_path);
-      variants.push({ resumeId: r.id, text });
-    }
-  }
-
-  const cached = (candidate.parsed_resume_text || '').trim().slice(0, MAX_RESUME_TEXT_LEN);
-  if (cached && !variants.some(v => v.text.trim() === cached.trim())) {
-    variants.push({ resumeId: null, text: cached });
-  }
-
-  if (variants.length === 0) {
-    variants.push({ resumeId: null, text: '' });
-  }
-
-  return variants;
-}
 
 // ── JD Requirements: extract once & cache ────────────────────────────────────
 
@@ -503,48 +381,6 @@ export async function runAtsCheck(
   return { ats_score: result.total_score, ats_reason: result.reason, ats_breakdown: atsRow.ats_breakdown, ats_resume_id: chosenResumeId, ats_checked_at: now };
 }
 
-// ── Pre-filter (fast, no API calls) ──────────────────────────────────────────
-
-function prefilterJobs(jobs: Job[], candidate: Candidate, combinedResumeText: string): { eligible: Job[]; stats: any } {
-  const skills = parseSkills(candidate.skills).map(s => s.toLowerCase());
-  const resumeLower = combinedResumeText.toLowerCase();
-  const titleHints = [
-    (candidate.primary_title || '').toLowerCase(),
-    ...(candidate.secondary_titles || []).map(t => (t || '').toLowerCase()),
-  ].filter(Boolean).join(' ');
-
-  const candidateDomains = getCandidateDomains(candidate);
-
-  const techHints = [
-    'java', 'spring', 'python', 'react', 'node', 'sql', 'aws', 'backend', 'frontend',
-    'data', 'engineer', 'developer', 'analyst', 'manager', 'full stack', 'devops',
-    'kubernetes', 'docker', 'cloud', 'machine learning', 'typescript', 'angular', 'vue',
-  ];
-
-  let accept = 0, rejNoSignal = 0, rejSkillGate = 0, rejDomain = 0;
-
-  const eligible = jobs.filter(job => {
-    const jd = (job.jd_clean || job.jd_raw || '').toLowerCase().trim();
-    const jobDomain = classifyDomain(job.title);
-    if (!isDomainCompatible(candidateDomains, jobDomain)) { rejDomain++; return false; }
-
-    if (jd.length > 80) {
-      const hasSkill = skills.length ? skills.some(s => jd.includes(s)) : false;
-      const hasResumeSkill = resumeLower.length > 50 && techHints.some(h => jd.includes(h) && (resumeLower.includes(h) || titleHints.includes(h)));
-      if (hasSkill || hasResumeSkill) { accept++; return true; }
-      rejSkillGate++;
-      return false;
-    }
-
-    const title = (job.title || '').toLowerCase();
-    const hasSignal = techHints.some(h => title.includes(h)) || techHints.some(h => resumeLower.includes(h)) || techHints.some(h => titleHints.includes(h));
-    if (hasSignal) { accept++; return true; }
-    rejNoSignal++;
-    return false;
-  });
-
-  return { eligible, stats: { accept, rejNoSignal, rejSkillGate, rejDomain } };
-}
 
 // ── Title-based matching (no score, no LLM) ──────────────────────────────────
 

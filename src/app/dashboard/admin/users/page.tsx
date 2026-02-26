@@ -6,7 +6,9 @@ import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
 import {
   UserCheck, Plus, RefreshCw, AlertCircle, Edit2, Trash2,
   X, Mail, Phone, Briefcase, Users, ChevronDown, ChevronUp,
-  Send, CheckCircle2,
+  Send, CheckCircle2, Sliders, Shield, Eye, EyeOff, Info,
+  Zap, FileText, Target, Bookmark, Bell, Download, BarChart2,
+  MessageSquare, Brain, Cpu,
 } from 'lucide-react';
 import { cn, formatRelative } from '@/utils/helpers';
 
@@ -21,6 +23,470 @@ const TIMEZONE_OPTIONS = [
   'America/Toronto', 'Europe/London', 'Europe/Paris', 'Asia/Kolkata', 'Asia/Tokyo',
   'Australia/Sydney', 'Pacific/Auckland',
 ];
+
+// ─── Feature Definitions ────────────────────────────────────────────────────
+interface FeatureDef {
+  key: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  defaultEnabled: boolean;
+  roles: ('candidate' | 'recruiter')[];
+  group: string;
+}
+
+const CANDIDATE_FEATURES: FeatureDef[] = [
+  {
+    key: 'candidate_see_matches',
+    label: 'View job matches',
+    description: 'Candidate can see and browse their matched jobs list.',
+    icon: <Target size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Core',
+  },
+  {
+    key: 'candidate_apply_jobs',
+    label: 'Apply to jobs',
+    description: 'Candidate can submit job applications from the dashboard.',
+    icon: <CheckCircle2 size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Core',
+  },
+  {
+    key: 'candidate_upload_resume',
+    label: 'Upload resumes',
+    description: 'Candidate can upload their own PDF resumes.',
+    icon: <FileText size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Core',
+  },
+  {
+    key: 'candidate_download_resume',
+    label: 'Download resumes',
+    description: 'Candidate can download their uploaded or generated resumes.',
+    icon: <Download size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Core',
+  },
+  {
+    key: 'candidate_save_jobs',
+    label: 'Save / bookmark jobs',
+    description: 'Candidate can bookmark jobs for later review.',
+    icon: <Bookmark size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Core',
+  },
+  {
+    key: 'candidate_see_ats_fix_report',
+    label: 'ATS fix report',
+    description: 'Candidate can see ATS optimization tips for their resume.',
+    icon: <BarChart2 size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'AI Features',
+  },
+  {
+    key: 'candidate_see_why_score',
+    label: 'Match score explanation',
+    description: 'Candidate can view "why this score" breakdown for each match.',
+    icon: <Brain size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'AI Features',
+  },
+  {
+    key: 'candidate_job_brief',
+    label: 'AI job brief',
+    description: 'Candidate can generate an AI brief for any matched job.',
+    icon: <Zap size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'AI Features',
+  },
+  {
+    key: 'candidate_tailor_resume',
+    label: 'Tailor resume to job',
+    description: 'Candidate can request a tailored resume version for a specific job.',
+    icon: <FileText size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'AI Features',
+  },
+  {
+    key: 'candidate_reminders',
+    label: 'Application reminders',
+    description: 'Candidate can set follow-up reminders on their applications.',
+    icon: <Bell size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Productivity',
+  },
+  {
+    key: 'candidate_messages',
+    label: 'Messages',
+    description: 'Candidate can view and send messages to their recruiter.',
+    icon: <MessageSquare size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Productivity',
+  },
+  {
+    key: 'candidate_export_data',
+    label: 'Export personal data',
+    description: 'Candidate can export their full profile and applications as JSON.',
+    icon: <Download size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Productivity',
+  },
+];
+
+const RECRUITER_FEATURES: FeatureDef[] = [
+  {
+    key: 'recruiter_view_candidates',
+    label: 'View assigned candidates',
+    description: 'Recruiter can view their assigned candidates list and profiles.',
+    icon: <Users size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Core',
+  },
+  {
+    key: 'recruiter_view_matches',
+    label: 'View candidate matches',
+    description: 'Recruiter can see job matches for their candidates.',
+    icon: <Target size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Core',
+  },
+  {
+    key: 'recruiter_manage_applications',
+    label: 'Manage applications',
+    description: 'Recruiter can update application statuses and add notes.',
+    icon: <CheckCircle2 size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Core',
+  },
+  {
+    key: 'recruiter_view_pipeline',
+    label: 'Pipeline board',
+    description: 'Recruiter can view and use the Kanban pipeline board.',
+    icon: <Cpu size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Core',
+  },
+  {
+    key: 'resume_generation_allowed',
+    label: 'AI resume generation',
+    description: 'Recruiter can trigger AI-powered resume generation for candidates (score < 75 only).',
+    icon: <FileText size={15} />,
+    defaultEnabled: false,
+    roles: ['recruiter'],
+    group: 'AI Features',
+  },
+  {
+    key: 'recruiter_bulk_apply',
+    label: 'Bulk apply',
+    description: 'Recruiter can bulk-submit applications on behalf of candidates.',
+    icon: <Zap size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'AI Features',
+  },
+  {
+    key: 'recruiter_ai_assistant',
+    label: 'AI assistant',
+    description: 'Recruiter can use the AI assistant for candidate & job insights.',
+    icon: <Brain size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'AI Features',
+  },
+  {
+    key: 'recruiter_view_job_descriptions',
+    label: 'View job descriptions',
+    description: 'Recruiter can open full job description modals for matched jobs.',
+    icon: <Briefcase size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'AI Features',
+  },
+  {
+    key: 'recruiter_messages',
+    label: 'Messages',
+    description: 'Recruiter can send and receive messages on the platform.',
+    icon: <MessageSquare size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Productivity',
+  },
+  {
+    key: 'recruiter_view_reports',
+    label: 'Reports',
+    description: 'Recruiter can view their performance and pipeline reports.',
+    icon: <BarChart2 size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Productivity',
+  },
+];
+
+function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!enabled)}
+      className={cn(
+        'relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-brand-500',
+        enabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
+      )}
+      aria-checked={enabled}
+      role="switch"
+    >
+      <span
+        className={cn(
+          'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform',
+          enabled ? 'translate-x-5' : 'translate-x-0.5'
+        )}
+      />
+    </button>
+  );
+}
+
+function FeatureRow({ feature, enabled, onChange }: {
+  feature: FeatureDef;
+  enabled: boolean;
+  onChange: (key: string, val: boolean) => void;
+}) {
+  return (
+    <div className={cn(
+      'flex items-start gap-4 px-4 py-3.5 rounded-xl border transition-all',
+      enabled
+        ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50/60 dark:bg-brand-500/10'
+        : 'border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-700/30'
+    )}>
+      <div className={cn(
+        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+        enabled ? 'bg-brand-500/20 text-brand-600 dark:text-brand-400' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400'
+      )}>
+        {feature.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className={cn('text-sm font-semibold', enabled ? 'text-surface-900 dark:text-surface-100' : 'text-surface-600 dark:text-surface-300')}>
+          {feature.label}
+        </p>
+        <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5 leading-snug">{feature.description}</p>
+      </div>
+      <Toggle enabled={enabled} onChange={(val) => onChange(feature.key, val)} />
+    </div>
+  );
+}
+
+// ─── Feature Access Modal ─────────────────────────────────────────────────────
+function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void }) {
+  const supabase = createClient();
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const featureList = user.role === 'candidate' ? CANDIDATE_FEATURES : RECRUITER_FEATURES;
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`/api/feature-flags/user?user_id=${user.id}`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Merge defaults first, then overrides
+        const merged: Record<string, boolean> = {};
+        for (const f of featureList) merged[f.key] = f.defaultEnabled;
+        for (const [k, v] of Object.entries(data.flags ?? {})) merged[k] = v as boolean;
+        setFlags(merged);
+      }
+    } catch { }
+    setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id, supabase]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleChange = (key: string, val: boolean) => {
+    setFlags(prev => ({ ...prev, [key]: val }));
+    setSaved(false);
+  };
+
+  const enableAll = () => {
+    const next: Record<string, boolean> = {};
+    for (const f of featureList) next[f.key] = true;
+    setFlags(next);
+    setSaved(false);
+  };
+
+  const disableAll = () => {
+    const next: Record<string, boolean> = {};
+    for (const f of featureList) next[f.key] = false;
+    setFlags(next);
+    setSaved(false);
+  };
+
+  const resetToDefaults = () => {
+    const next: Record<string, boolean> = {};
+    for (const f of featureList) next[f.key] = f.defaultEnabled;
+    setFlags(next);
+    setSaved(false);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/feature-flags/user', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ user_id: user.id, flags }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to save');
+      setSaved(true);
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setSaving(false);
+  };
+
+  // Group features by group
+  const groups = Array.from(new Set(featureList.map(f => f.group)));
+  const enabledCount = featureList.filter(f => flags[f.key] !== false && (flags[f.key] !== undefined ? flags[f.key] : f.defaultEnabled)).length;
+
+  const roleColor = user.role === 'candidate'
+    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+    : 'bg-brand-500/15 text-brand-700 dark:text-brand-300';
+
+  return (
+    <Modal open onClose={onClose} title="" size="xl">
+      {/* Header */}
+      <div className="-mt-5 -mx-6 px-6 pt-5 pb-5 mb-5 border-b border-surface-100 dark:border-surface-700 bg-gradient-to-r from-surface-50 to-white dark:from-surface-700/50 dark:to-surface-800 rounded-t-2xl">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/20 dark:from-brand-500/30 dark:to-brand-600/30 flex items-center justify-center shrink-0">
+            <Sliders size={22} className="text-brand-600 dark:text-brand-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Feature Access</h2>
+              <span className={cn('px-2 py-0.5 rounded-md text-xs font-semibold', roleColor)}>
+                {user.role}
+              </span>
+            </div>
+            <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
+              {user.name || user.email} · {enabledCount}/{featureList.length} features enabled
+            </p>
+          </div>
+          {/* Bulk actions */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button onClick={enableAll} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1">
+              <Eye size={12} /> Enable all
+            </button>
+            <span className="text-surface-300 dark:text-surface-600">·</span>
+            <button onClick={disableAll} className="text-xs font-medium text-surface-500 dark:text-surface-400 hover:underline flex items-center gap-1">
+              <EyeOff size={12} /> Disable all
+            </button>
+            <span className="text-surface-300 dark:text-surface-600">·</span>
+            <button onClick={resetToDefaults} className="text-xs font-medium text-surface-500 dark:text-surface-400 hover:underline flex items-center gap-1">
+              <RefreshCw size={12} /> Defaults
+            </button>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-4">
+          <div className="flex justify-between text-xs text-surface-500 dark:text-surface-400 mb-1">
+            <span>Features enabled</span>
+            <span className="font-semibold tabular-nums">{enabledCount} / {featureList.length}</span>
+          </div>
+          <div className="h-1.5 rounded-full bg-surface-200 dark:bg-surface-600 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-brand-500 to-brand-400 transition-all duration-300"
+              style={{ width: `${(enabledCount / featureList.length) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Spinner size={28} /></div>
+      ) : (
+        <div className="space-y-6 max-h-[55vh] overflow-y-auto pr-1 -mr-2">
+          {groups.map(group => (
+            <div key={group}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-brand-500" />
+                <h3 className="text-xs font-bold text-surface-500 dark:text-surface-400 uppercase tracking-widest">{group}</h3>
+              </div>
+              <div className="space-y-2">
+                {featureList.filter(f => f.group === group).map(feature => (
+                  <FeatureRow
+                    key={feature.key}
+                    feature={feature}
+                    enabled={flags[feature.key] !== undefined ? flags[feature.key] : feature.defaultEnabled}
+                    onChange={handleChange}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {/* Info note */}
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-xs text-blue-700 dark:text-blue-300">
+            <Info size={14} className="shrink-0 mt-0.5" />
+            <span>
+              These are <strong>per-user overrides</strong> and take highest priority.
+              They override any role-level defaults. Changes take effect immediately after saving.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+          <AlertCircle size={13} />{error}
+        </p>
+      )}
+
+      <div className="flex items-center justify-between mt-5 pt-4 border-t border-surface-200 dark:border-surface-700">
+        {saved && (
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+            <CheckCircle2 size={14} /> Changes saved successfully
+          </span>
+        )}
+        {!saved && <span />}
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={handleSave} disabled={saving || loading} className="btn-primary text-sm min-w-[120px] flex items-center justify-center gap-2">
+            {saving ? <Spinner size={14} /> : <Shield size={14} />}
+            {saving ? 'Saving...' : 'Save access'}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 function TagInput({ value, onChange, placeholder }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string }) {
   const [input, setInput] = useState('');
@@ -58,6 +524,7 @@ export default function UsersPage() {
   const [deleting, setDeleting] = useState<any | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [featureUser, setFeatureUser] = useState<any | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -109,7 +576,6 @@ export default function UsersPage() {
     await supabase.from('candidates').delete().eq('user_id', deleting.id);
 
     // 2. Delete orphaned candidate rows matched only by email
-    //    (manually created candidates have user_id = null — these are missed by step 1)
     if (deleting.email) {
       await supabase
         .from('candidates')
@@ -125,7 +591,7 @@ export default function UsersPage() {
     setDeleting(null);
   };
 
-  // Only show candidate-role users who have an accepted candidate record (matches Candidates page)
+  // Only show candidate-role users who have an accepted candidate record
   const displayUsers = users.filter(u => u.role !== 'candidate' || candidateAcceptedUserIds.has(u.id));
 
   const filtered = displayUsers.filter(u => {
@@ -199,6 +665,7 @@ export default function UsersPage() {
             {filtered.map(u => {
               const assignedCount = assignmentCounts[u.id] || 0;
               const isExpanded = expandedId === u.id;
+              const canManageFeatures = u.role === 'candidate' || u.role === 'recruiter';
               return (
                 <div key={u.id}>
                   <div className="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-700/60 transition-colors group">
@@ -240,6 +707,15 @@ export default function UsersPage() {
                         {ROLE_OPTIONS.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
                       </select>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canManageFeatures && (
+                          <button
+                            onClick={() => setFeatureUser(u)}
+                            className="btn-ghost p-1.5 text-surface-400 hover:text-brand-600"
+                            title="Manage feature access"
+                          >
+                            <Sliders size={13} />
+                          </button>
+                        )}
                         <button onClick={() => { setEditing(u); setShowEditForm(true); }}
                           className="btn-ghost p-1.5 text-surface-400 hover:text-brand-600"><Edit2 size={13} /></button>
                         <button onClick={() => setDeleting(u)}
@@ -258,6 +734,17 @@ export default function UsersPage() {
                       {u.timezone && <div><span className="text-surface-400">Timezone</span><p className="font-medium mt-0.5">{u.timezone}</p></div>}
                       <div><span className="text-surface-400">Joined</span><p className="font-medium mt-0.5">{formatRelative(u.created_at)}</p></div>
                       {u.bio && <div className="col-span-2 md:col-span-3"><span className="text-surface-400">Bio</span><p className="mt-0.5 text-surface-700">{u.bio}</p></div>}
+                      {/* Feature access quick summary for eligible roles */}
+                      {canManageFeatures && (
+                        <div className="col-span-2 md:col-span-3 pt-2 border-t border-surface-200 dark:border-surface-600">
+                          <button
+                            onClick={() => setFeatureUser(u)}
+                            className="flex items-center gap-2 text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                          >
+                            <Sliders size={12} /> Manage feature access →
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -270,6 +757,9 @@ export default function UsersPage() {
       {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
       {showEditForm && editing && (
         <EditUserModal user={editing} onClose={() => { setShowEditForm(false); setEditing(null); }} onSaved={load} />
+      )}
+      {featureUser && (
+        <FeatureAccessModal user={featureUser} onClose={() => setFeatureUser(null)} />
       )}
 
       {/* ── Delete Confirmation Modal ── */}

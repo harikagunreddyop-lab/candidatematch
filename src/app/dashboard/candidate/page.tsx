@@ -891,8 +891,10 @@ export default function CandidateDashboard() {
           ) : filteredAvailableForSaved.map(m => {
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;
+            const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score as number : null;
+            const atsBlocked = atsScore !== null && atsScore < 50;
             return (
-              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
+              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-3 shadow-sm">
                 <div className="flex items-start gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -904,6 +906,11 @@ export default function CandidateDashboard() {
                           {m.job?.remote_type && <span className="capitalize">{m.job.remote_type}</span>}
                           {m.job?.salary_min && (
                             <span>${Math.round(m.job.salary_min / 1000)}k{m.job.salary_max ? `–$${Math.round(m.job.salary_max / 1000)}k` : '+'}</span>
+                          )}
+                          {atsScore !== null && (
+                            <span className={cn('font-semibold px-1.5 py-0.5 rounded', atsScore >= 50 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/10 text-red-600 dark:text-red-400')}>
+                              ATS {atsScore}
+                            </span>
                           )}
                         </div>
                       </div>
@@ -918,14 +925,15 @@ export default function CandidateDashboard() {
                                   {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
                                 </button>
                                 {m.job?.url ? (
-                                  <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-2 px-4 flex items-center gap-1.5">
+                                  <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 pointer-events-none')} title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
                                     <ExternalLink size={12} /> Apply now
                                   </a>
                                 ) : (
                                   <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
                                 )}
-                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
-                                  className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5">
+                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || atsBlocked}
+                                  className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 cursor-not-allowed')}
+                                  title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
                                   {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
                                 </button>
                               </>
@@ -957,6 +965,11 @@ export default function CandidateDashboard() {
                     </div>
                   </div>
                 </div>
+                {atsBlocked && (
+                  <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                    <AlertCircle size={12} /> ATS score {atsScore} — below 50. Your recruiter scored this role with a resume and the fit is too low to apply.
+                  </p>
+                )}
               </div>
             );
           })}

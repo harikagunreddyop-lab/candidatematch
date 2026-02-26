@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
-import { canApply, SCORE_APPLY_CAUTION } from '@/lib/ats-score';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,13 +42,17 @@ export async function POST(req: NextRequest) {
 
   const { data: match } = await supabase
     .from('candidate_job_matches')
-    .select('fit_score')
+    .select('ats_score')
     .eq('candidate_id', candidateId)
     .eq('job_id', jobId)
     .maybeSingle();
-  if (match != null && typeof match.fit_score === 'number' && !canApply(match.fit_score)) {
+
+  // Only block if an ATS check has actually been run AND the score is below 50.
+  // If no ATS check has been run yet, always allow applying.
+  const atsScore = match?.ats_score;
+  if (typeof atsScore === 'number' && atsScore < 50) {
     return NextResponse.json(
-      { error: `Match score (${match.fit_score}) is below the apply threshold (${SCORE_APPLY_CAUTION}+). Applying is not allowed.` },
+      { error: `ATS score (${atsScore}) is below 50. Applying is not allowed.` },
       { status: 400 }
     );
   }

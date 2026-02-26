@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
-import { Play, CheckCircle2, XCircle, AlertCircle, Zap } from 'lucide-react';
+import { Play, CheckCircle2, XCircle, AlertCircle, Zap, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
 type LogLine = { type: 'progress' | 'error' | 'system'; text: string };
@@ -16,6 +16,7 @@ type MatchSummary = {
 
 export default function MatchingPanel() {
   const [running, setRunning] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [log, setLog] = useState<LogLine[]>([]);
   const [summary, setSummary] = useState<MatchSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +87,66 @@ export default function MatchingPanel() {
     }
   }, [candidateId]);
 
+  const clearAndRerun = useCallback(async () => {
+    if (!confirm('This will delete ALL existing matches and re-run matching from scratch for all candidates. Continue?')) return;
+    setClearing(true);
+    setRunning(true);
+    setLog([]);
+    setSummary(null);
+    setError(null);
+    addLog('system', 'Clearing all existing matches…');
+
+    try {
+      // Step 1: delete all match rows (including those with ATS scores)
+      const delRes = await fetch('/api/matches?all=true', { method: 'DELETE' });
+      const delData = await delRes.json();
+      if (!delRes.ok) throw new Error(delData.error || 'Clear failed');
+      addLog('system', `✅ Cleared existing matches`);
+
+      // Step 2: run full matching for all candidates
+      addLog('system', 'Starting full matching run for all candidates…');
+      const res = await fetch('/api/matches', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Matching failed');
+      }
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) throw new Error('No response body');
+
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const event = JSON.parse(line.slice(6));
+            if (event.type === 'progress') addLog('progress', event.message);
+            else if (event.type === 'complete') {
+              setSummary(event.result?.summary || []);
+              addLog('system', `✅ Complete — ${event.result?.total_matches_upserted} matches saved`);
+            } else if (event.type === 'error') throw new Error(event.message);
+          } catch { /* skip malformed SSE lines */ }
+        }
+      }
+    } catch (err: any) {
+      setError(err.message);
+      addLog('error', err.message);
+    } finally {
+      setClearing(false);
+      setRunning(false);
+    }
+  }, []);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -112,18 +173,26 @@ export default function MatchingPanel() {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={runMatching}
             disabled={running}
             className="btn-primary text-sm flex items-center gap-2"
           >
-            {running ? <><Spinner size={14} /> Running...</> : <><Play size={14} /> Run Matching</>}
+            {running && !clearing ? <><Spinner size={14} /> Running...</> : <><Play size={14} /> Run Matching</>}
+          </button>
+          <button
+            onClick={clearAndRerun}
+            disabled={running}
+            className="btn-ghost text-sm flex items-center gap-2 text-red-500 hover:bg-red-500/10 border border-red-500/30"
+            title="Delete all existing matches and re-run matching from scratch"
+          >
+            {clearing ? <><Spinner size={14} /> Clearing & Re-running...</> : <><Trash2 size={14} /> Clear All & Re-run</>}
           </button>
           {!running && log.length > 0 && (
             <button onClick={() => { setLog([]); setSummary(null); setError(null); }}
               className="btn-ghost text-xs text-surface-400">
-              Clear
+              Clear Log
             </button>
           )}
         </div>

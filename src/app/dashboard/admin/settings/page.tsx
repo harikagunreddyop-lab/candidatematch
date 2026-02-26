@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import { Settings, Save, AlertCircle } from 'lucide-react';
+import MatchingPanel from '@/components/MatchingPanel';
 
 const DEFAULTS: Record<string, { label: string; key: string; type: 'boolean' | 'text'; default: boolean | string }> = {
   feature_candidate_saved_jobs: { label: 'Candidate saved jobs (bookmarks)', key: 'feature_candidate_saved_jobs', type: 'boolean', default: true },
@@ -63,10 +64,10 @@ export default function AdminSettingsPage() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-8 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 font-display">Settings</h1>
-        <p className="text-sm text-surface-500 mt-1">Feature flags and defaults (elite config)</p>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Settings</h1>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">Feature flags, defaults, and matching engine controls</p>
       </div>
 
       {error && (
@@ -81,10 +82,10 @@ export default function AdminSettingsPage() {
       )}
 
       <div className="card p-4 sm:p-6 space-y-5">
-        <h3 className="text-sm font-semibold text-surface-800 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-surface-800 dark:text-surface-200 flex items-center gap-2">
           <Settings size={16} /> Feature flags
         </h3>
-        <p className="text-xs text-surface-500">These control which candidate features are available. Changing here does not hide UI yet — use as reference for rollout.</p>
+        <p className="text-xs text-surface-500 dark:text-surface-400">These control which candidate features are available. Changing here does not hide UI yet — use as reference for rollout.</p>
         <div className="space-y-4">
           {Object.entries(DEFAULTS).map(([key, def]) => (
             <label key={key} className="flex items-center justify-between gap-4 cursor-pointer">
@@ -103,6 +104,11 @@ export default function AdminSettingsPage() {
         <button onClick={save} disabled={saving} className="btn-primary text-sm py-2 px-4 flex items-center gap-2">
           {saving ? <Spinner size={14} /> : <Save size={14} />} Save
         </button>
+      </div>
+
+      {/* Matching engine controls */}
+      <div className="card p-4 sm:p-6">
+        <MatchingPanel />
       </div>
     </div>
   );

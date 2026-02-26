@@ -1,9 +1,44 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
+import { getComputedYears } from '@/lib/experience-merger';
+import {
+  getPolicy,
+  computeConfidenceBucket,
+  floatConfidenceToInt,
+  evaluateGateDecision,
+  applyFairnessExclusions,
+  type ScoringProfile,
+} from '@/lib/policy-engine';
+import { emitEvent, logAiCall } from '@/lib/telemetry';
 
 const MAX_MATCHES_PER_CANDIDATE = 500;
 const MAX_RESUME_TEXT_LEN = 4000;
+
+// ── Engine version ────────────────────────────────────────────────────────────
+// Increment this string whenever scoring logic changes materially.
+// Stored in candidate_job_matches.ats_model_version for reproducibility.
+const ATS_MODEL_VERSION = 'v1';
+
+// ── Feature flag helpers ─────────────────────────────────────────────────────
+// We inline a lightweight synchronous check here to avoid circular deps.
+// For flags not in the DB yet (older deploys), defaults to false (safe).
+async function isFlagEnabled(supabase: any, key: string): Promise<boolean> {
+  try {
+    const { data } = await supabase
+      .from('feature_flags')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+    if (!data) return false;
+    const v = data.value;
+    if (typeof v === 'boolean') return v;
+    if (v === true || v === 'true' || v === '"true"') return true;
+    return false;
+  } catch {
+    return false; // If flag table missing, default OFF
+  }
+}
 
 async function runInBatches<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
@@ -65,21 +100,21 @@ type Domain =
 // never matches an Analyst role and vice-versa.
 const DOMAIN_COMPATIBILITY: Record<Domain, Domain[]> = {
   'software-engineering': ['software-engineering', 'fullstack', 'frontend'],
-  'frontend':             ['frontend', 'fullstack', 'software-engineering', 'mobile'],
-  'fullstack':            ['fullstack', 'frontend', 'software-engineering', 'mobile'],
-  'data-engineering':     ['data-engineering', 'data-science'],
-  'data-science':         ['data-science', 'data-engineering', 'data-analytics'],
-  'data-analytics':       ['data-analytics', 'data-science', 'bi'],
-  'bi':                   ['bi', 'data-analytics'],
-  'devops':               ['devops', 'software-engineering'],
-  'mobile':               ['mobile', 'frontend', 'fullstack', 'software-engineering'],
-  'qa':                   ['qa', 'software-engineering'],
-  'security':             ['security', 'devops'],
-  'management':           ['management'],
-  'design':               ['design', 'frontend'],
-  'product':              ['product'],
-  'finance-analyst':      ['finance-analyst'],
-  'general':              ['general'],
+  'frontend': ['frontend', 'fullstack', 'software-engineering', 'mobile'],
+  'fullstack': ['fullstack', 'frontend', 'software-engineering', 'mobile'],
+  'data-engineering': ['data-engineering', 'data-science'],
+  'data-science': ['data-science', 'data-engineering', 'data-analytics'],
+  'data-analytics': ['data-analytics', 'data-science', 'bi'],
+  'bi': ['bi', 'data-analytics'],
+  'devops': ['devops', 'software-engineering'],
+  'mobile': ['mobile', 'frontend', 'fullstack', 'software-engineering'],
+  'qa': ['qa', 'software-engineering'],
+  'security': ['security', 'devops'],
+  'management': ['management'],
+  'design': ['design', 'frontend'],
+  'product': ['product'],
+  'finance-analyst': ['finance-analyst'],
+  'general': ['general'],
 };
 
 function classifyDomain(title: string): Domain {
@@ -286,8 +321,22 @@ export async function runAtsCheck(
   candidateId: string,
   jobId: string,
   resumeId?: string | null,
+  options?: {
+    /** A=OPT/agency (default), C=enterprise internal mobility */
+    scoringProfile?: ScoringProfile;
+    /** Actor user who triggered the check (for audit) */
+    actorUserId?: string | null;
+    /** Source of the check (default: 'manual') */
+    source?: string;
+  },
 ): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string }> {
+  const startMs = Date.now();
   const now = new Date().toISOString();
+
+  // ── Resolve profile and policy ──────────────────────────────────────────────
+  const scoringProfile: ScoringProfile = options?.scoringProfile ?? 'A';
+  const policy = getPolicy(scoringProfile);
+  const source = options?.source ?? 'manual';
 
   const [{ data: candidate, error: candErr }, { data: job, error: jobErr }] = await Promise.all([
     supabase.from('candidates').select('*').eq('id', candidateId).single(),
@@ -296,6 +345,7 @@ export async function runAtsCheck(
   if (candErr || !candidate) throw new Error(candErr?.message || 'Candidate not found');
   if (jobErr || !job) throw new Error(jobErr?.message || 'Job not found');
 
+  // ── Resume text resolution ──────────────────────────────────────────────────
   // Pick resume text: explicit resumeId → match.best_resume_id → latest candidate resume → parsed_resume_text
   let chosenResumeId: string | null = resumeId ?? null;
   if (!chosenResumeId) {
@@ -337,16 +387,43 @@ export async function runAtsCheck(
     chosenResumeId = chosenResumeId ?? null;
   }
 
-  const reqs = await getOrExtractRequirements(supabase, job as Job);
-  if (!reqs) throw new Error('Could not extract job requirements');
+  // ── Experience duration computation ────────────────────────────────────────
+  // PHASE 1 patch: compute merged-interval years alongside profile years.
+  // If profile has years_of_experience, that remains the PRIMARY value passed
+  // to computeATSScore (no behavior change for existing records).
+  // The computed value is stored in ats_breakdown for diagnostics.
+  const candidateExp = parseArray(candidate.experience);
+  const computedExp = getComputedYears(candidateExp, true /* excludeInternships */);
+  const profileYears: number | null = candidate.years_of_experience ?? null;
 
+  // Emit discrepancy event when the self-reported value is significantly inflated
+  // Threshold: 2.0 years gap and high computation confidence
+  if (
+    profileYears != null &&
+    computedExp.confidence >= 0.6 &&
+    Math.abs(profileYears - computedExp.years) >= 2.0
+  ) {
+    void emitEvent(supabase, {
+      event_type: 'candidate_years_discrepancy',
+      candidate_id: candidateId,
+      job_id: jobId,
+      event_source: source,
+      payload: {
+        profile_years: profileYears,
+        computed_years: computedExp.years,
+        delta: profileYears - computedExp.years,
+        confidence: computedExp.confidence,
+      },
+    });
+  }
+
+  // ── Build candidate data (apply fairness exclusions for Profile C) ──────────
   const candidateSkills = parseSkills(candidate.skills);
   const candidateTools = parseSkills(candidate.tools);
-  const candidateExp = parseArray(candidate.experience);
   const candidateEdu = parseArray(candidate.education);
   const candidateCerts = parseArray(candidate.certifications);
 
-  const candidateData = {
+  const rawCandidateData = {
     primary_title: candidate.primary_title,
     secondary_titles: candidate.secondary_titles || [],
     skills: candidateSkills,
@@ -356,29 +433,106 @@ export async function runAtsCheck(
     certifications: candidateCerts,
     location: candidate.location,
     visa_status: candidate.visa_status,
-    years_of_experience: candidate.years_of_experience,
+    years_of_experience: profileYears ?? undefined,
     open_to_remote: (candidate as any).open_to_remote ?? true,
     open_to_relocation: (candidate as any).open_to_relocation ?? false,
     target_locations: (candidate as any).target_locations || [],
     resume_text: resumeText,
   };
 
+  // Fairness exclusions for enterprise profile (Profile C)
+  const candidateData = applyFairnessExclusions(rawCandidateData, policy);
+
+  const reqs = await getOrExtractRequirements(supabase, job as Job);
+  if (!reqs) throw new Error('Could not extract job requirements');
+
   const jd = (job.jd_clean || job.jd_raw || '').trim();
   const result = await computeATSScore(job.title, jd, reqs, candidateData);
 
+  const computationMs = Date.now() - startMs;
+
+  // ── Confidence computation ──────────────────────────────────────────────────
+  // Confidence is derived from evidence density across dimensions.
+  // Current v1 heuristic: use keyword match rate as primary signal.
+  // Phase 2 will add per-dimension confidence from evidence-matcher.ts.
+  const matchedCount = result.matched_keywords.length;
+  const requiredCount = (reqs.must_have_skills.length || 1);
+  const keywordConfidenceRaw = Math.min(1.0, matchedCount / requiredCount);
+  // Blend with experience date confidence
+  const overallConfidenceFloat = (keywordConfidenceRaw * 0.7 + computedExp.confidence * 0.3);
+  const atsConfidence = floatConfidenceToInt(overallConfidenceFloat);
+  const confidenceBucket = computeConfidenceBucket(atsConfidence);
+
+  // ── Apply gate via policy engine ────────────────────────────────────────────
+  // NOTE: gateDecision is computed and logged but does NOT change existing gate
+  // behavior until feature flag 'elite.confidence_gate' is ON.
+  const gateDecision = evaluateGateDecision(result.total_score, confidenceBucket, policy);
+
+  // ── Build the enriched breakdown ────────────────────────────────────────────
+  const enrichedBreakdown = {
+    dimensions: result.dimensions,
+    // New Phase-1 fields (additive — existing consumers of this JSONB are unaffected)
+    model_version: ATS_MODEL_VERSION,
+    scoring_profile: scoringProfile,
+    confidence: atsConfidence,
+    confidence_bucket: confidenceBucket,
+    evidence_count: matchedCount,
+    // Experience computation
+    computed_years: computedExp.years,
+    computed_years_confidence: computedExp.confidence,
+    experience_months: computedExp.evidence.total_months,
+    // Gate evaluation (computed; not enforced until flag is ON)
+    gate_decision: gateDecision,
+  };
+
+  // ── Persist to candidate_job_matches ───────────────────────────────────────
+  // All new columns added in migration 018 — backwards compatible.
   const atsRow = {
     ats_score: result.total_score,
     ats_reason: result.reason,
-    ats_breakdown: { dimensions: result.dimensions },
+    ats_breakdown: enrichedBreakdown,
     ats_checked_at: now,
     ats_resume_id: chosenResumeId,
+    // Phase-1 new columns:
+    ats_model_version: ATS_MODEL_VERSION,
+    ats_confidence: atsConfidence,
+    ats_confidence_bucket: confidenceBucket,
+    ats_evidence_count: matchedCount,
+    ats_last_scored_at: now,
+    scoring_profile: scoringProfile,
   };
 
   await supabase
     .from('candidate_job_matches')
     .upsert([{ candidate_id: candidateId, job_id: jobId, ...atsRow }], { onConflict: 'candidate_id,job_id' });
 
-  return { ats_score: result.total_score, ats_reason: result.reason, ats_breakdown: atsRow.ats_breakdown, ats_resume_id: chosenResumeId, ats_checked_at: now };
+  // ── Telemetry: emit ats_score_computed event ─────────────────────────────
+  // Fire-and-forget — never blocks the scoring response.
+  void emitEvent(supabase, {
+    event_type: 'ats_score_computed',
+    candidate_id: candidateId,
+    job_id: jobId,
+    actor_user_id: options?.actorUserId ?? null,
+    event_source: source,
+    payload: {
+      ats_score: result.total_score,
+      ats_confidence: atsConfidence,
+      ats_confidence_bucket: confidenceBucket,
+      ats_evidence_count: matchedCount,
+      model_version: ATS_MODEL_VERSION,
+      scoring_profile: scoringProfile,
+      computation_ms: computationMs,
+      ai_tokens_used: null, // populated in Phase 2 when AI token counts are tracked
+    },
+  });
+
+  return {
+    ats_score: result.total_score,
+    ats_reason: result.reason,
+    ats_breakdown: enrichedBreakdown,
+    ats_resume_id: chosenResumeId,
+    ats_checked_at: now,
+  };
 }
 
 
@@ -528,7 +682,7 @@ export async function runMatching(
       if (!hiddenByCandidate.has(h.candidate_id)) hiddenByCandidate.set(h.candidate_id, new Set());
       hiddenByCandidate.get(h.candidate_id)!.add(h.job_id);
     }
-  } catch (_) {}
+  } catch (_) { }
 
   log(`Title-based matching: ${candidates.length} candidates × ${jobs.length} jobs.`);
 
@@ -632,7 +786,7 @@ export async function runMatchingForJobs(
       if (!hiddenByCandidate.has(h.candidate_id)) hiddenByCandidate.set(h.candidate_id, new Set());
       hiddenByCandidate.get(h.candidate_id)!.add(h.job_id);
     }
-  } catch (_) {}
+  } catch (_) { }
 
   let totalMatchesUpserted = 0;
   const summary: any[] = [];

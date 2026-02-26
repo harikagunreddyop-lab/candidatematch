@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
 
-const MAX_MATCHES_PER_CANDIDATE = 50;
+const MAX_MATCHES_PER_CANDIDATE = 500;
 const MAX_RESUME_TEXT_LEN = 4000;
 
 async function runInBatches<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -568,20 +568,36 @@ export async function runMatching(
   if (cErr) { log('Error fetching candidates: ' + cErr.message); return { candidates_processed: 0, total_matches_upserted: 0, summary: [] }; }
   if (!candidates?.length) { log('No active candidates.'); return { candidates_processed: 0, total_matches_upserted: 0, summary: [] }; }
 
-  let jobQuery = supabase
-    .from('jobs')
-    .select('id, title, company, location, jd_clean, jd_raw, salary_min, salary_max, remote_type')
-    .eq('is_active', true);
-  if (options?.jobsSince) {
-    const sinceDate = new Date(options.jobsSince);
-    if (!isNaN(sinceDate.getTime())) {
-      jobQuery = jobQuery.gte('created_at', options.jobsSince);
-      log(`Incremental mode — only jobs since ${options.jobsSince}`);
+  // Paginate past Supabase's 1000-row default limit to fetch ALL active jobs.
+  const PAGE_SIZE = 1000;
+  let allJobs: any[] = [];
+  let from = 0;
+  let jobFetchError: string | null = null;
+  const jobsSinceDate = options?.jobsSince ? new Date(options.jobsSince) : null;
+  if (jobsSinceDate && isNaN(jobsSinceDate.getTime())) {
+    jobFetchError = 'Invalid jobsSince date';
+  } else {
+    while (true) {
+      let q2 = supabase
+        .from('jobs')
+        .select('id, title, company, location, salary_min, salary_max, remote_type')
+        .eq('is_active', true)
+        .range(from, from + PAGE_SIZE - 1);
+      if (jobsSinceDate) {
+        q2 = q2.gte('created_at', options!.jobsSince!);
+      }
+      const { data: page, error: pageErr } = await q2;
+      if (pageErr) { jobFetchError = pageErr.message; break; }
+      if (!page || page.length === 0) break;
+      allJobs = allJobs.concat(page);
+      if (page.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
     }
   }
-  const { data: jobs, error: jErr } = await jobQuery;
-  if (jErr) { log('Error fetching jobs: ' + jErr.message); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
-  if (!jobs?.length) { log('No active jobs.'); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
+  if (jobFetchError) { log('Error fetching jobs: ' + jobFetchError); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
+  if (!allJobs.length) { log('No active jobs.'); return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] }; }
+  const jobs = allJobs;
+  if (jobsSinceDate) log(`Incremental mode — only jobs since ${options!.jobsSince} (${jobs.length} jobs)`);
 
   const candidateIds = (candidates as Candidate[]).map((c) => c.id);
   const hiddenByCandidate = new Map<string, Set<string>>();
@@ -646,6 +662,97 @@ export async function runMatching(
     } else {
       log(`Save error for ${candidate.full_name}: ${saveErr.message}`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'Save Error' });
+    }
+  }
+
+  return { candidates_processed: (candidates as Candidate[]).length, total_matches_upserted: totalMatchesUpserted, summary };
+}
+
+/**
+ * Incremental matching: match all active candidates against a specific list of job IDs only.
+ * Used after job upload so we don't re-process the entire job table every time.
+ */
+export async function runMatchingForJobs(
+  jobIds: string[],
+  onProgress?: (msg: string) => void,
+): Promise<{ candidates_processed: number; total_matches_upserted: number; summary: any[] }> {
+  if (!jobIds.length) return { candidates_processed: 0, total_matches_upserted: 0, summary: [] };
+
+  const supabase = createServiceClient();
+  const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
+
+  const { data: candidates, error: cErr } = await supabase
+    .from('candidates')
+    .select('*')
+    .eq('active', true)
+    .not('invite_accepted_at', 'is', null);
+  if (cErr || !candidates?.length) {
+    log('No active candidates.');
+    return { candidates_processed: 0, total_matches_upserted: 0, summary: [] };
+  }
+
+  const { data: jobs, error: jErr } = await supabase
+    .from('jobs')
+    .select('id, title, company, location, salary_min, salary_max, remote_type')
+    .in('id', jobIds)
+    .eq('is_active', true);
+  if (jErr || !jobs?.length) {
+    log('No matching jobs found for provided IDs.');
+    return { candidates_processed: candidates.length, total_matches_upserted: 0, summary: [] };
+  }
+
+  log(`Incremental: ${candidates.length} candidates × ${jobs.length} new jobs.`);
+
+  const candidateIds = (candidates as Candidate[]).map((c) => c.id);
+  const hiddenByCandidate = new Map<string, Set<string>>();
+  try {
+    const { data: hiddenRows } = await supabase.from('candidate_hidden_jobs').select('candidate_id, job_id').in('candidate_id', candidateIds);
+    for (const h of hiddenRows || []) {
+      if (!hiddenByCandidate.has(h.candidate_id)) hiddenByCandidate.set(h.candidate_id, new Set());
+      hiddenByCandidate.get(h.candidate_id)!.add(h.job_id);
+    }
+  } catch (_) {}
+
+  let totalMatchesUpserted = 0;
+  const summary: any[] = [];
+  const now = new Date().toISOString();
+
+  for (const candidate of candidates as Candidate[]) {
+    const hasTitles = !!(
+      candidate.primary_title?.trim() ||
+      (candidate.secondary_titles || []).some(t => t?.trim()) ||
+      (candidate.target_job_titles || []).some(t => t?.trim())
+    );
+    if (!hasTitles) continue;
+
+    const matchedJobs = (jobs as Job[]).filter(job => {
+      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
+      return isTitleMatch(candidate, job);
+    });
+    if (!matchedJobs.length) continue;
+
+    const rows = matchedJobs.map(job => ({
+      candidate_id: candidate.id,
+      job_id: job.id,
+      fit_score: 0,
+      match_reason: 'Title match',
+      best_resume_id: null,
+      matched_keywords: [],
+      missing_keywords: [],
+      matched_at: now,
+      score_breakdown: { version: 1, title_match: true },
+    }));
+
+    const { error: saveErr } = await supabase
+      .from('candidate_job_matches')
+      .upsert(rows, { onConflict: 'candidate_id,job_id' });
+
+    if (!saveErr) {
+      totalMatchesUpserted += rows.length;
+      log(`✅ ${candidate.full_name}: +${rows.length} new title-matched jobs`);
+      summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: rows.length, status: 'Matched' });
+    } else {
+      log(`Save error for ${candidate.full_name}: ${saveErr.message}`);
     }
   }
 

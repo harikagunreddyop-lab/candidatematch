@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
-import { runMatching } from '@/lib/matching';
+import { runMatching, runMatchingForJobs } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import crypto from 'crypto';
 
@@ -66,18 +66,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Run title-based matching for all candidates against all jobs (fast, no LLM).
+    // Run title-based matching for newly inserted jobs only (incremental — fast).
     let matchingResult: any = { status: 'skipped' };
     if (!skipMatching && inserted > 0) {
-      devLog(`[upload-jobs] ${inserted} new jobs inserted — running title-based matching for all candidates.`);
+      devLog(`[upload-jobs] ${inserted} new jobs inserted — running incremental title-based matching.`);
       try {
-        const result = await runMatching(undefined, (msg) => devLog('[upload-jobs:match] ' + msg), { jobsSince: undefined });
+        const result = await runMatchingForJobs(newJobIds, (msg) => devLog('[upload-jobs:match] ' + msg));
         matchingResult = {
           status: 'done',
           candidates_processed: result.candidates_processed,
           total_matches_upserted: result.total_matches_upserted,
         };
-        devLog(`[upload-jobs] Matching complete: ${result.total_matches_upserted} matches upserted.`);
+        devLog(`[upload-jobs] Matching complete: ${result.total_matches_upserted} new matches upserted.`);
       } catch (e: any) {
         logError('[upload-jobs] Matching failed after upload:', e?.message);
         matchingResult = { status: 'error', message: e?.message };

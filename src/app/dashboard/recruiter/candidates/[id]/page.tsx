@@ -114,10 +114,9 @@ export default function RecruiterCandidateDetail() {
   const [autofillError, setAutofillError] = useState<string | null>(null);
   const [autofillSuccess, setAutofillSuccess] = useState(false);
 
-  // On-demand ATS check (only for 50+ profile matches)
+  // On-demand ATS check — runs all resumes, picks best
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
-  const [selectedAtsResumeByJob, setSelectedAtsResumeByJob] = useState<Record<string, string>>({});
 
   // Interview scheduling
   const [schedulingAppId, setSchedulingAppId] = useState<string | null>(null);
@@ -367,18 +366,39 @@ export default function RecruiterCandidateDetail() {
     setGenerating(null);
   };
 
-  const runAtsForJob = async (jobId: string, resumeId: string | null) => {
+  const runAtsForJob = async (jobId: string) => {
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const res = await fetch('/api/ats/check', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidate_id: id, job_id: jobId, resume_id: resumeId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'ATS check failed');
-      await load(false);
+      // Run ATS for each uploaded resume in parallel, plus null (parsed text fallback).
+      const resumeIds: (string | null)[] = candidateResumes?.length
+        ? (candidateResumes as any[]).map((r: any) => r.id)
+        : [null];
+
+      const results = await Promise.all(resumeIds.map(async (resumeId) => {
+        const res = await fetch('/api/ats/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidate_id: id, job_id: jobId, resume_id: resumeId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return null;
+        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string };
+      }));
+
+      // Pick the best result by ats_score
+      const best = results
+        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
+        .sort((a, b) => b.ats_score - a.ats_score)[0];
+
+      if (!best) throw new Error('ATS check failed for all resumes');
+
+      // Update just this match in state — no full page reload
+      setMatches(prev => prev.map(m =>
+        m.job_id === jobId
+          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at }
+          : m
+      ));
     } catch (e: any) {
       setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
     } finally {
@@ -834,17 +854,19 @@ export default function RecruiterCandidateDetail() {
               <div key={m.id} className={cn('card p-4 transition-all', isPending && 'ring-2 ring-amber-300 border-amber-200 bg-amber-50/30')}>
                 <div className="flex items-start gap-4">
 
-                  {/* ATS score badge */}
-                  <div className="shrink-0 flex flex-col items-center gap-1">
-                    <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold', scoreColor(m.fit_score))}>
-                      {m.fit_score}
-                    </span>
-                    {typeof (m as any).ats_score === 'number' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 font-semibold">
-                        ATS {(m as any).ats_score}
+                  {/* ATS score badge — only shown if an ATS check has been run */}
+                  {typeof (m as any).ats_score === 'number' && (
+                    <div className="shrink-0 flex flex-col items-center gap-0.5">
+                      <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
+                        (m as any).ats_score >= 75 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                        (m as any).ats_score >= 50 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                        'bg-red-500/15 text-red-600 dark:text-red-400'
+                      )}>
+                        {(m as any).ats_score}
                       </span>
-                    )}
-                  </div>
+                      <span className="text-[9px] text-surface-400 dark:text-surface-500 font-medium">ATS</span>
+                    </div>
+                  )}
 
                   <div className="flex-1 min-w-0">
                     {/* Job info + action row */}
@@ -887,35 +909,26 @@ export default function RecruiterCandidateDetail() {
                         })()}
 
                         {(() => {
-                          const selectedResumeId =
-                            selectedAtsResumeByJob[m.job_id] ||
-                            m.best_resume_id ||
-                            candidateResumes?.[0]?.id ||
-                            '';
                           const running = !!atsRunningByJob[m.job_id];
+                          const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : null;
                           return (
-                            <>
-                              {candidateResumes?.length > 0 && (
-                                <select
-                                  value={selectedResumeId}
-                                  onChange={(e) => setSelectedAtsResumeByJob(p => ({ ...p, [m.job_id]: e.target.value }))}
-                                  className="input text-xs py-1.5 px-2 w-36"
-                                  title="Select resume for ATS check"
-                                >
-                                  {candidateResumes.map((r: any) => (
-                                    <option key={r.id} value={r.id}>{r.label || r.file_name || 'Resume'}</option>
-                                  ))}
-                                </select>
+                            <button
+                              onClick={() => runAtsForJob(m.job_id)}
+                              disabled={running}
+                              className={cn(
+                                'text-xs py-1.5 px-3 flex items-center gap-1 rounded-lg border font-medium transition-colors',
+                                atsScore !== null
+                                  ? atsScore >= 50
+                                    ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
+                                    : 'border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20'
+                                  : 'btn-secondary',
+                                running && 'opacity-70 cursor-not-allowed'
                               )}
-                              <button
-                                onClick={() => runAtsForJob(m.job_id, selectedResumeId || null)}
-                                disabled={running}
-                                className={cn('btn-secondary text-xs py-1.5 px-3 flex items-center gap-1', running && 'opacity-70 cursor-not-allowed')}
-                                title="Run full 8-dimensional ATS scoring with resume (uses AI tokens)."
-                              >
-                                {running ? <Spinner size={12} /> : <Brain size={12} />} ATS
-                              </button>
-                            </>
+                              title={`Run ATS check across all ${candidateResumes?.length || 0} resume(s) — picks best score automatically.`}
+                            >
+                              {running ? <Spinner size={12} /> : <Brain size={12} />}
+                              {atsScore !== null ? `ATS ${atsScore}` : 'ATS'}
+                            </button>
                           );
                         })()}
 

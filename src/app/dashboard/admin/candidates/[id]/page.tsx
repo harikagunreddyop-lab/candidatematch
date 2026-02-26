@@ -627,8 +627,6 @@ export default function CandidateDetailPage() {
                       )}
 
                       {(() => {
-                        const profileScore = Number(m.fit_score ?? 0);
-                        if (profileScore < 50) return null;
                         const selectedResumeId =
                           selectedAtsResumeByJob[m.job_id] ||
                           m.best_resume_id ||
@@ -653,7 +651,7 @@ export default function CandidateDetailPage() {
                               onClick={() => runAtsForJob(m.job_id, selectedResumeId || null)}
                               disabled={running}
                               className={cn('btn-secondary text-xs py-1.5 px-3 flex items-center gap-1', running && 'opacity-70 cursor-not-allowed')}
-                              title="Runs full ATS scoring (uses tokens). Allowed only for profile score 50+."
+                              title="Run full 8-dimensional ATS scoring with resume (uses AI tokens)."
                             >
                               {running ? <Spinner size={12} /> : <Zap size={12} />} ATS
                             </button>

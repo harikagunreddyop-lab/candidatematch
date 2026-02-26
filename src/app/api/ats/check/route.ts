@@ -32,11 +32,6 @@ export async function POST(req: NextRequest) {
   if (matchErr) return NextResponse.json({ error: matchErr.message }, { status: 500 });
   if (!matchRow) return NextResponse.json({ error: 'Match not found. Run matching first.' }, { status: 400 });
 
-  const profileScore = Number(matchRow.fit_score || 0);
-  if (profileScore < 50) {
-    return NextResponse.json({ error: 'ATS check is only allowed for profile score >= 50' }, { status: 400 });
-  }
-
   try {
     const result = await runAtsCheck(service, candidateId, jobId, resumeId);
     return NextResponse.json(result);

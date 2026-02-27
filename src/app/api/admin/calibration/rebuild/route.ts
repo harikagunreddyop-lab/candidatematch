@@ -22,8 +22,8 @@ export const maxDuration = 60; // Calibration may process 10k+ rows
 
 export async function POST(req: NextRequest) {
     // Auth: admin only
-    const authError = await requireAdmin(req);
-    if (authError) return authError;
+    const authResult = await requireAdmin(req);
+    if (authResult instanceof Response) return authResult;
 
     const supabase = createServiceClient();
 

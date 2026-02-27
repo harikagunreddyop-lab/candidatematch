@@ -88,6 +88,7 @@ export default function CandidateDashboard() {
   const [tab, setTab] = useState<'overview' | 'matches' | 'applications' | 'resumes' | 'saved' | 'reminders'>('overview');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [matchDateFilter, setMatchDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
+  const [jobDateFilter, setJobDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
   const [notLinked, setNotLinked] = useState(false);
 
   // Per-job AI brief (like recruiter)
@@ -161,7 +162,7 @@ export default function CandidateDashboard() {
 
     const [mch, apps, resumes, savedRes, remindersRes] = await Promise.all([
       supabase.from('candidate_job_matches')
-        .select('*, job:jobs(id, title, company, location, url, remote_type, job_type, salary_min, salary_max)')
+        .select('*, job:jobs(id, title, company, location, url, remote_type, job_type, salary_min, salary_max, created_at)')
         .eq('candidate_id', cand.id)
         .order('fit_score', { ascending: false })
         .limit(50),
@@ -341,7 +342,7 @@ export default function CandidateDashboard() {
         }
         setTailoredResumes(map);
       }
-    } catch {}
+    } catch { }
   };
 
   const triggerTailorResume = async (candidateId: string, jobId: string) => {
@@ -360,7 +361,7 @@ export default function CandidateDashboard() {
         }));
         pollTailoredResume(candidateId, jobId);
       }
-    } catch {}
+    } catch { }
     setTailoringJobId(null);
   };
 
@@ -379,7 +380,7 @@ export default function CandidateDashboard() {
             return;
           }
         }
-      } catch {}
+      } catch { }
     };
     setTimeout(poll, 2000);
   };
@@ -496,12 +497,31 @@ export default function CandidateDashboard() {
   const appliedMatches = matches.filter(m => alreadyApplied.has(m.job_id));
 
   const matchDateCutoff = matchDateFilter === 'all' ? 0 : Date.now() - parseInt(matchDateFilter, 10) * 24 * 60 * 60 * 1000;
+  const jobDateCutoff = jobDateFilter === 'all' ? 0 : Date.now() - parseInt(jobDateFilter, 10) * 24 * 60 * 60 * 1000;
+
   const filteredAvailableMatches = availableMatches.filter(m => {
-    if (matchDateFilter === 'all') return true;
-    const t = new Date(m.matched_at || m.created_at).getTime();
-    return t >= matchDateCutoff;
+    if (matchDateFilter !== 'all') {
+      const t = new Date(m.matched_at || m.created_at).getTime();
+      if (t < matchDateCutoff) return false;
+    }
+    if (jobDateFilter !== 'all') {
+      const jt = m.job?.created_at ? new Date(m.job.created_at).getTime() : 0;
+      if (jt < jobDateCutoff) return false;
+    }
+    return true;
   });
   const filteredAvailableForSaved = showSavedOnly ? filteredAvailableMatches.filter(m => savedJobIds.has(m.job_id)) : filteredAvailableMatches;
+
+  function getJobAgeBadge(createdAt?: string): { label: string; className: string } | null {
+    if (!createdAt) return null;
+    const ageMs = Date.now() - new Date(createdAt).getTime();
+    const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+    if (ageDays <= 3) return { label: ageDays === 0 ? 'Today' : ageDays === 1 ? '1d ago' : `${ageDays}d ago`, className: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/30' };
+    if (ageDays <= 7) return { label: `${ageDays}d ago`, className: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30' };
+    if (ageDays <= 30) return { label: `${ageDays}d ago`, className: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/30' };
+    if (ageDays <= 90) return { label: `${Math.floor(ageDays / 7)}w ago`, className: 'bg-surface-200/80 dark:bg-surface-600/60 text-surface-500 dark:text-surface-400 ring-1 ring-surface-300/50 dark:ring-surface-500/30' };
+    return { label: `${Math.floor(ageDays / 30)}mo ago`, className: 'bg-surface-200/80 dark:bg-surface-600/60 text-surface-400 dark:text-surface-500 ring-1 ring-surface-200 dark:ring-surface-600' };
+  }
 
   const interviewApps = applications.filter((a: any) => a.status === 'interview');
   const savedMatches = matches.filter(m => savedJobIds.has(m.job_id));
@@ -774,21 +794,21 @@ export default function CandidateDashboard() {
                           {applied
                             ? <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><CheckCircle2 size={12} /> Applied</span>
                             : (
-                                <>
-                                  <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                    {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
-                                  </button>
-                                  {m.job?.url ? (
-                                    <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
-                                      <ExternalLink size={12} /> Apply
-                                    </a>
-                                  ) : <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No link</span>}
-                                  <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
-                                    className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
-                                    {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm</>}
-                                  </button>
-                                </>
-                              )}
+                              <>
+                                <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                  {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
+                                </button>
+                                {m.job?.url ? (
+                                  <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
+                                    <ExternalLink size={12} /> Apply
+                                  </a>
+                                ) : <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No link</span>}
+                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
+                                  className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+                                  {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm</>}
+                                </button>
+                              </>
+                            )}
                         </div>
                       </div>
                     );
@@ -871,19 +891,52 @@ export default function CandidateDashboard() {
       {/* ── MATCHES ── */}
       {tab === 'matches' && (
         <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm space-y-3">
+            {/* Match date filter */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs text-surface-500 dark:text-surface-400">Match date:</span>
-              {(['all', '7', '30', '90'] as const).map(f => (
-                <button key={f} onClick={() => setMatchDateFilter(f)}
-                  className={cn('text-sm font-medium py-1.5 px-3 rounded-lg transition-colors', matchDateFilter === f ? 'bg-brand-600 text-white' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
-                  {f === 'all' ? 'All' : `Last ${f} days`}
-                </button>
-              ))}
+              <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-24 shrink-0">Matched:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {(['all', '7', '30', '90'] as const).map(f => (
+                  <button key={f} onClick={() => setMatchDateFilter(f)}
+                    className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', matchDateFilter === f ? 'bg-brand-600 text-white shadow-sm' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
+                    {f === 'all' ? 'All time' : `Last ${f}d`}
+                  </button>
+                ))}
+              </div>
             </div>
-            <button onClick={() => setShowSavedOnly(!showSavedOnly)} className={cn('text-sm font-medium py-2 px-4 rounded-xl transition-colors', showSavedOnly ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
-              <BookmarkCheck size={14} className="inline mr-1.5" /> Saved only
-            </button>
+            {/* Job posted date filter */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-24 shrink-0">Job posted:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {(['all', '7', '30', '90'] as const).map(f => (
+                  <button key={f} onClick={() => setJobDateFilter(f)}
+                    className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', jobDateFilter === f
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
+                    )}>
+                    {f === 'all' ? 'All time' : `Last ${f}d`}
+                  </button>
+                ))}
+              </div>
+              {jobDateFilter !== 'all' && (
+                <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-lg font-medium">
+                  <Calendar size={11} /> Showing jobs posted in the last {jobDateFilter} days
+                </span>
+              )}
+            </div>
+            {/* Saved only toggle */}
+            <div className="flex items-center justify-between pt-1 border-t border-surface-100 dark:border-surface-700">
+              <span className="text-xs text-surface-500 dark:text-surface-400">
+                {filteredAvailableForSaved.length} job{filteredAvailableForSaved.length !== 1 ? 's' : ''} shown
+                {(matchDateFilter !== 'all' || jobDateFilter !== 'all' || showSavedOnly) && (
+                  <button onClick={() => { setMatchDateFilter('all'); setJobDateFilter('all'); setShowSavedOnly(false); }}
+                    className="ml-2 text-brand-600 dark:text-brand-400 hover:underline font-medium">Clear filters</button>
+                )}
+              </span>
+              <button onClick={() => setShowSavedOnly(!showSavedOnly)} className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', showSavedOnly ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
+                <BookmarkCheck size={13} className="inline mr-1" /> Saved only
+              </button>
+            </div>
           </div>
           {filteredAvailableForSaved.length === 0 ? (
             <EmptyState icon={<Briefcase size={24} />} title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
@@ -912,32 +965,33 @@ export default function CandidateDashboard() {
                               ATS {atsScore}
                             </span>
                           )}
+                          {(() => { const badge = getJobAgeBadge(m.job?.created_at); return badge ? <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold', badge.className)}><Calendar size={9} />{badge.label}</span> : null; })()}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {applied
                           ? <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl">
-                              <CheckCircle2 size={12} /> {appStatus || 'Applied'}
-                            </span>
+                            <CheckCircle2 size={12} /> {appStatus || 'Applied'}
+                          </span>
                           : (
-                              <>
-                                <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                  {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
-                                </button>
-                                {m.job?.url ? (
-                                  <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 pointer-events-none')} title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
-                                    <ExternalLink size={12} /> Apply now
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
-                                )}
-                                <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || atsBlocked}
-                                  className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 cursor-not-allowed')}
-                                  title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
-                                  {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
-                                </button>
-                              </>
-                            )
+                            <>
+                              <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
+                              </button>
+                              {m.job?.url ? (
+                                <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 pointer-events-none')} title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
+                                  <ExternalLink size={12} /> Apply now
+                                </a>
+                              ) : (
+                                <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
+                              )}
+                              <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || atsBlocked}
+                                className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 cursor-not-allowed')}
+                                title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
+                                {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                              </button>
+                            </>
+                          )
                         }
                         {(() => {
                           const tr = tailoredResumes[m.job_id];
@@ -1111,7 +1165,7 @@ export default function CandidateDashboard() {
                         <div className="flex flex-col items-center gap-1.5">
                           <div className={cn('w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors',
                             isActive ? 'bg-brand-600 dark:bg-brand-500 text-white' : 'bg-surface-100 dark:bg-surface-700')}>
-                            {isActive ? <CheckCircle2 size={14} className="text-white" /> : <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500">{i+1}</span>}
+                            {isActive ? <CheckCircle2 size={14} className="text-white" /> : <span className="text-[10px] font-medium text-surface-400 dark:text-surface-500">{i + 1}</span>}
                           </div>
                           <span className="text-[10px] font-medium text-surface-500 dark:text-surface-400 capitalize whitespace-nowrap">{s}</span>
                         </div>
@@ -1284,38 +1338,38 @@ export default function CandidateDashboard() {
         const applicationsToday = applications.filter((a: any) => new Date(a.created_at) >= todayStart).length;
         const atDailyLimit = applicationsToday >= CANDIDATE_DAILY_APPLY_LIMIT;
         return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-md p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Confirm applied</h3>
-              <button onClick={() => setConfirmAppliedJobId(null)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400"><X size={18} /></button>
-            </div>
-            <p className="text-sm text-surface-600 dark:text-surface-300">Record this application and optionally choose which resume you used and add a private note.</p>
-            <p className="text-xs text-surface-500 dark:text-surface-400">Applications today: {applicationsToday} / {CANDIDATE_DAILY_APPLY_LIMIT}</p>
-            {applyError && (
-              <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-2">{applyError}</p>
-            )}
-            {uploadedResumes.length > 0 && (
-              <div>
-                <label className="label dark:text-surface-200">Resume used (optional)</label>
-                <select className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100" value={confirmResumeId || ''} onChange={e => setConfirmResumeId(e.target.value || null)}>
-                  <option value="">— None selected —</option>
-                  {uploadedResumes.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-                </select>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-md p-6 space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Confirm applied</h3>
+                <button onClick={() => setConfirmAppliedJobId(null)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400"><X size={18} /></button>
               </div>
-            )}
-            <div>
-              <label className="label dark:text-surface-200">Private note (optional)</label>
-              <textarea className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 min-h-[80px]" value={confirmNotes} onChange={e => setConfirmNotes(e.target.value)} placeholder="e.g. Applied via company site, ref: John" />
-            </div>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setConfirmAppliedJobId(null)} className="btn-secondary text-sm">Cancel</button>
-              <button onClick={() => applyToJob(confirmAppliedJobId, confirmResumeId, confirmNotes)} disabled={applying === confirmAppliedJobId || atDailyLimit} className="btn-primary text-sm" title={atDailyLimit ? `Daily limit (${CANDIDATE_DAILY_APPLY_LIMIT}) reached` : undefined}>
-                {applying === confirmAppliedJobId ? <Spinner size={14} /> : 'Submit'}
-              </button>
+              <p className="text-sm text-surface-600 dark:text-surface-300">Record this application and optionally choose which resume you used and add a private note.</p>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Applications today: {applicationsToday} / {CANDIDATE_DAILY_APPLY_LIMIT}</p>
+              {applyError && (
+                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg px-3 py-2">{applyError}</p>
+              )}
+              {uploadedResumes.length > 0 && (
+                <div>
+                  <label className="label dark:text-surface-200">Resume used (optional)</label>
+                  <select className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100" value={confirmResumeId || ''} onChange={e => setConfirmResumeId(e.target.value || null)}>
+                    <option value="">— None selected —</option>
+                    {uploadedResumes.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="label dark:text-surface-200">Private note (optional)</label>
+                <textarea className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 min-h-[80px]" value={confirmNotes} onChange={e => setConfirmNotes(e.target.value)} placeholder="e.g. Applied via company site, ref: John" />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button onClick={() => setConfirmAppliedJobId(null)} className="btn-secondary text-sm">Cancel</button>
+                <button onClick={() => applyToJob(confirmAppliedJobId, confirmResumeId, confirmNotes)} disabled={applying === confirmAppliedJobId || atDailyLimit} className="btn-primary text-sm" title={atDailyLimit ? `Daily limit (${CANDIDATE_DAILY_APPLY_LIMIT}) reached` : undefined}>
+                  {applying === confirmAppliedJobId ? <Spinner size={14} /> : 'Submit'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
         );
       })()}
     </div>

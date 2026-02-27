@@ -1,0 +1,43 @@
+{
+    "manifest_version": 3,
+    "name": "CandidateMatch Autofill",
+    "version": "1.0.0",
+    "description": "Autofill job application forms using your CandidateMatch profile. Press Ctrl+Shift+F to activate.",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "scripting"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "background": {
+        "service_worker": "dist/background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "dist/content.js"
+            ],
+            "run_at": "document_idle",
+            "all_frames": false
+        }
+    ],
+    "commands": {
+        "activate-autofill": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+F",
+                "mac": "Command+Shift+F"
+            },
+            "description": "Activate CandidateMatch Autofill on current page"
+        }
+    },
+    "action": {
+        "default_title": "CandidateMatch Autofill",
+        "default_popup": "popup.html"
+    }
+}

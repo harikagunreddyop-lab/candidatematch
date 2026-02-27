@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CandidateMatch Autofill</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e8e8f0;
+    }
+    .header {
+      padding: 14px 16px 12px;
+      background: #16213e;
+      border-bottom: 1px solid #2a2a4c;
+    }
+    .header h1 { font-size: 14px; font-weight: 700; color: #7c83fd; }
+    .header p  { font-size: 11px; color: #888; margin-top: 2px; }
+    .body      { padding: 14px 16px; }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .status-chip.connected    { background: #064e3b; color: #34d399; }
+    .status-chip.disconnected { background: #451a03; color: #fcd34d; }
+    .status-chip .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .status-chip.connected .dot { animation: pulse 1.5s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.4; }
+    }
+
+    .info  { font-size: 12px; color: #888; margin-bottom: 14px; line-height: 1.5; }
+    kbd    { background: #2a2a4c; color: #7c83fd; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 9px 12px;
+      border: none;
+      border-radius: 9px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-align: center;
+      text-decoration: none;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary   { background: #7c83fd; color: #fff; }
+    .btn-secondary { background: #2a2a4c; color: #c8c8e0; margin-top: 8px; }
+    .btn-danger    { background: #7f1d1d; color: #fca5a5; margin-top: 8px; }
+
+    .time-left { font-size: 10px; color: #666; margin-top: 8px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🤖 CandidateMatch Autofill</h1>
+    <p>Intelligent job application filler</p>
+  </div>
+
+  <div class="body">
+    <div id="status-chip" class="status-chip disconnected">
+      <span class="dot"></span>
+      <span id="status-text">Checking…</span>
+    </div>
+    <p id="status-info" class="info"></p>
+    <div id="actions"></div>
+    <p id="time-left" class="time-left" style="display:none"></p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

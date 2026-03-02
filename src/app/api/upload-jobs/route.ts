@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const rows: any[] = body.jobs;
+    const rows: any[] = body?.jobs ?? [];
     const skipMatching: boolean = body.skip_matching ?? false;
 
     if (!Array.isArray(rows) || rows.length === 0) {
@@ -93,7 +93,8 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    const status = err instanceof SyntaxError ? 400 : 500;
+    return NextResponse.json({ error: err?.message ?? 'Request failed' }, { status });
   }
 }
 

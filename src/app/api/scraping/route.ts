@@ -44,13 +44,25 @@ export async function POST(req: NextRequest) {
   if (authResult instanceof Response) return authResult;
 
   const supabase = createServiceClient();
+  let body: {
+    search_queries?: string[];
+    sources?: string[];
+    location?: string;
+    max_results_per_query?: number;
+    skip_matching?: boolean;
+  };
+  try {
+    body = (await req.json()) ?? {};
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
   const {
     search_queries = [],
     sources = [],
     location = '',
     max_results_per_query = 50,
     skip_matching = false, // set true if you want to scrape without matching
-  } = await req.json();
+  } = body;
 
   if (!APIFY_TOKEN) {
     return NextResponse.json(

@@ -66,7 +66,7 @@ export default function CandidateSkillReportPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return null;
-        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string };
+        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] };
       }));
       const best = results
         .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')

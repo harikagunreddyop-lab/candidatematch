@@ -398,7 +398,7 @@ export default function RecruiterCandidateDetail() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return null;
-        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string };
+        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] };
       }));
 
       // Pick the best result by ats_score

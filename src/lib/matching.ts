@@ -331,7 +331,7 @@ export async function runAtsCheck(
     /** Tailored resume version (from resume_versions) — scored instead of candidate_resumes */
     resumeVersionId?: string | null;
   },
-): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string }> {
+): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] }> {
   const startMs = Date.now();
   const now = new Date().toISOString();
 

@@ -141,6 +141,9 @@ export default function CandidateDashboard() {
   const { flags } = useFeatureFlags();
   const tailorResumeAllowed = flags.candidate_tailor_resume !== false;
   const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
+  const saveJobsAllowed = flags.candidate_save_jobs !== false;
+  const remindersAllowed = flags.candidate_reminders !== false;
+  const exportAllowed = flags.candidate_export_data !== false;
 
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
@@ -227,6 +230,13 @@ export default function CandidateDashboard() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if ((tab === 'saved' && !saveJobsAllowed) || (tab === 'reminders' && !remindersAllowed)) {
+      setTab('overview');
+    }
+    if (!saveJobsAllowed) setShowSavedOnly(false);
+  }, [tab, saveJobsAllowed, remindersAllowed]);
 
   useEffect(() => {
     if (!candidate) return;
@@ -722,7 +732,7 @@ export default function CandidateDashboard() {
     if (profileCompletenessPct < 80) return 'Complete your profile for better job visibility.';
     if (applicationsThisWeek === 0 && topApplyReadyMatch) return 'Apply within 48h of a match for better response rates.';
     if (interviewApps.length > 0) return 'Prep for interviews: add dates and notes on the Interviews page.';
-    if (savedJobIds.size > 0 && savedMatches.some(m => !alreadyApplied.has(m.job_id))) return 'You have saved jobs ready to apply — check My Jobs.';
+    if (saveJobsAllowed && savedJobIds.size > 0 && savedMatches.some(m => !alreadyApplied.has(m.job_id))) return 'You have saved jobs ready to apply — check My Jobs.';
     if (matches.length > 0) return 'Start applying to your jobs.';
     return 'Complete your profile to get job matches based on your target titles.';
   })();
@@ -730,9 +740,9 @@ export default function CandidateDashboard() {
   const TABS = [
     { key: 'overview' as const, label: 'Overview', icon: <TrendingUp size={14} /> },
     { key: 'matches' as const, label: 'My Jobs', icon: <Target size={14} />, count: availableMatches.length },
-    { key: 'saved' as const, label: 'Saved', icon: <BookmarkCheck size={14} />, count: savedJobIds.size },
+    ...(saveJobsAllowed ? [{ key: 'saved' as const, label: 'Saved', icon: <BookmarkCheck size={14} />, count: savedJobIds.size }] : []),
     { key: 'applications' as const, label: 'Applications', icon: <ClipboardList size={14} />, count: applications.length },
-    { key: 'reminders' as const, label: 'Reminders', icon: <Bell size={14} />, count: reminders.length },
+    ...(remindersAllowed ? [{ key: 'reminders' as const, label: 'Reminders', icon: <Bell size={14} />, count: reminders.length }] : []),
     { key: 'resumes' as const, label: 'My Resumes', icon: <FileText size={14} />, count: uploadedResumes.length },
   ];
 
@@ -779,9 +789,11 @@ export default function CandidateDashboard() {
             <button onClick={load} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
               <RefreshCw size={18} className="sm:w-5 sm:h-5" />
             </button>
-            <button onClick={handleExportData} className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
-              <FileDown size={16} /> Export
-            </button>
+            {exportAllowed && (
+              <button onClick={handleExportData} className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+                <FileDown size={16} /> Export
+              </button>
+            )}
             <button onClick={() => setTab('matches')} className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
               <Target size={16} /> My Jobs
             </button>
@@ -835,10 +847,10 @@ export default function CandidateDashboard() {
       )}
 
       {/* ─── Quick stats ────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className={cn('grid gap-3 sm:gap-4', saveJobsAllowed ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3')}>
         <StatCard label="My Jobs" value={matches.length} icon={<Briefcase size={22} className="text-brand-600 dark:text-brand-400" />} color="bg-brand-500/10 dark:bg-brand-500/20" subtext={applicationsThisWeek > 0 ? `${applicationsThisWeek} applied this week` : undefined} />
         <StatCard label="Applications" value={applications.length} icon={<ClipboardList size={22} className="text-violet-600 dark:text-violet-400" />} color="bg-violet-500/10 dark:bg-violet-500/20" />
-        <StatCard label="Saved Jobs" value={savedJobIds.size} icon={<BookmarkCheck size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="jobs you bookmarked" />
+        {saveJobsAllowed && <StatCard label="Saved Jobs" value={savedJobIds.size} icon={<BookmarkCheck size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="jobs you bookmarked" />}
         <StatCard label="Interviews" value={interviewApps.length} icon={<Calendar size={22} className="text-amber-600 dark:text-amber-400" />} color="bg-amber-500/10 dark:bg-amber-500/20" />
       </div>
 
@@ -890,18 +902,18 @@ export default function CandidateDashboard() {
             <div className="flex flex-wrap items-center gap-2 sm:gap-0">
               {[
                 { label: 'Matched', count: matches.length, icon: Briefcase },
-                { label: 'Saved', count: savedJobIds.size, icon: BookmarkCheck },
+                ...(saveJobsAllowed ? [{ label: 'Saved', count: savedJobIds.size, icon: BookmarkCheck }] : []),
                 { label: 'Applied', count: applications.length, icon: ClipboardList },
                 { label: 'Interview', count: interviewApps.length, icon: Calendar },
                 { label: 'Offer', count: offerCount, icon: Award },
-              ].map((step, i) => (
+              ].filter(Boolean).map((step: { label: string; count: number; icon: any }, i, arr) => (
                 <div key={step.label} className="flex items-center">
                   <div className="flex flex-col items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-surface-50 dark:bg-surface-700/50 border border-surface-100 dark:border-surface-600 min-w-[4.5rem] sm:min-w-[5rem]">
                     <step.icon size={14} className="text-surface-500 dark:text-surface-400 shrink-0" />
                     <span className="text-lg font-bold text-surface-900 dark:text-surface-100 tabular-nums">{step.count}</span>
                     <span className="text-[10px] font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">{step.label}</span>
                   </div>
-                  {i < 4 && <ArrowRight size={14} className="text-surface-300 dark:text-surface-500 mx-1 sm:mx-2 shrink-0 hidden sm:block" />}
+                  {i < arr.length - 1 && <ArrowRight size={14} className="text-surface-300 dark:text-surface-500 mx-1 sm:mx-2 shrink-0 hidden sm:block" />}
                 </div>
               ))}
             </div>
@@ -1003,9 +1015,11 @@ export default function CandidateDashboard() {
                             ? <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1"><CheckCircle2 size={12} /> Applied</span>
                             : (
                               <>
-                                <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                  {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
-                                </button>
+                                {saveJobsAllowed && (
+                                  <button onClick={() => toggleSavedJob(m.job_id)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                    {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
+                                  </button>
+                                )}
                                 {m.job?.url ? (
                                   <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
                                     <ExternalLink size={12} /> Apply
@@ -1136,14 +1150,16 @@ export default function CandidateDashboard() {
             <div className="flex items-center justify-between pt-1 border-t border-surface-100 dark:border-surface-700">
               <span className="text-xs text-surface-500 dark:text-surface-400">
                 {filteredAvailableForSaved.length} job{filteredAvailableForSaved.length !== 1 ? 's' : ''} shown
-                {(matchDateFilter !== 'all' || jobDateFilter !== 'all' || showSavedOnly) && (
+                {(matchDateFilter !== 'all' || jobDateFilter !== 'all' || (showSavedOnly && saveJobsAllowed)) && (
                   <button onClick={() => { setMatchDateFilter('all'); setJobDateFilter('all'); setShowSavedOnly(false); }}
                     className="ml-2 text-brand-600 dark:text-brand-400 hover:underline font-medium">Clear filters</button>
                 )}
               </span>
-              <button onClick={() => setShowSavedOnly(!showSavedOnly)} className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', showSavedOnly ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
-                <BookmarkCheck size={13} className="inline mr-1" /> Saved only
-              </button>
+              {saveJobsAllowed && (
+                <button onClick={() => setShowSavedOnly(!showSavedOnly)} className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', showSavedOnly ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
+                  <BookmarkCheck size={13} className="inline mr-1" /> Saved only
+                </button>
+              )}
             </div>
           </div>
           {filteredAvailableForSaved.length === 0 ? (
@@ -1199,9 +1215,11 @@ export default function CandidateDashboard() {
                           </span>
                           : (
                             <>
-                              <button onClick={() => toggleSavedJob(m.job_id)} className="min-h-[44px] min-w-[44px] p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400 flex items-center justify-center" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
-                                {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
-                              </button>
+                              {saveJobsAllowed && (
+                                <button onClick={() => toggleSavedJob(m.job_id)} className="min-h-[44px] min-w-[44px] p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400 flex items-center justify-center" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                                  {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
+                                </button>
+                              )}
                               {m.job?.url ? (
                                 <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 pointer-events-none')} title={applyDisabled ? applyBlockedReason : undefined}>
                                   <ExternalLink size={14} /> Apply now
@@ -1347,9 +1365,11 @@ export default function CandidateDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                    <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-300" title="Unsave">
-                      <BookmarkCheck size={16} />
-                    </button>
+                    {saveJobsAllowed && (
+                      <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl bg-brand-100 dark:bg-brand-500/30 text-brand-600 dark:text-brand-300" title="Unsave">
+                        <BookmarkCheck size={16} />
+                      </button>
+                    )}
                     {applied ? (
                       <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 rounded-xl">
                         <CheckCircle2 size={12} /> {appStatus || 'Applied'}
@@ -1432,20 +1452,22 @@ export default function CandidateDashboard() {
               )}
 
               {/* Remind me + upcoming reminders */}
-              <div className="pt-3 border-t border-surface-100 dark:border-surface-700 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-medium text-surface-500 dark:text-surface-400">Remind me:</span>
-                {[3, 7, 14].map(d => (
-                  <button key={d} onClick={() => addReminder(a.id, d)} className="text-xs py-1.5 px-3 rounded-lg bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-600">
-                    In {d} days
-                  </button>
-                ))}
-                {reminders.filter((r: any) => r.application_id === a.id).map((r: any) => (
-                  <span key={r.id} className="inline-flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                    <Bell size={12} /> {formatRelative(r.remind_at)}
-                    <button onClick={() => removeReminder(r.id)} className="p-0.5 rounded hover:bg-amber-500/30 text-amber-600 dark:text-amber-400" aria-label="Remove reminder"><X size={12} /></button>
-                  </span>
-                ))}
-              </div>
+              {remindersAllowed && (
+                <div className="pt-3 border-t border-surface-100 dark:border-surface-700 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-surface-500 dark:text-surface-400">Remind me:</span>
+                  {[3, 7, 14].map(d => (
+                    <button key={d} onClick={() => addReminder(a.id, d)} className="text-xs py-1.5 px-3 rounded-lg bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-200 hover:bg-surface-200 dark:hover:bg-surface-600">
+                      In {d} days
+                    </button>
+                  ))}
+                  {reminders.filter((r: any) => r.application_id === a.id).map((r: any) => (
+                    <span key={r.id} className="inline-flex items-center gap-1.5 text-xs py-1.5 px-3 rounded-lg bg-amber-500/15 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                      <Bell size={12} /> {formatRelative(r.remind_at)}
+                      <button onClick={() => removeReminder(r.id)} className="p-0.5 rounded hover:bg-amber-500/30 text-amber-600 dark:text-amber-400" aria-label="Remove reminder"><X size={12} /></button>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Status pipeline */}
               <div className="pt-4 border-t border-surface-100 dark:border-surface-700">

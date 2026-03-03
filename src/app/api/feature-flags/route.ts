@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const role = authResult.profile.role;
 
   const supabase = createServiceClient();
-  const [roleFlags, userFlags] = await Promise.all([
+  const [roleFlags, userFlags, appSettingsRes] = await Promise.all([
     supabase
       .from('feature_flags')
       .select('key, value, role')
@@ -20,6 +20,10 @@ export async function GET(req: NextRequest) {
       .from('user_feature_flags')
       .select('key, enabled')
       .eq('user_id', authResult.user.id),
+    supabase
+      .from('app_settings')
+      .select('key, value')
+      .in('key', ['feature_candidate_saved_jobs', 'feature_candidate_reminders', 'feature_candidate_export']),
   ]);
 
   if (roleFlags.error) return NextResponse.json({ error: roleFlags.error.message }, { status: 400 });
@@ -34,9 +38,21 @@ export async function GET(req: NextRequest) {
     flags[row.key] = v === true || v === 'true' || (typeof v === 'object' && (v as any)?.enabled === true);
   }
 
-  // 2. Apply per-user overrides (highest priority)
+  // 2. Apply per-user overrides
   for (const row of userFlags.data ?? []) {
     flags[row.key] = row.enabled;
+  }
+
+  // 3. Apply app_settings global kill switch (overrides per-user for candidates)
+  if (role === 'candidate') {
+    const appMap: Record<string, boolean> = {};
+    for (const d of appSettingsRes.data ?? []) {
+      const v = (d.value as any)?.value;
+      appMap[d.key] = v === true || v === 'true';
+    }
+    if (appMap['feature_candidate_saved_jobs'] === false) flags.candidate_save_jobs = false;
+    if (appMap['feature_candidate_reminders'] === false) flags.candidate_reminders = false;
+    if (appMap['feature_candidate_export'] === false) flags.candidate_export_data = false;
   }
 
   return NextResponse.json(flags);

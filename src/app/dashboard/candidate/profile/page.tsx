@@ -2,14 +2,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
-import { Spinner } from '@/components/ui';
-import { useFeatureFlags } from '@/hooks';
+import { Spinner, ToastContainer } from '@/components/ui';
+import { useFeatureFlags, useToast } from '@/hooks';
 import { FileDown, Mail, Phone, MapPin, Linkedin, AlertCircle, Sparkles, BarChart2 } from 'lucide-react';
 
 export default function CandidateProfilePage() {
   const supabase = createClient();
   const { flags } = useFeatureFlags();
+  const { toasts, toast, dismiss } = useToast();
   const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
+  const exportAllowed = flags.candidate_export_data !== false;
   const [candidate, setCandidate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
@@ -81,8 +83,11 @@ export default function CandidateProfilePage() {
 
   const handleExportData = async () => {
     const res = await fetch('/api/candidate-export');
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast((data as any).error || 'Export failed', 'error');
+      return;
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -90,6 +95,7 @@ export default function CandidateProfilePage() {
     a.download = `orion-candidate-export-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    toast('Data exported', 'success');
   };
 
   const saveProfile = async () => {
@@ -137,6 +143,7 @@ export default function CandidateProfilePage() {
   );
 
   return (
+    <>
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">My Profile</h1>
@@ -159,9 +166,11 @@ export default function CandidateProfilePage() {
             {autofilling ? <Spinner size={14} /> : <Sparkles size={14} />}
             Autofill with AI
           </button>
-          <button onClick={handleExportData} className="btn-ghost text-sm py-2 px-4 flex items-center gap-2" title="Download your data as JSON">
-            <FileDown size={14} /> Export my data
-          </button>
+          {exportAllowed && (
+            <button onClick={handleExportData} className="btn-ghost text-sm py-2 px-4 flex items-center gap-2" title="Download your data as JSON">
+              <FileDown size={14} /> Export my data
+            </button>
+          )}
           {!editingProfile
             ? <button onClick={() => setEditingProfile(true)} className="btn-secondary text-sm py-2 px-4">Edit profile</button>
             : <div className="flex gap-2">
@@ -370,5 +379,7 @@ export default function CandidateProfilePage() {
         </div>
       </div>
     </div>
+    <ToastContainer toasts={toasts} dismiss={dismiss} />
+    </>
   );
 }

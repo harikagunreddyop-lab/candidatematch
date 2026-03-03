@@ -88,7 +88,7 @@ export default function AdminSettingsPage() {
         <h3 className="text-sm font-semibold text-surface-800 dark:text-surface-200 flex items-center gap-2">
           <Settings size={16} /> Feature flags
         </h3>
-        <p className="text-xs text-surface-500 dark:text-surface-400">These control which candidate features are available.</p>
+        <p className="text-xs text-surface-500 dark:text-surface-400">These are global toggles that disable features for ALL candidates (overrides per-user settings).</p>
         <div className="space-y-4">
           {Object.entries(FEATURE_DEFAULTS).map(([key, def]) => (
             <label key={key} className="flex items-center justify-between gap-4 cursor-pointer">

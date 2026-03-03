@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { createServiceClient } from '@/lib/supabase-server';
+import { hasFeature } from '@/lib/feature-flags-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,10 @@ export async function GET(req: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const service = createServiceClient();
+  const exportAllowed = await hasFeature(service, user.id, 'candidate', 'candidate_export_data', true);
+  if (!exportAllowed) return NextResponse.json({ error: 'Export is disabled' }, { status: 403 });
 
   const { data: candidate } = await supabase
     .from('candidates')

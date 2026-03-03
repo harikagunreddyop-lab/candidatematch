@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Orion CMOS</string>
+    <string name="title_activity_main">Orion CMOS</string>
+    <string name="package_name">com.orioncmos.app</string>
+    <string name="custom_url_scheme">com.orioncmos.app</string>
+</resources>

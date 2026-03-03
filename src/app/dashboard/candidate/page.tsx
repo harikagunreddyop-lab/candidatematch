@@ -92,6 +92,7 @@ export default function CandidateDashboard() {
   const [matchDateFilter, setMatchDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
   const [jobDateFilter, setJobDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
   const [notLinked, setNotLinked] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Per-job AI brief (like recruiter)
   const [briefJobId, setBriefJobId] = useState<string | null>(null);
@@ -159,66 +160,70 @@ export default function CandidateDashboard() {
 
   const load = async () => {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setLoading(false); return; }
+    setLoadError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-    const { data: cand } = await supabase
-      .from('candidates').select('*').eq('user_id', session.user.id).single();
+      const { data: cand } = await supabase
+        .from('candidates').select('*').eq('user_id', session.user.id).single();
 
-    if (!cand) { setNotLinked(true); setLoading(false); return; }
-    setCandidate(cand);
-    loadTailoredResumes(cand.id);
-    setProfileForm({
-      full_name: cand.full_name || '',
-      phone: cand.phone || '',
-      location: cand.location || '',
-      linkedin_url: cand.linkedin_url || '',
-      portfolio_url: cand.portfolio_url || '',
-      summary: cand.summary || '',
-      default_pitch: cand.default_pitch || '',
-      salary_min: cand.salary_min ?? '',
-      salary_max: cand.salary_max ?? '',
-      availability: cand.availability || '',
-      open_to_remote: cand.open_to_remote ?? true,
-    });
+      if (!cand) { setNotLinked(true); return; }
+      setCandidate(cand);
+      loadTailoredResumes(cand.id);
+      setProfileForm({
+        full_name: cand.full_name || '',
+        phone: cand.phone || '',
+        location: cand.location || '',
+        linkedin_url: cand.linkedin_url || '',
+        portfolio_url: cand.portfolio_url || '',
+        summary: cand.summary || '',
+        default_pitch: cand.default_pitch || '',
+        salary_min: cand.salary_min ?? '',
+        salary_max: cand.salary_max ?? '',
+        availability: cand.availability || '',
+        open_to_remote: cand.open_to_remote ?? true,
+      });
 
-    const [mch, apps, resumes, savedRes, remindersRes] = await Promise.all([
-      supabase.from('candidate_job_matches')
-        .select('*, job:jobs(id, title, company, location, url, remote_type, job_type, salary_min, salary_max, created_at)')
-        .eq('candidate_id', cand.id)
-        .order('fit_score', { ascending: false })
-        .limit(50),
-      supabase.from('applications')
-        .select('*, job:jobs(title, company, location, url)')
-        .eq('candidate_id', cand.id)
-        .order('created_at', { ascending: false }),
-      fetch(`/api/candidate-resumes?candidate_id=${cand.id}`).then(r => r.json()),
-      supabase.from('candidate_saved_jobs').select('job_id').eq('candidate_id', cand.id),
-      supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', cand.id).gte('remind_at', new Date().toISOString()).order('remind_at'),
-    ]);
+      const [mch, apps, resumes, savedRes, remindersRes] = await Promise.all([
+        supabase.from('candidate_job_matches')
+          .select('*, job:jobs(id, title, company, location, url, remote_type, job_type, salary_min, salary_max, created_at)')
+          .eq('candidate_id', cand.id)
+          .order('fit_score', { ascending: false })
+          .limit(50),
+        supabase.from('applications')
+          .select('*, job:jobs(title, company, location, url)')
+          .eq('candidate_id', cand.id)
+          .order('created_at', { ascending: false }),
+        fetch(`/api/candidate-resumes?candidate_id=${cand.id}`).then(r => r.json()),
+        supabase.from('candidate_saved_jobs').select('job_id').eq('candidate_id', cand.id),
+        supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', cand.id).gte('remind_at', new Date().toISOString()).order('remind_at'),
+      ]);
 
-    const mchData = mch.data || [];
-    const appsData = apps.data || [];
-    setMatches(mchData);
-    setApplications(appsData);
-    setUploadedResumes(resumes.resumes || []);
-    setSavedJobIds(new Set((savedRes.data || []).map((s: any) => s.job_id)));
-    setReminders(remindersRes.data || []);
+      const mchData = mch.data || [];
+      const appsData = apps.data || [];
+      setMatches(mchData);
+      setApplications(appsData);
+      setUploadedResumes(resumes.resumes || []);
+      setSavedJobIds(new Set((savedRes.data || []).map((s: any) => s.job_id)));
+      setReminders(remindersRes.data || []);
 
-    // New matches since last visit
-    const lastSeen = cand.last_seen_matches_at ? new Date(cand.last_seen_matches_at).getTime() : 0;
-    const newCount = mchData.filter((m: any) => new Date(m.matched_at || m.created_at).getTime() > lastSeen).length;
-    setNewMatchesCount(newCount);
-    await supabase.from('candidates').update({ last_seen_matches_at: new Date().toISOString() }).eq('id', cand.id);
+      const lastSeen = cand.last_seen_matches_at ? new Date(cand.last_seen_matches_at).getTime() : 0;
+      const newCount = mchData.filter((m: any) => new Date(m.matched_at || m.created_at).getTime() > lastSeen).length;
+      setNewMatchesCount(newCount);
+      await supabase.from('candidates').update({ last_seen_matches_at: new Date().toISOString() }).eq('id', cand.id);
 
-    const tzOffset = new Date().getTimezoneOffset();
-    const usageRes = await fetch(`/api/applications/usage?tz_offset=${-tzOffset}`);
-    if (usageRes.ok) {
-      const u = await usageRes.json();
-      setApplicationUsage({ used_today: u.used_today ?? 0, limit: u.limit ?? CANDIDATE_DAILY_APPLY_LIMIT });
+      const tzOffset = new Date().getTimezoneOffset();
+      const usageRes = await fetch(`/api/applications/usage?tz_offset=${-tzOffset}`);
+      if (usageRes.ok) {
+        const u = await usageRes.json();
+        setApplicationUsage({ used_today: u.used_today ?? 0, limit: u.limit ?? CANDIDATE_DAILY_APPLY_LIMIT });
+      }
+    } catch (e: any) {
+      setLoadError(e.message || 'Failed to load dashboard');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
@@ -335,12 +340,21 @@ export default function CandidateDashboard() {
   const toggleSavedJob = async (jobId: string) => {
     if (!candidate) return;
     const isSaved = savedJobIds.has(jobId);
+    const prevIds = new Set(savedJobIds);
     if (isSaved) {
-      await supabase.from('candidate_saved_jobs').delete().eq('candidate_id', candidate.id).eq('job_id', jobId);
       setSavedJobIds(prev => { const n = new Set(prev); n.delete(jobId); return n; });
+      const { error } = await supabase.from('candidate_saved_jobs').delete().eq('candidate_id', candidate.id).eq('job_id', jobId);
+      if (error) {
+        setSavedJobIds(prevIds);
+        toast(error.message || 'Failed to unsave job', 'error');
+      }
     } else {
-      await supabase.from('candidate_saved_jobs').insert({ candidate_id: candidate.id, job_id: jobId });
       setSavedJobIds(prev => new Set(prev).add(jobId));
+      const { error } = await supabase.from('candidate_saved_jobs').insert({ candidate_id: candidate.id, job_id: jobId });
+      if (error) {
+        setSavedJobIds(prevIds);
+        toast(error.message || 'Failed to save job', 'error');
+      }
     }
   };
 
@@ -348,22 +362,36 @@ export default function CandidateDashboard() {
     if (!candidate) return;
     const d = new Date();
     d.setDate(d.getDate() + days);
-    await supabase.from('application_reminders').insert({
+    const { error } = await supabase.from('application_reminders').insert({
       application_id: applicationId,
       candidate_id: candidate.id,
       remind_at: d.toISOString(),
     });
-    await load();
+    if (error) {
+      toast(error.message || 'Failed to add reminder', 'error');
+    } else {
+      await load();
+    }
   };
 
   const removeReminder = async (reminderId: string) => {
-    await supabase.from('application_reminders').delete().eq('id', reminderId);
-    setReminders(prev => prev.filter(r => r.id !== reminderId));
+    const prev = [...reminders];
+    setReminders(r => r.filter(x => x.id !== reminderId));
+    const { error } = await supabase.from('application_reminders').delete().eq('id', reminderId);
+    if (error) {
+      setReminders(prev);
+      toast(error.message || 'Failed to remove reminder', 'error');
+    }
   };
 
   const updateApplicationNotes = async (applicationId: string, candidate_notes: string) => {
-    await supabase.from('applications').update({ candidate_notes: candidate_notes || null }).eq('id', applicationId);
-    setApplications(prev => prev.map(a => a.id === applicationId ? { ...a, candidate_notes: candidate_notes || null } : a));
+    const prevNotes = applications.find(a => a.id === applicationId)?.candidate_notes ?? '';
+    setApplications(prevApps => prevApps.map(a => a.id === applicationId ? { ...a, candidate_notes: candidate_notes || null } : a));
+    const { error } = await supabase.from('applications').update({ candidate_notes: candidate_notes || null }).eq('id', applicationId);
+    if (error) {
+      setApplications(prevApps => prevApps.map(a => a.id === applicationId ? { ...a, candidate_notes: prevNotes } : a));
+      toast(error.message || 'Failed to save notes', 'error');
+    }
   };
 
   const updateApplicationInterview = async (applicationId: string, interview_date: string | null, interview_notes: string) => {
@@ -376,7 +404,11 @@ export default function CandidateDashboard() {
 
   const handleExportData = async () => {
     const res = await fetch('/api/candidate-export');
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast((data as any).error || 'Failed to export data', 'error');
+      return;
+    }
     const data = await res.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -385,6 +417,7 @@ export default function CandidateDashboard() {
     a.download = `orion-candidate-export-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    toast('Data exported', 'success');
   };
 
   const generateJobBrief = async (jobId: string) => {
@@ -604,6 +637,15 @@ export default function CandidateDashboard() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center px-4">
+        <p className="text-surface-700 dark:text-surface-300 font-medium">{loadError}</p>
+        <button onClick={() => load()} className="btn-primary">Try again</button>
+      </div>
+    );
+  }
 
   if (notLinked) return (
     <div className="flex flex-col items-center justify-center py-24 gap-6 text-center px-4">

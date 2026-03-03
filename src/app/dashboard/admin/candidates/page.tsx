@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
+import { SearchInput, EmptyState, Spinner, Modal, ToastContainer } from '@/components/ui';
+import { useToast } from '@/hooks';
 import {
   Users,
   RefreshCw,
@@ -60,6 +61,7 @@ function CandidatesPageContent() {
   const [assigningId, setAssigningId] = useState('');
   const [savingAssign, setSavingAssign] = useState(false);
   const [removingAssign, setRemovingAssign] = useState<string | null>(null);
+  const { toasts, toast, dismiss } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -132,26 +134,52 @@ function CandidatesPageContent() {
   const assignRecruiter = async () => {
     if (!assignTarget || !assigningId) return;
     setSavingAssign(true);
-
-    await supabase.from('recruiter_candidate_assignments').upsert({
-      recruiter_id: assigningId,
-      candidate_id: assignTarget.id,
-    });
-    await supabase.from('candidates').update({ assigned_recruiter_id: assigningId, updated_at: new Date().toISOString() }).eq('id', assignTarget.id);
-
-    setAssigningId('');
-    setSavingAssign(false);
-    await load();
+    try {
+      const { error: err1 } = await supabase.from('recruiter_candidate_assignments').upsert({
+        recruiter_id: assigningId,
+        candidate_id: assignTarget.id,
+      });
+      if (err1) {
+        toast(err1.message || 'Failed to assign recruiter', 'error');
+        return;
+      }
+      const { error: err2 } = await supabase.from('candidates').update({ assigned_recruiter_id: assigningId, updated_at: new Date().toISOString() }).eq('id', assignTarget.id);
+      if (err2) {
+        toast(err2.message || 'Failed to update candidate', 'error');
+        return;
+      }
+      setAssigningId('');
+      toast('Recruiter assigned', 'success');
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to assign recruiter', 'error');
+    } finally {
+      setSavingAssign(false);
+    }
   };
 
   const removeRecruiter = async (candidateId: string, recruiterId: string) => {
     setRemovingAssign(recruiterId);
-    await supabase.from('recruiter_candidate_assignments').delete().eq('recruiter_id', recruiterId).eq('candidate_id', candidateId);
-    const { data: remaining } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).order('assigned_at', { ascending: true }).limit(1);
-    const nextRecruiterId = remaining?.[0]?.recruiter_id ?? null;
-    await supabase.from('candidates').update({ assigned_recruiter_id: nextRecruiterId, updated_at: new Date().toISOString() }).eq('id', candidateId);
-    setRemovingAssign(null);
-    await load();
+    try {
+      const { error: err1 } = await supabase.from('recruiter_candidate_assignments').delete().eq('recruiter_id', recruiterId).eq('candidate_id', candidateId);
+      if (err1) {
+        toast(err1.message || 'Failed to remove assignment', 'error');
+        return;
+      }
+      const { data: remaining } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).order('assigned_at', { ascending: true }).limit(1);
+      const nextRecruiterId = remaining?.[0]?.recruiter_id ?? null;
+      const { error: err2 } = await supabase.from('candidates').update({ assigned_recruiter_id: nextRecruiterId, updated_at: new Date().toISOString() }).eq('id', candidateId);
+      if (err2) {
+        toast(err2.message || 'Failed to update candidate', 'error');
+        return;
+      }
+      toast('Recruiter removed', 'success');
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to remove recruiter', 'error');
+    } finally {
+      setRemovingAssign(null);
+    }
   };
 
   const filtered = [...candidates].filter((c) => {
@@ -185,6 +213,7 @@ function CandidatesPageContent() {
 
   return (
     <div className="space-y-6">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

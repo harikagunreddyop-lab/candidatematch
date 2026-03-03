@@ -2,7 +2,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
-import { SearchInput, EmptyState, Spinner, StatusBadge } from '@/components/ui';
+import { SearchInput, EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
+import { useToast } from '@/hooks';
 import { ClipboardList, Calendar, User, ChevronRight } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
 
@@ -30,6 +31,8 @@ export default function AdminApplicationsPage() {
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewNotes, setInterviewNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const { toasts, toast, dismiss } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,13 +56,24 @@ export default function AdminApplicationsPage() {
   useEffect(() => { load(); }, [load]);
 
   const updateStatus = async (appId: string, status: string) => {
-    const res = await fetch('/api/applications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: appId, status }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update');
-    await load();
+    setStatusUpdatingId(appId);
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: appId, status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast((data as any).error || 'Failed to update status', 'error');
+        return;
+      }
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to update status', 'error');
+    } finally {
+      setStatusUpdatingId(null);
+    }
   };
 
   const openScheduler = (app: any) => {
@@ -70,21 +84,30 @@ export default function AdminApplicationsPage() {
 
   const saveInterview = async (appId: string) => {
     setSaving(true);
-    const res = await fetch('/api/applications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: appId,
-        status: 'interview',
-        interview_date: interviewDate || null,
-        interview_notes: interviewNotes || null,
-        notes: interviewNotes || null,
-      }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
-    setSchedulingAppId(null);
-    setSaving(false);
-    await load();
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: appId,
+          status: 'interview',
+          interview_date: interviewDate || null,
+          interview_notes: interviewNotes || null,
+          notes: interviewNotes || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast((data as any).error || 'Failed to save interview details', 'error');
+        return;
+      }
+      setSchedulingAppId(null);
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to save interview details', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getRecruiterName = (candidateId: string) => {
@@ -113,6 +136,7 @@ export default function AdminApplicationsPage() {
 
   return (
     <div className="space-y-5">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
       <div>
         <h1 className="text-2xl font-bold text-surface-900 font-display">Applications</h1>
         <p className="text-sm text-surface-500 mt-1">All applications across candidates · filter by recruiter or status</p>
@@ -181,7 +205,7 @@ export default function AdminApplicationsPage() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <StatusBadge status={a.status} />
-                  <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)} className="input text-xs py-1 px-2 w-full sm:w-32" aria-label="Update status">
+                  <select value={a.status} onChange={e => updateStatus(a.id, e.target.value)} disabled={statusUpdatingId === a.id} className="input text-xs py-1 px-2 w-full sm:w-32" aria-label="Update status">
                     {STATUS_OPTIONS.map(s => (
                       <option key={s} value={s} className="capitalize">{s}</option>
                     ))}

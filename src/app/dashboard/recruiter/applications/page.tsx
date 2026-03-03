@@ -2,7 +2,8 @@
 // src/app/dashboard/recruiter/applications/page.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { SearchInput, EmptyState, Spinner, StatusBadge } from '@/components/ui';
+import { SearchInput, EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
+import { useToast } from '@/hooks';
 import { ClipboardList, Calendar, UserCheck, Check, X, Brain } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
 
@@ -27,9 +28,11 @@ export default function RecruiterApplicationsPage() {
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewNotes, setInterviewNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [interviewKitAppId, setInterviewKitAppId] = useState<string | null>(null);
   const [interviewKitLoading, setInterviewKitLoading] = useState(false);
   const [interviewKit, setInterviewKit] = useState<{ questions: string[] } | null>(null);
+  const { toasts, toast, dismiss } = useToast();
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -69,13 +72,24 @@ export default function RecruiterApplicationsPage() {
   }, [load, supabase]);
 
   const updateStatus = async (appId: string, status: string) => {
-    const res = await fetch('/api/applications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: appId, status }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update');
-    await load();
+    setStatusUpdatingId(appId);
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: appId, status }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || 'Failed to update status', 'error');
+        return;
+      }
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to update status', 'error');
+    } finally {
+      setStatusUpdatingId(null);
+    }
   };
 
   const openScheduler = (app: any) => {
@@ -95,7 +109,13 @@ export default function RecruiterApplicationsPage() {
         body: JSON.stringify({ candidate_id: app.candidate_id, job_id: app.job_id }),
       });
       const data = await res.json();
-      if (res.ok) setInterviewKit({ questions: data.questions || [] });
+      if (res.ok) {
+        setInterviewKit({ questions: data.questions || [] });
+      } else {
+        toast(data.error || 'Failed to generate interview questions', 'error');
+      }
+    } catch (e: any) {
+      toast(e.message || 'Failed to generate interview questions', 'error');
     } finally {
       setInterviewKitLoading(false);
     }
@@ -103,21 +123,30 @@ export default function RecruiterApplicationsPage() {
 
   const saveInterview = async (appId: string) => {
     setSaving(true);
-    const res = await fetch('/api/applications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: appId,
-        status: 'interview',
-        interview_date: interviewDate || null,
-        interview_notes: interviewNotes || null,
-        notes: interviewNotes || null,
-      }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
-    setSchedulingAppId(null);
-    setSaving(false);
-    await load();
+    try {
+      const res = await fetch('/api/applications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: appId,
+          status: 'interview',
+          interview_date: interviewDate || null,
+          interview_notes: interviewNotes || null,
+          notes: interviewNotes || null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || 'Failed to save interview details', 'error');
+        return;
+      }
+      setSchedulingAppId(null);
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to save interview details', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Status pill counts
@@ -138,6 +167,7 @@ export default function RecruiterApplicationsPage() {
 
   return (
     <div className="space-y-5">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
       <div>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Applications</h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
@@ -223,6 +253,7 @@ export default function RecruiterApplicationsPage() {
                   <select
                     value={a.status}
                     onChange={e => updateStatus(a.id, e.target.value)}
+                    disabled={statusUpdatingId === a.id}
                     className="input text-xs py-1 px-2 w-32"
                     aria-label="Update status"
                   >

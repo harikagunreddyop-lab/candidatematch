@@ -11,6 +11,7 @@ export default function RecruiterIntegrationsPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const urlError = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('error') : null;
 
@@ -31,6 +32,8 @@ export default function RecruiterIntegrationsPage() {
   }, []);
 
   const connectGmail = () => {
+    if (connecting) return;
+    setConnecting(true);
     window.location.href = '/api/integrations/gmail/auth';
   };
 
@@ -145,9 +148,10 @@ export default function RecruiterIntegrationsPage() {
             ) : (
               <button
                 onClick={connectGmail}
-                className="mt-4 btn-primary text-sm py-2 px-4 flex items-center gap-2"
+                disabled={connecting}
+                className="mt-4 btn-primary text-sm py-2 px-4 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Link2 size={14} /> Connect Gmail
+                {connecting ? 'Connecting…' : <><Link2 size={14} /> Connect Gmail</>}
               </button>
             )}
           </div>

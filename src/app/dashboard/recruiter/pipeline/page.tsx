@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
-import { Spinner } from '@/components/ui';
+import { Spinner, ToastContainer } from '@/components/ui';
+import { useToast } from '@/hooks';
 import { MapPin, Star, GripVertical, ExternalLink, Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/utils/helpers';
 import { getScoreBadgeClasses } from '@/lib/ats-score';
@@ -29,6 +30,8 @@ export default function PipelinePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ card: any; fromStage: string } | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [movingCardId, setMovingCardId] = useState<string | null>(null);
+  const { toasts, toast, dismiss } = useToast();
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -121,33 +124,47 @@ export default function PipelinePage() {
   }, [load, supabase]);
 
   const moveCard = async (card: any, toStage: string) => {
-    if (card._type === 'match') {
-      const res = await fetch('/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          candidate_id: card.candidate_id,
-          job_id: card.job_id,
-          status: toStage,
-          applied_at: toStage === 'applied' ? new Date().toISOString() : null,
-        }),
-      });
-      if (!res.ok) {
+    const cardId = card._type === 'match' ? `${card.candidate_id}:${card.job_id}` : card.id;
+    setMovingCardId(cardId);
+    try {
+      if (card._type === 'match') {
+        const res = await fetch('/api/applications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidate_id: card.candidate_id,
+            job_id: card.job_id,
+            status: toStage,
+            applied_at: toStage === 'applied' ? new Date().toISOString() : null,
+          }),
+        });
         const data = await res.json().catch(() => ({}));
-        console.error(data.error || 'Failed to create application');
+        if (!res.ok) {
+          toast(data.error || 'Failed to create application', 'error');
+          return;
+        }
+      } else {
+        const res = await fetch('/api/applications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: card.id, status: toStage }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          toast(data.error || 'Failed to update status', 'error');
+          return;
+        }
       }
-    } else {
-      await fetch('/api/applications', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: card.id, status: toStage }),
-      });
+      await load();
+    } catch (e: any) {
+      toast(e.message || 'Failed to move card', 'error');
+    } finally {
+      setMovingCardId(null);
     }
-    await load();
   };
 
   const onDrop = async (toStage: string) => {
-    if (!dragging || dragging.fromStage === toStage) {
+    if (!dragging || dragging.fromStage === toStage || movingCardId) {
       setDragging(null); setDragOver(null); return;
     }
     await moveCard(dragging.card, toStage);
@@ -169,6 +186,7 @@ export default function PipelinePage() {
 
   return (
     <div className="space-y-4">
+      <ToastContainer toasts={toasts} dismiss={dismiss} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Pipeline Board</h1>
@@ -211,7 +229,8 @@ export default function PipelinePage() {
                     key={card.id || `${card.candidate_id}:${card.job_id}`}
                     card={card}
                     stage={stage.key}
-                    onDragStart={() => setDragging({ card, fromStage: stage.key })}
+                    disabled={!!movingCardId}
+                    onDragStart={() => { if (!movingCardId) setDragging({ card, fromStage: stage.key }); }}
                     onMove={moveCard}
                   />
                 ))}
@@ -232,9 +251,10 @@ export default function PipelinePage() {
   );
 }
 
-function PipelineCard({ card, stage, onDragStart, onMove }: {
+function PipelineCard({ card, stage, disabled, onDragStart, onMove }: {
   card: any;
   stage: string;
+  disabled?: boolean;
   onDragStart: () => void;
   onMove: (card: any, stage: string) => void;
 }) {
@@ -260,9 +280,12 @@ function PipelineCard({ card, stage, onDragStart, onMove }: {
 
   return (
     <div
-      draggable
-      onDragStart={onDragStart}
-      className="bg-white dark:bg-surface-800 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group"
+      draggable={!disabled}
+      onDragStart={disabled ? undefined : onDragStart}
+      className={cn(
+        'bg-white dark:bg-surface-800 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 hover:shadow-md transition-shadow group',
+        disabled ? 'cursor-default opacity-75' : 'cursor-grab active:cursor-grabbing'
+      )}
     >
       {/* Candidate row */}
       <div className="flex items-start gap-2">
@@ -330,8 +353,9 @@ function PipelineCard({ card, stage, onDragStart, onMove }: {
         {nextStage && (
           <div className="ml-auto">
             <button
-              onClick={() => onMove(card, nextStage)}
-              className={cn('text-[10px] px-1.5 py-0.5 rounded transition-colors', NEXT_COLORS[stage])}
+              onClick={() => !disabled && onMove(card, nextStage)}
+              disabled={disabled}
+              className={cn('text-[10px] px-1.5 py-0.5 rounded transition-colors', disabled ? 'opacity-50 cursor-not-allowed' : NEXT_COLORS[stage])}
             >
               {NEXT_LABELS[stage]}
             </button>

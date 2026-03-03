@@ -13,8 +13,8 @@ function StatCard({ label, value, icon, href, color }: {
   label: string; value: number | string; icon: React.ReactNode; href: string; color: string;
 }) {
   return (
-    <Link href={href} className="group rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3">
-      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', color)}>
+    <Link href={href} className="group tile flex flex-col items-center text-center gap-3">
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105', color)}>
         {icon}
       </div>
       <div>

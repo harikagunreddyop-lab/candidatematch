@@ -10,9 +10,17 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "worker:dev": "node worker/index.js",
-    "worker:build": "docker build -t candidatematch-worker ./worker"
+    "worker:build": "docker build -t candidatematch-worker ./worker",
+    "mobile:prepare": "node scripts/prepare-mobile-webdir.js",
+    "mobile:sync": "npm run mobile:prepare && npx cap sync",
+    "mobile:ios": "npm run mobile:sync && npx cap open ios",
+    "mobile:android": "npm run mobile:sync && npx cap open android"
   },
   "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/core": "^6.0.0",
+    "@capacitor/ios": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/ssr": "^0.5.0",
     "@supabase/supabase-js": "^2.45.0",
@@ -32,6 +40,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.0.0",
     "@types/node": "^20.0.0",
     "@types/react": "^18.3.0",
     "eslint": "^8.0.0",

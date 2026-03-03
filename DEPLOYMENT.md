@@ -94,6 +94,18 @@ This way both run as long-lived processes (no 5‑minute function limit).
 
 ---
 
+## Mobile (Play Store / App Store)
+
+The app is set up for **Capacitor** to ship as native iOS and Android apps. The native apps load your deployed web app (e.g. Vercel URL) in a WebView.
+
+See **[docs/MOBILE_STORE_DEPLOYMENT.md](docs/MOBILE_STORE_DEPLOYMENT.md)** for:
+
+- Adding Android and iOS platforms
+- Building release bundles for Play Store and App Store
+- App icons, splash screens, and store listing requirements
+
+---
+
 ## Summary
 
 | Component      | Recommended        | Env / notes |

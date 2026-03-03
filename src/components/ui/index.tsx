@@ -28,7 +28,8 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div ref={contentRef} tabIndex={-1} className={cn('relative bg-white dark:bg-surface-800 rounded-2xl shadow-modal w-full max-w-[95vw] p-6 animate-slide-up border border-surface-200 dark:border-surface-600 outline-none', widths[size])}
+      <div ref={contentRef} tabIndex={-1} className={cn('relative rounded-2xl w-full max-w-[95vw] p-6 animate-slide-up outline-none', widths[size])}
+           style={{ backgroundColor: 'var(--tile-hover-bg, #1e2228)', border: '1px solid var(--tile-hover-border, rgba(255,255,255,0.08))', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.4)' }}
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 id="modal-title" className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>
@@ -89,7 +90,7 @@ export function EmptyState({ icon, title, description, action }: {
 }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-surface-100 dark:bg-surface-700 flex items-center justify-center text-surface-400 dark:text-surface-300 mb-4">
+      <div className="w-14 h-14 rounded-2xl tile-icon flex items-center justify-center mb-4">
         {icon}
       </div>
       <h3 className="text-base font-semibold text-surface-800 dark:text-surface-100 mb-1">{title}</h3>
@@ -106,8 +107,8 @@ export function StatCard({ label, value, icon, trend }: {
   return (
     <div className="stat-card">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-medium text-surface-500 dark:text-surface-300">{label}</span>
-        <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-500/20 flex items-center justify-center text-brand-500 dark:text-brand-400">{icon}</div>
+        <span className="text-sm font-medium text-surface-500">{label}</span>
+        <div className="w-9 h-9 rounded-xl tile-icon flex items-center justify-center">{icon}</div>
       </div>
       <div className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">{value}</div>
       {trend && <p className="text-xs text-surface-500 dark:text-surface-300 mt-1">{trend}</p>}

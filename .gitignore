@@ -10,6 +10,7 @@ worker/tmp
 .turbo
 dist
 out
+www
 coverage
 *.tsbuildinfo
 *.zip

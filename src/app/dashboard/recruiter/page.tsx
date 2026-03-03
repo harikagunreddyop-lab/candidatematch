@@ -145,56 +145,31 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Hero — elite gradient like candidate */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
-          <div className="flex-1">
-            <p className="text-surface-300/90 text-xs font-semibold uppercase tracking-[0.2em] mb-2">{dateStr}</p>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
+      {/* Hero — modern, animated greeting */}
+      <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
+          <div className="min-w-0 flex-1">
+            <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
+              {dateStr}
+            </p>
+            <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
               {greeting}, {firstName}
             </h1>
-            <p className="text-surface-300 mt-1.5 text-sm sm:text-base">
-              Here’s what’s happening with your candidates
+            <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
+              {newMatchesTotal > 0
+                ? `${newMatchesTotal} new match${newMatchesTotal !== 1 ? 'es' : ''} · ${totalAssigned} assigned`
+                : `${totalAssigned} candidates · ${totalApps} in pipeline`}
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
-                <span className="text-xs font-bold tabular-nums text-white/90">{totalAssigned}</span>
-                <span className="text-xs text-white/80">assigned</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
-                <span className="text-xs font-bold tabular-nums text-white/90">{totalApps}</span>
-                <span className="text-xs text-white/80">in pipeline</span>
-              </div>
-              {newMatchesTotal > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/30">
-                  <Sparkles size={12} className="text-emerald-300" />
-                  <span className="text-xs font-semibold text-emerald-100">{newMatchesTotal} new match{newMatchesTotal !== 1 ? 'es' : ''}</span>
-                </div>
-              )}
-            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <Link
-              href="/dashboard/recruiter/reports"
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-              title="Talent report"
-            >
-              <TrendingUp size={18} />
+          <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+            <Link href="/dashboard/recruiter/reports" className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Talent report">
+              <TrendingUp size={18} className="sm:w-5 sm:h-5" />
             </Link>
-            <Link
-              href="/dashboard/recruiter/applications"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium"
-            >
+            <Link href="/dashboard/recruiter/applications" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
               Applications
             </Link>
-            <Link
-              href="/dashboard/recruiter/pipeline"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-surface-900 font-semibold text-sm shadow-lg hover:bg-surface-50 hover:shadow-xl transition-all"
-            >
-              <Briefcase size={18} />
-              Pipeline Board
+            <Link href="/dashboard/recruiter/pipeline" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+              <Briefcase size={16} /> Pipeline
             </Link>
           </div>
         </div>

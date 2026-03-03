@@ -1,0 +1,163 @@
+/**
+ * Role-Specific Design Systems
+ * Each role has a complete, distinct palette and visual identity based on behavior.
+ */
+
+/* =============================================================================
+   CANDIDATE — Personal, Aspirational, Growth-Oriented
+   Feel: Career companion, warm, encouraging, like a supportive coach
+   Palette: Teal/cyan — growth, opportunity, calm, forward momentum
+   ============================================================================= */
+[data-role="candidate"] {
+  --role-accent: #14b8a6;
+  --role-accent-muted: #2dd4bf;
+  --role-accent-dim: rgba(20, 184, 166, 0.14);
+  --role-accent-border: rgba(20, 184, 166, 0.3);
+  --role-accent-ring: rgba(20, 184, 166, 0.28);
+  --role-glow: rgba(20, 184, 166, 0.08);
+  /* Sidebar - warmer, softer */
+  --role-sidebar-bg: #0f1416;
+  --role-sidebar-border: rgba(45, 212, 191, 0.08);
+  --role-sidebar-nav-active-bg: rgba(20, 184, 166, 0.12);
+  --role-sidebar-nav-active-border: rgba(20, 184, 166, 0.35);
+  --role-sidebar-nav-hover-bg: rgba(255, 255, 255, 0.04);
+  --role-sidebar-logo-bg: rgba(20, 184, 166, 0.12);
+  --role-sidebar-logo-border: rgba(20, 184, 166, 0.25);
+  --role-sidebar-accent-line: linear-gradient(180deg, rgba(20, 184, 166, 0.5) 0%, rgba(20, 184, 166, 0.15) 50%, transparent 100%);
+  /* Main & header */
+  --role-main-bg: #0d1214;
+  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(20, 184, 166, 0.06), transparent 65%);
+  --role-header-bg: rgba(15, 20, 22, 0.92);
+  --role-header-border: rgba(45, 212, 191, 0.06);
+  --hero-bg: linear-gradient(135deg, #0f1418 0%, #0d1c1e 40%, #0a2122 100%);
+  --hero-bg-mesh: radial-gradient(ellipse 120% 80% at 10% 20%, rgba(20, 184, 166, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 120% at 90% 80%, rgba(45, 212, 191, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 60% 30%, rgba(20, 184, 166, 0.08) 0%, transparent 45%);
+  --hero-accent: rgba(20, 184, 166, 0.35);
+  --hero-border: rgba(45, 212, 191, 0.15);
+  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%, transparent 100%);
+}
+
+/* =============================================================================
+   RECRUITER — Professional, Talent-Focused, Premium
+   Feel: Talent ops workspace, sleek, efficient, like Greenhouse/Lever
+   Palette: Violet/purple — premium, creativity, talent, collaboration
+   ============================================================================= */
+[data-role="recruiter"] {
+  --role-accent: #8b5cf6;
+  --role-accent-muted: #a78bfa;
+  --role-accent-dim: rgba(139, 92, 246, 0.14);
+  --role-accent-border: rgba(139, 92, 246, 0.3);
+  --role-accent-ring: rgba(139, 92, 246, 0.28);
+  --role-glow: rgba(139, 92, 246, 0.08);
+  /* Sidebar - cool, structured */
+  --role-sidebar-bg: #0f0d14;
+  --role-sidebar-border: rgba(167, 139, 250, 0.1);
+  --role-sidebar-nav-active-bg: rgba(139, 92, 246, 0.14);
+  --role-sidebar-nav-active-border: rgba(139, 92, 246, 0.4);
+  --role-sidebar-nav-hover-bg: rgba(255, 255, 255, 0.05);
+  --role-sidebar-logo-bg: rgba(139, 92, 246, 0.12);
+  --role-sidebar-logo-border: rgba(139, 92, 246, 0.3);
+  --role-sidebar-accent-line: linear-gradient(180deg, rgba(139, 92, 246, 0.55) 0%, rgba(139, 92, 246, 0.12) 50%, transparent 100%);
+  /* Main & header */
+  --role-main-bg: #0d0a12;
+  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(139, 92, 246, 0.06), transparent 65%);
+  --role-header-bg: rgba(15, 13, 20, 0.92);
+  --role-header-border: rgba(167, 139, 250, 0.08);
+  --hero-bg: linear-gradient(135deg, #0f0d14 0%, #12101c 40%, #18122a 100%);
+  --hero-bg-mesh: radial-gradient(ellipse 100% 90% at 85% 15%, rgba(139, 92, 246, 0.2) 0%, transparent 45%),
+    radial-gradient(ellipse 90% 100% at 15% 85%, rgba(167, 139, 250, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 70% 70% at 40% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+  --hero-accent: rgba(139, 92, 246, 0.4);
+  --hero-border: rgba(167, 139, 250, 0.18);
+  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%, transparent 100%);
+}
+
+/* =============================================================================
+   ADMIN — Authoritative, Command Center, Control
+   Feel: Enterprise control panel, crisp, decisive, like AWS/Stripe admin
+   Palette: Amber/slate — authority, power, oversight, clarity
+   ============================================================================= */
+[data-role="admin"] {
+  --role-accent: #f59e0b;
+  --role-accent-muted: #fbbf24;
+  --role-accent-dim: rgba(245, 158, 11, 0.14);
+  --role-accent-border: rgba(245, 158, 11, 0.35);
+  --role-accent-ring: rgba(245, 158, 11, 0.3);
+  --role-glow: rgba(245, 158, 11, 0.06);
+  /* Sidebar - neutral, structured, hierarchical */
+  --role-sidebar-bg: #0f0f11;
+  --role-sidebar-border: rgba(251, 191, 36, 0.08);
+  --role-sidebar-nav-active-bg: rgba(245, 158, 11, 0.12);
+  --role-sidebar-nav-active-border: rgba(245, 158, 11, 0.4);
+  --role-sidebar-nav-hover-bg: rgba(255, 255, 255, 0.04);
+  --role-sidebar-logo-bg: rgba(245, 158, 11, 0.12);
+  --role-sidebar-logo-border: rgba(245, 158, 11, 0.3);
+  --role-sidebar-accent-line: linear-gradient(180deg, rgba(245, 158, 11, 0.5) 0%, rgba(245, 158, 11, 0.1) 50%, transparent 100%);
+  /* Main & header */
+  --role-main-bg: #0c0c0e;
+  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245, 158, 11, 0.05), transparent 65%);
+  --role-header-bg: rgba(15, 15, 17, 0.94);
+  --role-header-border: rgba(251, 191, 36, 0.06);
+  --hero-bg: linear-gradient(135deg, #0f0f11 0%, #151310 40%, #1a1712 100%);
+  --hero-bg-mesh: radial-gradient(ellipse 110% 85% at 90% 20%, rgba(245, 158, 11, 0.15) 0%, transparent 48%),
+    radial-gradient(ellipse 85% 110% at 10% 80%, rgba(251, 191, 36, 0.1) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 60% at 50% 40%, rgba(245, 158, 11, 0.06) 0%, transparent 55%);
+  --hero-accent: rgba(245, 158, 11, 0.35);
+  --hero-border: rgba(251, 191, 36, 0.15);
+  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%, transparent 100%);
+}
+
+/* Tile/card design tokens - used by cards, stat cards, list items */
+[data-role="candidate"] {
+  --tile-bg: rgba(30, 36, 38, 0.6);
+  --tile-border: rgba(45, 212, 191, 0.06);
+  --tile-hover-bg: rgba(30, 36, 38, 0.85);
+  --tile-hover-border: rgba(45, 212, 191, 0.12);
+  --tile-hover-shadow: 0 4px 20px -4px rgba(20, 184, 166, 0.06);
+  --tile-icon-bg: rgba(20, 184, 166, 0.1);
+}
+[data-role="recruiter"] {
+  --tile-bg: rgba(28, 26, 36, 0.6);
+  --tile-border: rgba(139, 92, 246, 0.06);
+  --tile-hover-bg: rgba(28, 26, 36, 0.9);
+  --tile-hover-border: rgba(139, 92, 246, 0.12);
+  --tile-hover-shadow: 0 4px 20px -4px rgba(139, 92, 246, 0.08);
+  --tile-icon-bg: rgba(139, 92, 246, 0.1);
+}
+[data-role="admin"] {
+  --tile-bg: rgba(28, 28, 32, 0.6);
+  --tile-border: rgba(245, 158, 11, 0.06);
+  --tile-hover-bg: rgba(28, 28, 32, 0.9);
+  --tile-hover-border: rgba(245, 158, 11, 0.12);
+  --tile-hover-shadow: 0 4px 20px -4px rgba(245, 158, 11, 0.05);
+  --tile-icon-bg: rgba(245, 158, 11, 0.1);
+}
+
+/* Fallback for non-dashboard (login, etc.) */
+:root {
+  --role-sidebar-bg: #0c0d0f;
+  --role-sidebar-border: rgba(255, 255, 255, 0.06);
+  --role-sidebar-nav-active-bg: rgba(255, 255, 255, 0.06);
+  --role-sidebar-nav-active-border: transparent;
+  --role-sidebar-nav-hover-bg: rgba(255, 255, 255, 0.04);
+  --role-sidebar-logo-bg: rgba(116, 143, 252, 0.12);
+  --role-sidebar-logo-border: rgba(116, 143, 252, 0.25);
+  --role-sidebar-accent-line: linear-gradient(180deg, rgba(116, 143, 252, 0.4) 0%, transparent 100%);
+  --role-main-bg: #0f1114;
+  --role-main-glow: none;
+  --role-header-bg: rgba(12, 13, 15, 0.95);
+  --role-header-border: rgba(255, 255, 255, 0.06);
+  --tile-bg: rgba(30, 32, 36, 0.65);
+  --tile-border: rgba(255, 255, 255, 0.05);
+  --tile-hover-bg: rgba(30, 32, 36, 0.9);
+  --tile-hover-border: rgba(255, 255, 255, 0.08);
+  --tile-hover-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.2);
+  --tile-icon-bg: rgba(116, 143, 252, 0.1);
+  --hero-bg: linear-gradient(135deg, #0f1114 0%, #141820 50%, #181c28 100%);
+  --hero-bg-mesh: radial-gradient(ellipse 100% 80% at 80% 20%, rgba(116, 143, 252, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 100% at 20% 80%, rgba(116, 143, 252, 0.08) 0%, transparent 50%);
+  --hero-accent: rgba(116, 143, 252, 0.3);
+  --hero-border: rgba(255, 255, 255, 0.08);
+  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 40%, rgba(255,255,255,0.03) 50%, transparent 60%, transparent 100%);
+}

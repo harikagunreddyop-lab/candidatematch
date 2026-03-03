@@ -697,66 +697,51 @@ export default function CandidateDashboard() {
   return (
     <div className="space-y-8">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
-      {/* ─── Hero: premium welcome + readiness ───────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
-          <div className="flex-1">
-            <p className="text-surface-300/90 text-xs font-semibold uppercase tracking-[0.2em] mb-2">{dateStr}</p>
-            <h1 className="text-xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
+      {/* Hero — modern, animated greeting */}
+      <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
+          <div className="min-w-0 flex-1">
+            <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
+              {dateStr}
+            </p>
+            <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
               {greeting}, {firstName}
             </h1>
-            <p className="text-surface-300 mt-1.5 text-sm sm:text-base">
-              <span className="text-surface-400">Job title: </span>
+            <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
               {candidate.primary_title?.trim() ? (
-                <span>{candidate.primary_title}</span>
+                candidate.primary_title + (candidate.location ? ` · ${candidate.location}` : '')
               ) : (
-                <a href="/dashboard/candidate/profile" className="underline hover:text-white">Add in My profile →</a>
+                <>
+                  <a href="/dashboard/candidate/profile" className="underline hover:text-white/90 transition-colors">Add your job title</a>
+                  {candidate.location ? ` · ${candidate.location}` : ''}
+                </>
               )}
-              {candidate.location ? ` · ${candidate.location}` : ''}
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
-                  <div className="w-12 h-1.5 rounded-full bg-white/20 overflow-hidden">
-                    <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${profileCompletenessPct}%` }} />
-                  </div>
-                  <span className="text-xs font-bold tabular-nums text-white/90">{profileCompletenessPct}%</span>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-white/90">Profile strength</p>
-                  <p className="text-[10px] text-surface-400">Better profile = better matches</p>
-                </div>
-              </div>
+            <div className="hero-stats mt-4 sm:mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
+              <span>Profile <span className="font-semibold text-white">{profileCompletenessPct}%</span></span>
               {applicationsThisWeek > 0 && (
-                <div className="h-8 w-px bg-white/20 hidden sm:block" />
-              )}
-              {applicationsThisWeek > 0 && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/30">
-                  <Zap size={12} className="text-emerald-300" />
-                  <span className="text-xs font-semibold text-emerald-100">{applicationsThisWeek} application{applicationsThisWeek !== 1 ? 's' : ''} this week</span>
-                </div>
+                <>
+                  <span className="text-white/30 hidden sm:inline">·</span>
+                  <span><span className="font-semibold text-white">{applicationsThisWeek}</span> applied this week</span>
+                </>
               )}
               {applicationUsage != null && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/10">
-                  <ClipboardList size={12} className="text-white/80" />
-                  <span className="text-xs font-semibold text-white/90">
-                    {applicationUsage.used_today} of {applicationUsage.limit} applications today
-                  </span>
-                </div>
+                <>
+                  <span className="text-white/30 hidden sm:inline">·</span>
+                  <span className="text-white/50">{applicationUsage.used_today}/{applicationUsage.limit} today</span>
+                </>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button onClick={load} className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors" title="Refresh">
-              <RefreshCw size={18} />
+          <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+            <button onClick={load} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
+              <RefreshCw size={18} className="sm:w-5 sm:h-5" />
             </button>
-            <button onClick={handleExportData} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium">
-              <FileDown size={16} /> Export data
+            <button onClick={handleExportData} className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+              <FileDown size={16} /> Export
             </button>
-            <button onClick={() => setTab('matches')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-surface-900 font-semibold text-sm shadow-lg hover:bg-surface-50 hover:shadow-xl transition-all">
-              <Target size={18} /> My Jobs
+            <button onClick={() => setTab('matches')} className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+              <Target size={16} /> My Jobs
             </button>
           </div>
         </div>

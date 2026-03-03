@@ -5,11 +5,19 @@
 @tailwind components;
 @tailwind utilities;
 
+@import '../styles/role-themes.css';
+
 :root {
   --font-satoshi: 'Satoshi', system-ui, sans-serif;
   --font-cabinet: 'Cabinet Grotesk', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
   color-scheme: dark;
+  /* Default (non-dashboard fallback) */
+  --role-accent: #748ffc;
+  --role-accent-dim: rgba(116, 143, 252, 0.15);
+  --role-accent-border: rgba(116, 143, 252, 0.25);
+  --role-accent-ring: rgba(116, 143, 252, 0.25);
+  --role-glow: rgba(116, 143, 252, 0.12);
 }
 
 @layer base {
@@ -20,7 +28,7 @@
   }
 
   body {
-    @apply bg-surface-900;
+    background-color: #0f1114;
     color: #e9ecef;
   }
 
@@ -93,24 +101,24 @@
 }
 
 /* =============================================================================
-   DARK-ONLY HOVER BACKGROUNDS
+   DARK-ONLY HOVER BACKGROUNDS — soft, clean
    ============================================================================= */
 .hover\:bg-surface-50:hover,
 .hover\:bg-surface-50\/80:hover,
 .hover\:bg-surface-50\/30:hover {
-  background-color: rgba(73, 80, 87, 0.55) !important;
+  background-color: rgba(255, 255, 255, 0.04) !important;
 }
 .hover\:bg-surface-100:hover {
-  background-color: rgba(73, 80, 87, 0.65) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
 }
 .hover\:bg-surface-200:hover {
-  background-color: rgba(73, 80, 87, 0.75) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
 }
 .hover\:bg-white:hover {
-  background-color: rgba(73, 80, 87, 0.55) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
 }
 tr:hover {
-  background-color: rgba(73, 80, 87, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Placeholder text */
@@ -127,71 +135,159 @@ textarea::placeholder {
 @layer components {
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 
-           bg-brand-600 text-white font-medium rounded-xl
-           hover:bg-brand-700 active:bg-brand-800
-           transition-all duration-150 ease-out
-           shadow-sm hover:shadow-md
+           font-medium rounded-2xl
+           transition-all duration-200 ease-out
            disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--role-accent);
+    color: #0f172a;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(0);
   }
 
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
-           font-medium rounded-xl
-           transition-all duration-150 ease-out
-           shadow-sm;
-    background-color: #495057;
-    border: 1px solid #868e96;
+           font-medium rounded-2xl
+           transition-all duration-200 ease-out;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     color: #e9ecef;
   }
   .btn-secondary:hover {
-    background-color: #5c636a;
-    color: #dee2e6;
+    background-color: rgba(255, 255, 255, 0.09);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #fff;
   }
 
   .btn-danger {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5
-           bg-danger-500 text-white font-medium rounded-xl
-           hover:bg-danger-600 active:bg-red-700
-           transition-all duration-150 ease-out
-           shadow-sm;
+           text-white font-medium rounded-2xl
+           transition-all duration-200 ease-out;
+    background-color: rgba(239, 68, 68, 0.9);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+  }
+  .btn-danger:hover {
+    background-color: #ef4444;
+    filter: brightness(1.05);
   }
 
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 px-3 py-2
-           font-medium rounded-xl
-           transition-all duration-150;
-    color: #ced4da;
+           font-medium rounded-2xl
+           transition-all duration-200;
+    color: #a1a1aa;
   }
   .btn-ghost:hover {
-    background-color: #495057;
-    color: #e9ecef;
+    background-color: rgba(255, 255, 255, 0.06);
+    color: #e4e4e7;
   }
 
+  /* Hero greeting — modern, animated, responsive */
+  @keyframes heroIn {
+    0% { opacity: 0; transform: translateY(16px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes heroContent {
+    0% { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes heroShine {
+    0%, 100% { background-position: 100% 0; opacity: 0.5; }
+    50% { background-position: 0 0; opacity: 1; }
+  }
+  .hero-greeting {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.25rem;
+    border: 1px solid var(--hero-border, rgba(255,255,255,0.08));
+    background: var(--hero-bg);
+    background-image: var(--hero-bg-mesh), var(--hero-bg);
+    background-size: 100% 100%, 100% 100%;
+    background-position: 0 0, 0 0;
+    box-shadow: 0 1px 0 0 var(--hero-accent), 0 4px 24px -8px rgba(0,0,0,0.25);
+    animation: heroIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .hero-greeting::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--hero-shine, transparent);
+    background-size: 200% 100%;
+    pointer-events: none;
+    animation: heroShine 6s ease-in-out infinite;
+  }
+  .hero-greeting .hero-date { animation: heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.1s forwards; opacity: 0; }
+  .hero-greeting .hero-title { animation: heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; opacity: 0; }
+  .hero-greeting .hero-subtitle { animation: heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards; opacity: 0; }
+  .hero-greeting .hero-stats { animation: heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.25s forwards; opacity: 0; }
+  .hero-greeting .hero-actions { animation: heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.3s forwards; opacity: 0; }
+  @media (prefers-reduced-motion: reduce) {
+    .hero-greeting,
+    .hero-greeting .hero-date,
+    .hero-greeting .hero-title,
+    .hero-greeting .hero-subtitle,
+    .hero-greeting .hero-stats,
+    .hero-greeting .hero-actions {
+      animation: none;
+      opacity: 1;
+    }
+    .hero-greeting::before { animation: none; }
+  }
+  .hero-greeting .hero-btn {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  }
+  .hero-greeting .hero-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px -4px rgba(0,0,0,0.3);
+  }
+  .hero-greeting .hero-btn-icon {
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+  .hero-greeting .hero-btn-icon:hover {
+    transform: scale(1.08) rotate(4deg);
+    background-color: rgba(255,255,255,0.12);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  /* Cards — role-tinted, soft matte, clean */
   .card {
-    @apply rounded-2xl shadow-card;
-    background-color: #343a40;
-    border: 1px solid #495057;
+    @apply rounded-2xl transition-all duration-300;
+    background-color: var(--tile-bg, rgba(30, 34, 38, 0.65));
+    border: 1px solid var(--tile-border, rgba(255, 255, 255, 0.05));
     color: #e9ecef;
+    backdrop-filter: blur(8px);
   }
 
   .card-hover {
-    @apply card hover:shadow-elevated
-           transition-all duration-200 cursor-pointer;
+    @apply card cursor-pointer;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
   }
   .card-hover:hover {
-    border-color: #5c636a;
+    transform: translateY(-2px);
+    background-color: var(--tile-hover-bg, rgba(30, 34, 38, 0.9));
+    border-color: var(--tile-hover-border, rgba(255, 255, 255, 0.08));
+    box-shadow: var(--tile-hover-shadow, 0 8px 24px -8px rgba(0, 0, 0, 0.25));
   }
 
   .input {
-    @apply w-full px-4 py-2.5 rounded-xl
-           focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500
-           transition-all duration-150;
-    background-color: #495057;
-    border: 1px solid #868e96;
+    @apply w-full px-4 py-2.5 rounded-xl transition-all duration-200;
+    background-color: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255,255,255,0.08);
     color: #e9ecef;
   }
+  .input:focus {
+    outline: none;
+    border-color: var(--role-accent);
+    box-shadow: 0 0 0 2px var(--role-accent-ring);
+  }
   .input::placeholder {
-    color: #adb5bd !important;
+    color: #6b7280 !important;
   }
 
   .select {
@@ -204,41 +300,66 @@ textarea::placeholder {
   }
 
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-medium;
   }
 
   .badge-brand {
     @apply badge;
-    background-color: rgba(76, 110, 245, 0.2);
-    color: #91a7ff;
+    background-color: var(--role-accent-dim);
+    color: var(--role-accent);
   }
 
   .badge-success {
     @apply badge;
-    background-color: rgba(34, 197, 94, 0.15);
+    background-color: rgba(34, 197, 94, 0.12);
     color: #4ade80;
   }
 
   .badge-warning {
     @apply badge;
-    background-color: rgba(245, 158, 11, 0.15);
+    background-color: rgba(245, 158, 11, 0.12);
     color: #fbbf24;
   }
 
   .badge-danger {
     @apply badge;
-    background-color: rgba(239, 68, 68, 0.15);
+    background-color: rgba(239, 68, 68, 0.12);
     color: #f87171;
   }
 
   .badge-neutral {
     @apply badge;
-    background-color: #5c636a;
-    color: #e9ecef;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #a1a1aa;
   }
 
   .stat-card {
     @apply card p-6;
+  }
+
+  /* Tile — for stat cards, dashboard tiles, clickable panels */
+  .tile {
+    @apply rounded-2xl p-5 transition-all duration-300;
+    background-color: var(--tile-bg, rgba(30, 34, 38, 0.65));
+    border: 1px solid var(--tile-border, rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(8px);
+  }
+  .tile:hover {
+    background-color: var(--tile-hover-bg, rgba(30, 34, 38, 0.9));
+    border-color: var(--tile-hover-border, rgba(255, 255, 255, 0.08));
+    box-shadow: var(--tile-hover-shadow, 0 8px 24px -8px rgba(0, 0, 0, 0.2));
+  }
+  .tile-icon {
+    background-color: var(--tile-icon-bg, rgba(255, 255, 255, 0.06));
+    color: var(--role-accent);
+  }
+
+  /* Row hover — for list items, table-like rows */
+  .row-hover {
+    @apply transition-colors duration-200;
+  }
+  .row-hover:hover {
+    background-color: rgba(255, 255, 255, 0.04);
   }
 
   .table-container {
@@ -250,26 +371,26 @@ textarea::placeholder {
   }
 
   .table-container thead {
-    background-color: #2b3035;
-    border-bottom: 1px solid #495057;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .table-container th {
     @apply px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider;
-    color: #ced4da !important;
+    color: #a1a1aa !important;
   }
 
   .table-container td {
     @apply px-5 py-4 text-sm;
-    color: #dee2e6 !important;
+    color: #e4e4e7 !important;
   }
 
   .table-container tbody tr {
-    @apply last:border-0 transition-colors;
-    border-bottom: 1px solid rgba(73, 80, 87, 0.5);
+    @apply last:border-0 transition-colors duration-200;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   }
   .table-container tbody tr:hover {
-    background-color: rgba(73, 80, 87, 0.5);
+    background-color: rgba(255, 255, 255, 0.03);
   }
 
   .skeleton {
@@ -281,8 +402,8 @@ textarea::placeholder {
 
   .tab-active {
     @apply font-medium border-b-2;
-    color: #91a7ff;
-    border-color: #748ffc;
+    color: var(--role-accent);
+    border-color: var(--role-accent);
   }
 
   .tab-inactive {
@@ -375,7 +496,7 @@ input, textarea, select {
   color: #e9ecef;
 }
 input:focus, textarea:focus, select:focus {
-  border-color: #5c7cfa;
+  border-color: var(--role-accent);
   outline: none;
 }
 
@@ -425,19 +546,19 @@ input:focus, textarea:focus, select:focus {
 }
 [class~="bg-brand-50"],
 [class~="bg-brand-100"] {
-  background-color: rgba(76, 110, 245, 0.15) !important;
+  background-color: var(--role-accent-dim) !important;
 }
 [class~="bg-brand-200"] {
-  background-color: rgba(76, 110, 245, 0.25) !important;
+  background-color: var(--role-accent-dim) !important;
 }
 [class~="border-brand-200"],
 [class~="border-brand-100"],
 [class~="divide-brand-100"],
 [class~="divide-brand-200"] {
-  border-color: rgba(76, 110, 245, 0.3) !important;
+  border-color: var(--role-accent-border) !important;
 }
 [class~="hover:bg-brand-100"]:hover {
-  background-color: rgba(76, 110, 245, 0.2) !important;
+  background-color: var(--role-accent-dim) !important;
 }
 [class~="bg-yellow-50"],
 [class~="bg-yellow-100"] {
@@ -481,7 +602,7 @@ input:focus, textarea:focus, select:focus {
 [class~="text-amber-600"], [class~="text-amber-700"], [class~="text-amber-800"] { color: #fbbf24 !important; }
 [class~="text-red-600"], [class~="text-red-700"], [class~="text-red-500"], [class~="text-red-800"] { color: #f87171 !important; }
 [class~="text-blue-600"], [class~="text-blue-700"], [class~="text-blue-800"] { color: #60a5fa !important; }
-[class~="text-brand-600"], [class~="text-brand-700"], [class~="text-brand-800"] { color: #91a7ff !important; }
+[class~="text-brand-600"], [class~="text-brand-700"], [class~="text-brand-800"], [class~="text-brand-400"] { color: var(--role-accent) !important; }
 [class~="text-purple-600"], [class~="text-purple-700"], [class~="text-purple-800"] { color: #c084fc !important; }
 [class~="text-indigo-600"], [class~="text-indigo-700"], [class~="text-indigo-800"] { color: #818cf8 !important; }
 [class~="text-yellow-600"], [class~="text-yellow-700"], [class~="text-yellow-800"] { color: #fbbf24 !important; }

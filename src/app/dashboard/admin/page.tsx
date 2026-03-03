@@ -103,11 +103,9 @@ function StatCard({
   return (
     <Link
       href={href}
-      className="group relative rounded-2xl bg-surface-800 border border-surface-700/60 p-5 shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-black/30 hover:-translate-y-1 transition-all duration-300 flex flex-col items-center text-center gap-3 overflow-hidden"
+      className="group relative tile flex flex-col items-center text-center gap-3 overflow-hidden"
     >
-      <div className={cn('absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-br', gradient)} style={{ opacity: 0 }} />
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-[0.08] transition-opacity duration-300 bg-gradient-to-br from-white to-transparent" />
-      <div className={cn('relative w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110', lightBg)}>
+      <div className={cn('relative w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105', lightBg)}>
         <Icon size={22} className={iconColor} />
       </div>
       <div className="relative">
@@ -144,8 +142,8 @@ function PanelCard({
   isEmpty: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm overflow-hidden">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
+    <div className="card overflow-hidden">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           <span className={cn('w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0', iconBg)}>
             {icon}
@@ -300,55 +298,36 @@ export default function AdminDashboard() {
     <div className="relative min-h-full">
       <div className="pointer-events-none absolute inset-0 -top-8 -left-8 -right-8 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.07),transparent)] dark:bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.12),transparent)]" aria-hidden />
       <div className="relative space-y-8">
-      {/* Hero — elite gradient like candidate */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-surface-900 via-surface-800 to-brand-900/90 px-4 sm:px-6 py-6 sm:py-8 lg:py-10 text-white shadow-xl border border-white/5">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,80,200,0.2),transparent)]" />
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand-500/10 to-transparent" />
-        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="flex-1">
-            <p className="text-surface-300/90 text-xs font-semibold uppercase tracking-[0.2em] mb-2">{dateStr}</p>
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-display tracking-tight text-white drop-shadow-sm">
+      {/* Hero — modern, animated greeting */}
+      <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
+          <div className="min-w-0 flex-1">
+            <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
+              {dateStr}
+            </p>
+            <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
               {getGreeting()}
             </h1>
-            <p className="text-surface-300 mt-1.5 text-sm sm:text-base flex items-center gap-2">
-              <Activity size={16} className="text-surface-400 shrink-0" />
-              Admin control center · Pipeline overview
+            <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
+              Pipeline overview
               {lastRefreshed && (
-                <span className="text-surface-400 text-xs font-medium">
-                  · Live {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </span>
+                <span className="text-white/40"> · {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
               )}
             </p>
-            <div className="mt-5 flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
-                <span className="text-xs font-bold tabular-nums text-white/90">{stats.candidates}</span>
-                <span className="text-xs text-white/80">candidates</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/10 border border-white/10">
-                <span className="text-xs font-bold tabular-nums text-white/90">{stats.applications}</span>
-                <span className="text-xs text-white/80">applications</span>
-              </div>
+            <div className="hero-stats mt-4 sm:mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
+              <span><span className="font-semibold text-white">{stats.candidates}</span> candidates</span>
+              <span className="text-white/30 hidden sm:inline">·</span>
+              <span><span className="font-semibold text-white">{stats.applications}</span> in pipeline</span>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button
-              onClick={() => load()}
-              className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
-              title="Refresh"
-            >
-              <RefreshCw size={18} />
+          <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+            <button onClick={() => load()} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
+              <RefreshCw size={18} className="sm:w-5 sm:h-5" />
             </button>
-            <Link
-              href="/dashboard/admin/scraping"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-surface-900 font-semibold text-sm shadow-lg hover:bg-surface-50 hover:shadow-xl transition-all"
-            >
-              <Zap size={18} />
-              Scrape jobs
+            <Link href="/dashboard/admin/scraping" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+              <Zap size={16} /> Scrape jobs
             </Link>
-            <Link
-              href="/dashboard/admin/reports"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-sm font-medium"
-            >
+            <Link href="/dashboard/admin/reports" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
               Reports
             </Link>
           </div>

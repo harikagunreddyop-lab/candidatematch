@@ -21,6 +21,43 @@ module.exports = {
           900: '#364fc7',
           950: '#1e3a8a',
         },
+        /* Role-specific accent palettes */
+        candidate: {
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+        },
+        recruiter: {
+          50: '#f5f3ff',
+          100: '#ede9fe',
+          200: '#ddd6fe',
+          300: '#c4b5fd',
+          400: '#a78bfa',
+          500: '#8b5cf6',
+          600: '#7c3aed',
+          700: '#6d28d9',
+          800: '#5b21b6',
+          900: '#4c1d95',
+        },
+        admin: {
+          50: '#fffbeb',
+          100: '#fef3c7',
+          200: '#fde68a',
+          300: '#fcd34d',
+          400: '#fbbf24',
+          500: '#f59e0b',
+          600: '#d97706',
+          700: '#b45309',
+          800: '#92400e',
+          900: '#78350f',
+        },
         surface: {
           0: '#ffffff',
           50: '#f8f9fb',
@@ -44,14 +81,19 @@ module.exports = {
         display: ['var(--font-cabinet)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'elevated': '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06)',
-        'card': '0 2px 8px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06)',
-        'modal': '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08)',
+        'elevated': '0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.04)',
+        'card': '0 1px 3px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.03)',
+        'modal': '0 12px 40px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.06)',
+        'glow': '0 0 24px -4px var(--role-glow, rgba(76,110,245,0.15))',
       },
       borderRadius: {
         'xl': '12px',
         '2xl': '16px',
-        '3xl': '24px',
+        '3xl': '20px',
+        '4xl': '24px',
+      },
+      transitionDuration: {
+        '400': '400ms',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',
@@ -59,6 +101,9 @@ module.exports = {
         'slide-in-right': 'slideInRight 0.3s ease-out forwards',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'shimmer': 'shimmer 2s linear infinite',
+        'hero-in': 'heroIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+        'hero-content': 'heroContent 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards',
+        'hero-glow': 'heroGlow 8s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -76,6 +121,18 @@ module.exports = {
         shimmer: {
           '0%': { backgroundPosition: '-200% 0' },
           '100%': { backgroundPosition: '200% 0' },
+        },
+        heroIn: {
+          '0%': { opacity: '0', transform: 'translateY(16px) scale(0.98)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        heroContent: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        heroGlow: {
+          '0%, 100%': { opacity: '0.6', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.05)' },
         },
       },
     },

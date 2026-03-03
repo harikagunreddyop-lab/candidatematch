@@ -9,7 +9,7 @@ import type { Profile } from '@/types';
 import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
-  Zap, Menu, X, Link2, Plug, MessageCircle,
+  Zap, Menu, Link2, Plug, MessageCircle,
   BarChart3, Settings, Calendar, FileText, Shield,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
@@ -46,9 +46,9 @@ const recruiterNav: NavItem[] = [
 const candidateNav: NavItem[] = [
   { label: 'Dashboard',       href: '/dashboard/candidate',              icon: <LayoutDashboard size={18} /> },
   { label: 'Skill report',    href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
-  { label: 'Interviews',      href: '/dashboard/candidate/interviews',  icon: <Calendar size={18} /> },
-  { label: 'My profile',      href: '/dashboard/candidate/profile',     icon: <UserCircle size={18} /> },
-  { label: 'Settings',       href: '/dashboard/candidate/settings',    icon: <Settings size={18} /> },
+  { label: 'Interviews',      href: '/dashboard/candidate/interviews',   icon: <Calendar size={18} /> },
+  { label: 'My profile',      href: '/dashboard/candidate/profile',      icon: <UserCircle size={18} /> },
+  { label: 'Settings',       href: '/dashboard/candidate/settings',     icon: <Settings size={18} /> },
   { label: 'Messages',       href: '/dashboard/candidate/messages',     icon: <MessageCircle size={18} /> },
 ];
 
@@ -103,7 +103,6 @@ export default function DashboardLayout({ children, profile }: { children: React
     return () => { client.removeChannel(channel); };
   }, [client, loadUnreadCount]);
 
-  // Inject unread badge into Messages nav item
   const navItems: NavItem[] = baseNavItems.map(item =>
     item.label === 'Messages' ? { ...item, badge: unreadCount } : item
   );
@@ -115,7 +114,7 @@ export default function DashboardLayout({ children, profile }: { children: React
         profile_id: profile.id, is_online: false, last_seen_at: new Date().toISOString(),
       });
     } catch {
-      // Don't block sign out if presence update fails (RLS, network, etc.)
+      /* noop */
     }
     await c.auth.signOut();
     window.location.href = '/';
@@ -128,109 +127,191 @@ export default function DashboardLayout({ children, profile }: { children: React
     return pathname.startsWith(href);
   };
 
+  const role = profile.role as 'candidate' | 'recruiter' | 'admin';
+  const dashboardHref = role === 'admin' ? '/dashboard/admin' : role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
+  const messagesHref = role === 'admin' ? '/dashboard/admin/messages' : role === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
+
   return (
-    <div className="min-h-screen bg-surface-50 dark:bg-surface-900 flex">
+    <div className="min-h-screen flex" data-role={role} style={{ backgroundColor: 'var(--role-main-bg)' }}>
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
-      {/* Sidebar — glossy black */}
-      <aside className={cn(
-        'fixed lg:sticky top-0 left-0 h-screen flex flex-col z-50 transition-all duration-300',
-        'bg-gradient-to-b from-neutral-900 via-black to-black border-r border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]',
-        collapsed ? 'w-[68px]' : 'w-[240px]',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      )}>
-        {/* Logo */}
-        <div className={cn('flex items-center h-16 border-b border-white/10 px-4', collapsed && 'justify-center')}>
-          <Link href={profile.role === 'admin' ? '/dashboard/admin' : profile.role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate'} className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
-              <Image src="/logo.png" alt="Logo" width={32} height={32} className="object-contain" />
+      {/* Sidebar - role-specific design via CSS variables */}
+      <aside
+        className={cn(
+          'fixed lg:sticky top-0 left-0 h-screen flex flex-col z-50 transition-all duration-300 ease-out',
+          collapsed ? 'w-[72px]' : 'w-[256px]',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+        style={{
+          backgroundColor: 'var(--role-sidebar-bg)',
+          borderRight: '1px solid var(--role-sidebar-border)',
+        }}
+      >
+        {/* Role accent line - left edge */}
+        <div
+          className="absolute top-0 left-0 w-[3px] h-full pointer-events-none"
+          style={{ background: 'var(--role-sidebar-accent-line)' }}
+        />
+
+        {/* Logo area */}
+        <div className={cn(
+          'relative flex items-center h-[64px] px-4 border-b shrink-0',
+          collapsed && 'justify-center px-0'
+        )}
+        style={{ borderColor: 'var(--role-sidebar-border)' }}
+        >
+          <Link href={dashboardHref} className="flex items-center gap-3 group">
+            <div
+              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border transition-all duration-200"
+              style={{
+                backgroundColor: 'var(--role-sidebar-logo-bg)',
+                borderColor: 'var(--role-sidebar-logo-border)',
+              }}
+            >
+              <Image src="/logo.png" alt="Orion CMOS" width={26} height={26} className="object-contain opacity-90" />
             </div>
-            {!collapsed && <span className="font-bold text-white font-display tracking-tight">Orion CMOS</span>}
+            {!collapsed && (
+              <span className="font-semibold text-white font-display tracking-tight text-[15px]">
+                Orion CMOS
+              </span>
+            )}
           </Link>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-          {navItems.map(item => (
-            <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all relative',
-                isActive(item.href)
-                  ? 'bg-white/10 text-white shadow-inner'
-                  : 'text-neutral-400 hover:bg-white/5 hover:text-white',
-                collapsed && 'justify-center px-0'
-              )}>
-              <span className={cn('relative', isActive(item.href) ? 'text-brand-400' : 'text-neutral-500')}>
-                {item.icon}
-                {collapsed && item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+        {/* Nav - role-specific active state design */}
+        <nav className="flex-1 py-5 px-3 space-y-1 overflow-y-auto scrollbar-none">
+          {navItems.map(item => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setMobileOpen(false)}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                  'relative',
+                  active ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
+                  !active && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+                  collapsed && 'justify-center px-0'
+                )}
+                style={{
+                  backgroundColor: active ? 'var(--role-sidebar-nav-active-bg)' : undefined,
+                  borderLeft: active && role !== 'candidate' ? '3px solid var(--role-accent)' : undefined,
+                  marginLeft: active && role !== 'candidate' ? '-3px' : undefined,
+                  paddingLeft: active && role !== 'candidate' ? 'calc(0.75rem - 3px)' : undefined,
+                  ...(active && role === 'candidate' && {
+                    border: '1px solid var(--role-sidebar-nav-active-border)',
+                  }),
+                }}
+              >
+                <span
+                  className={cn('relative shrink-0', active ? 'opacity-100' : 'opacity-70')}
+                  style={{ color: active ? 'var(--role-accent)' : undefined }}
+                >
+                  {item.icon}
+                  {collapsed && item.badge && item.badge > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                      {item.badge > 99 ? '99+' : item.badge}
+                    </span>
+                  )}
+                </span>
+                {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+                {!collapsed && item.badge && item.badge > 0 && (
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500/90 text-white text-[10px] font-semibold flex items-center justify-center shrink-0">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
-              </span>
-              {!collapsed && item.label}
-              {!collapsed && item.badge && item.badge > 0 && (
-                <span className="ml-auto min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                  {item.badge > 99 ? '99+' : item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Bottom */}
-        <div className="border-t border-white/10 p-3 space-y-1">
-          <button onClick={handleSignOut}
-            className={cn('flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-neutral-400 hover:bg-white/5 hover:text-white w-full transition-all', collapsed && 'justify-center px-0')}>
+        <div
+          className="border-t p-3 space-y-1 shrink-0"
+          style={{ borderColor: 'var(--role-sidebar-border)' }}
+        >
+          <button
+            onClick={handleSignOut}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-all duration-200',
+              'text-neutral-500 hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+              collapsed && 'justify-center px-0'
+            )}
+          >
             <LogOut size={18} />
             {!collapsed && 'Sign Out'}
           </button>
-          <button onClick={() => setCollapsed(!collapsed)}
-            className={cn('hidden lg:flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-neutral-500 hover:bg-white/5 hover:text-neutral-300 w-full transition-all', collapsed && 'justify-center px-0')}>
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className={cn(
+              'hidden lg:flex items-center gap-3 px-3 py-2 rounded-xl text-sm w-full transition-all duration-200',
+              'text-neutral-600 hover:text-neutral-400 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+              collapsed && 'justify-center px-0'
+            )}
+          >
             {collapsed ? <ChevronRight size={18} /> : <><ChevronLeft size={18} /> Collapse</>}
           </button>
         </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar — glossy black */}
-        <header className="sticky top-0 z-30 h-14 sm:h-16 flex items-center justify-between px-3 sm:px-4 lg:px-8 bg-black/90 backdrop-blur-xl border-b border-white/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]">
-          <button onClick={() => setMobileOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white">
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+        {/* Role-tinted ambient glow */}
+        <div
+          className="absolute top-0 left-0 right-0 h-[240px] pointer-events-none"
+          style={{ background: 'var(--role-main-glow)' }}
+        />
+
+        {/* Header */}
+        <header
+          className="sticky top-0 z-30 h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8 backdrop-blur-xl border-b"
+          style={{
+            backgroundColor: 'var(--role-header-bg)',
+            borderColor: 'var(--role-header-border)',
+          }}
+        >
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="lg:hidden p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"
+            aria-label="Open menu"
+          >
             <Menu size={20} />
           </button>
           <div />
-          <div className="flex items-center gap-2 sm:gap-3">
-            {profile.role === 'admin' && (
-              <AdminNotificationBell adminId={profile.id} />
-            )}
-            <Link href={
-              profile.role === 'admin' ? '/dashboard/admin/messages'
-              : profile.role === 'recruiter' ? '/dashboard/recruiter/messages'
-              : '/dashboard/candidate/messages'
-            } className="relative p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white transition-colors">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {profile.role === 'admin' && <AdminNotificationBell adminId={profile.id} />}
+            <Link
+              href={messagesHref}
+              className="relative p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"
+            >
               <MessageCircle size={20} />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-semibold flex items-center justify-center">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
             </Link>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
-              <p className="text-xs text-neutral-400 capitalize">{profile.role}</p>
+              <p className="text-xs capitalize" style={{ color: 'var(--role-accent)' }}>{profile.role}</p>
             </div>
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/15 flex items-center justify-center text-white font-bold text-sm border border-white/20">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm text-white border"
+              style={{
+                backgroundColor: 'var(--role-sidebar-logo-bg)',
+                borderColor: 'var(--role-sidebar-logo-border)',
+              }}
+            >
               {(profile.name || profile.email || '?')[0].toUpperCase()}
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden min-w-0 w-full">
+        <main className="relative flex-1 p-4 sm:p-5 lg:p-8 overflow-x-hidden min-w-0 w-full">
           {children}
         </main>
       </div>

@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef } from 'react';
 import { cn, statusColor, fitScoreColor } from '@/utils/helpers';
 import { X, Check, AlertCircle, Info, Loader2 } from 'lucide-react';
 
@@ -7,15 +8,30 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const prevActive = document.activeElement as HTMLElement | null;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    contentRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      prevActive?.focus();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className={cn('relative bg-white dark:bg-surface-800 rounded-2xl shadow-modal w-full max-w-[95vw] p-6 animate-slide-up border border-surface-200 dark:border-surface-600', widths[size])}
+      <div ref={contentRef} tabIndex={-1} className={cn('relative bg-white dark:bg-surface-800 rounded-2xl shadow-modal w-full max-w-[95vw] p-6 animate-slide-up border border-surface-200 dark:border-surface-600 outline-none', widths[size])}
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>
+          <h2 id="modal-title" className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 dark:text-surface-300 hover:text-surface-600 dark:hover:text-surface-100 transition-colors">
             <X size={18} />
           </button>
@@ -145,6 +161,24 @@ export function ConfirmDialog({ open, onClose, onConfirm, title, message, confir
           className={cn('text-sm', danger ? 'btn-danger' : 'btn-primary')}>{confirmText}</button>
       </div>
     </Modal>
+  );
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cn('skeleton rounded-lg', className)} />;
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-3">
+      <Skeleton className="h-5 w-3/4" />
+      <Skeleton className="h-4 w-1/2" />
+      <div className="flex gap-2">
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-8 w-24" />
+      </div>
+    </div>
   );
 }
 

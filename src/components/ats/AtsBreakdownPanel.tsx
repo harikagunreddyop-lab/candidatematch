@@ -5,11 +5,21 @@
  * Access-controlled by parent: candidate_see_ats_fix_report for candidates; recruiters/admins always see.
  */
 
-import { ChevronDown, ChevronUp, BarChart2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, BarChart2, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/utils/helpers';
 
 const DIMENSION_LABELS: Record<string, string> = {
+  parse: 'Resume parseability',
+  must: 'Must-have skills',
+  nice: 'Nice-to-have skills',
+  resp: 'Responsibility alignment',
+  impact: 'Impact & metrics',
+  scope: 'Years + leadership + scale',
+  recent: 'Skill recency',
+  domain: 'Role / domain',
+  risk: 'Risk factors',
+  // Legacy (backward compat)
   keyword: 'Skills & keywords',
   experience: 'Years of experience',
   title: 'Role / title alignment',
@@ -20,12 +30,47 @@ const DIMENSION_LABELS: Record<string, string> = {
   soft: 'Nuanced fit',
 };
 
-type DimensionScore = { score: number; details: string; matched?: string[]; missing?: string[] };
+type DimensionScore = {
+  score: number;
+  details: string;
+  matched?: string[];
+  missing?: string[];
+  impact_examples?: Array<{ snippet: string; type: string }>;
+  evidence_spans?: Array<{ skill: string; resume_snippet: string; requirement_source?: string }>;
+};
+
+type FixRecommendation = {
+  priority: 'high' | 'medium' | 'low';
+  dimension: string;
+  title: string;
+  action: string;
+  placeholders?: string[];
+};
+
+type FixReport = {
+  score: number;
+  band: string;
+  summary: string;
+  recommendations: FixRecommendation[];
+  add_to_bullets?: string[];
+  skills_needing_evidence?: string[];
+};
+
+type PerResumeScore = {
+  label: string;
+  ats_score: number;
+  is_best?: boolean;
+};
 
 type AtsBreakdown = {
   dimensions?: Record<string, DimensionScore>;
+  fix_report?: FixReport;
   matched_keywords?: string[];
   missing_keywords?: string[];
+  p_interview?: number | null;
+  calibration_reliable?: boolean;
+  job_family?: string;
+  per_resume_scores?: PerResumeScore[];
 };
 
 type Props = {
@@ -34,10 +79,12 @@ type Props = {
   atsBreakdown?: AtsBreakdown | null;
   matchedKeywords?: string[];
   missingKeywords?: string[];
-  /** Whether the user has access to see this (admin-controlled) */
   visible?: boolean;
   className?: string;
   compact?: boolean;
+  /** For bullet rewrite: candidate + job context */
+  candidateId?: string | null;
+  jobId?: string | null;
 };
 
 export function AtsBreakdownPanel({
@@ -49,17 +96,22 @@ export function AtsBreakdownPanel({
   visible = true,
   className,
   compact = false,
+  candidateId,
+  jobId,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
+  const [bulletRewriteLoading, setBulletRewriteLoading] = useState(false);
+  const [bulletRewrites, setBulletRewrites] = useState<string[] | null>(null);
 
   if (!visible) return null;
   if (typeof atsScore !== 'number') return null;
 
   const dims = atsBreakdown?.dimensions || {};
-  // matched_keywords / missing_keywords: from match object (props) or keyword dimension in breakdown
+  // matched/missing: from props or must dimension (v4) or keyword (legacy)
+  const mustDim = dims.must as DimensionScore | undefined;
   const kwDim = dims.keyword as DimensionScore | undefined;
-  const missingKw = (missingKeywords.length > 0 ? missingKeywords : (kwDim?.missing ?? [])) as string[];
-  const matchedKw = (matchedKeywords.length > 0 ? matchedKeywords : (kwDim?.matched ?? [])) as string[];
+  const missingKw = (missingKeywords.length > 0 ? missingKeywords : (mustDim?.missing ?? kwDim?.missing ?? [])) as string[];
+  const matchedKw = (matchedKeywords.length > 0 ? matchedKeywords : (mustDim?.matched ?? kwDim?.matched ?? [])) as string[];
 
   const dimEntries = Object.entries(dims).filter(
     ([k, v]) => v && typeof (v as DimensionScore).score === 'number'
@@ -68,7 +120,7 @@ export function AtsBreakdownPanel({
   const weakest = dimEntries
     .sort(([, a], [, b]) => (a as DimensionScore).score - (b as DimensionScore).score)
     .slice(0, 3);
-  const isLowScore = atsScore < 75;
+  const isLowScore = atsScore < 80;
 
   return (
     <div
@@ -82,17 +134,23 @@ export function AtsBreakdownPanel({
         onClick={() => setExpanded(!expanded)}
         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-surface-100/50 dark:hover:bg-surface-700/30 transition-colors"
       >
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           <BarChart2 size={16} className="shrink-0 text-surface-500 dark:text-surface-400" />
           <span className="text-sm font-medium text-surface-700 dark:text-surface-200">
             ATS score breakdown
           </span>
+          {!expanded && atsBreakdown?.p_interview != null && atsBreakdown.p_interview >= 0 && (
+            <span className="text-xs text-surface-500 dark:text-surface-400" title={atsBreakdown.calibration_reliable ? 'Based on historical outcomes' : 'Limited data'}>
+              ~{Math.round(atsBreakdown.p_interview * 100)}% interview chance
+            </span>
+          )}
           <span
+            title={atsScore >= 80 ? '80+ = apply ready' : atsScore >= 61 ? '61–79 = tailor resume first' : '≤60 = improve resume, then run ATS again'}
             className={cn(
-              'text-sm font-semibold px-1.5 py-0.5 rounded',
-              atsScore >= 75
+              'text-sm font-semibold px-1.5 py-0.5 rounded cursor-help',
+              atsScore >= 80
                 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                : atsScore >= 50
+                : atsScore >= 61
                   ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                   : 'bg-red-500/15 text-red-600 dark:text-red-400'
             )}
@@ -111,6 +169,102 @@ export function AtsBreakdownPanel({
         <div className="px-4 pb-4 pt-1 space-y-4 border-t border-surface-100 dark:border-surface-700">
           {atsReason && (
             <p className="text-sm text-surface-600 dark:text-surface-300">{atsReason}</p>
+          )}
+
+          {/* Per-resume scores when available */}
+          {atsBreakdown?.per_resume_scores && atsBreakdown.per_resume_scores.length > 0 && (
+            <div className="rounded-lg bg-surface-100 dark:bg-surface-700/50 border border-surface-200 dark:border-surface-600 px-3 py-2.5">
+              <p className="text-xs font-semibold text-surface-700 dark:text-surface-200 mb-2">Scores by resume</p>
+              <ul className="space-y-1.5">
+                {atsBreakdown.per_resume_scores.map((pr, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-surface-600 dark:text-surface-400 truncate">{pr.label}</span>
+                    <span className={cn(
+                      'shrink-0 font-semibold tabular-nums',
+                      pr.is_best ? 'text-emerald-600 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-400'
+                    )}>
+                      {pr.ats_score}{pr.is_best ? ' ✓' : ''}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Calibrated P(interview) when available */}
+          {atsBreakdown?.p_interview != null && atsBreakdown.p_interview >= 0 && (
+            <p className="text-xs text-surface-500 dark:text-surface-400">
+              Estimated interview probability: <span className="font-medium text-surface-700 dark:text-surface-300">{Math.round(atsBreakdown.p_interview * 100)}%</span>
+              {atsBreakdown.calibration_reliable ? '' : ' (limited data)'}
+            </p>
+          )}
+
+          {/* Fix report — actionable recommendations */}
+          {atsBreakdown?.fix_report?.recommendations && atsBreakdown.fix_report.recommendations.length > 0 && (
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 px-3 py-2.5">
+              <p className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-1">
+                How to improve
+              </p>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                {atsBreakdown.fix_report.summary}
+              </p>
+              <ul className="space-y-2">
+                {atsBreakdown.fix_report.recommendations.map((r, i) => (
+                  <li key={i} className="text-xs">
+                    <span className={cn(
+                      'font-medium',
+                      r.priority === 'high' ? 'text-red-700 dark:text-red-300' :
+                      r.priority === 'medium' ? 'text-amber-700 dark:text-amber-300' :
+                      'text-surface-600 dark:text-surface-400'
+                    )}>
+                      {r.title}
+                    </span>
+                    <p className="text-surface-600 dark:text-surface-400 mt-0.5">{r.action}</p>
+                  </li>
+                ))}
+              </ul>
+              {candidateId && jobId && ((atsBreakdown?.fix_report?.add_to_bullets?.length ?? 0) + (atsBreakdown?.fix_report?.skills_needing_evidence?.length ?? 0) + missingKw.length) > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!candidateId || !jobId) return;
+                    setBulletRewriteLoading(true);
+                    setBulletRewrites(null);
+                    try {
+                      const skills = [
+                        ...(atsBreakdown?.fix_report?.add_to_bullets ?? []),
+                        ...(atsBreakdown?.fix_report?.skills_needing_evidence ?? []),
+                        ...missingKw,
+                      ].slice(0, 5);
+                      const bullets = skills.map(s => `Add experience demonstrating ${s}`);
+                      const res = await fetch('/api/ats/bullet-rewrite', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ candidate_id: candidateId, job_id: jobId, bullets, missing_skills: missingKw }),
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.rewritten) setBulletRewrites(data.rewritten);
+                    } finally {
+                      setBulletRewriteLoading(false);
+                    }
+                  }}
+                  disabled={bulletRewriteLoading}
+                  className="mt-2 text-xs font-medium text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1"
+                >
+                  {bulletRewriteLoading ? 'Generating…' : <><Sparkles size={12} /> Improve bullets with AI</>}
+                </button>
+              )}
+              {bulletRewrites && bulletRewrites.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                  <p className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">Suggested bullets:</p>
+                  <ul className="text-xs text-surface-700 dark:text-surface-300 space-y-1">
+                    {bulletRewrites.map((b, i) => (
+                      <li key={i} className="italic">&ldquo;{b}&rdquo;</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
 
           {/* What's missing — clear callout */}
@@ -152,6 +306,27 @@ export function AtsBreakdownPanel({
             </div>
           )}
 
+          {/* Impact examples — quantified achievements */}
+          {(() => {
+            const behDim = (dims.behavioral ?? dims.impact) as DimensionScore | undefined;
+            const examples = behDim?.impact_examples;
+            if (!examples?.length) return null;
+            return (
+              <div>
+                <p className="text-xs font-semibold text-surface-600 dark:text-surface-400 mb-1">
+                  Quantified impact
+                </p>
+                <ul className="text-xs text-surface-600 dark:text-surface-300 space-y-1">
+                  {examples.slice(0, 3).map((e, i) => (
+                    <li key={i} className="italic">
+                      &ldquo;{e.snippet}&rdquo;
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
+
           {/* Matched keywords — positive reinforcement */}
           {matchedKw.length > 0 && (
             <div>
@@ -171,6 +346,25 @@ export function AtsBreakdownPanel({
                   <span className="text-xs text-surface-500">+{matchedKw.length - 10} more</span>
                 )}
               </div>
+              {/* Evidence spans: where skills were found in resume */}
+              {(() => {
+                const evDim = (dims.must ?? dims.keyword) as DimensionScore | undefined;
+                const spans = evDim?.evidence_spans;
+                if (!spans?.length) return null;
+                return (
+                  <ul className="mt-2 space-y-1.5 text-xs text-surface-600 dark:text-surface-300">
+                    {spans.slice(0, 4).map((s, i) => (
+                      <li key={i}>
+                        <span className="font-medium text-surface-700 dark:text-surface-200">{s.skill}</span>
+                        {s.requirement_source && (
+                          <span className="text-surface-500 ml-1">({s.requirement_source.replace('_', '-')})</span>
+                        )}
+                        : <span className="italic">&ldquo;{s.resume_snippet}&rdquo;</span>
+                      </li>
+                    ))}
+                  </ul>
+                );
+              })()}
             </div>
           )}
 
@@ -190,9 +384,9 @@ export function AtsBreakdownPanel({
                       <div
                         className={cn(
                           'h-full rounded-full',
-                          d.score >= 75
+                          d.score >= 80
                             ? 'bg-emerald-500'
-                            : d.score >= 50
+                            : d.score >= 61
                               ? 'bg-amber-500'
                               : 'bg-red-500'
                         )}

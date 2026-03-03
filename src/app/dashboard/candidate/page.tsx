@@ -900,6 +900,34 @@ export default function CandidateDashboard() {
             </div>
           </div>
 
+          {/* Onboarding checklist */}
+          {(uploadedResumes.length === 0 || applications.length === 0 || profileCompletenessPct < 100) && (
+            <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2 mb-3">
+                <span className="w-8 h-8 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center"><Target size={16} className="text-brand-600 dark:text-brand-400" /></span>
+                Getting started
+              </h3>
+              <ul className="space-y-2">
+                <li className={cn('flex items-center gap-2 text-sm', uploadedResumes.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-400')}>
+                  {uploadedResumes.length > 0 ? <CheckCircle2 size={16} className="shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-surface-400 shrink-0" />}
+                  Upload resume
+                </li>
+                <li className={cn('flex items-center gap-2 text-sm', atsReportAllowed && matches.some(mm => typeof (mm as any).ats_score === 'number') ? 'text-emerald-600 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-400')}>
+                  {atsReportAllowed && matches.some(mm => typeof (mm as any).ats_score === 'number') ? <CheckCircle2 size={16} className="shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-surface-400 shrink-0" />}
+                  Run ATS check
+                </li>
+                <li className={cn('flex items-center gap-2 text-sm', applications.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-400')}>
+                  {applications.length > 0 ? <CheckCircle2 size={16} className="shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-surface-400 shrink-0" />}
+                  Apply to first job
+                </li>
+                <li className={cn('flex items-center gap-2 text-sm', profileCompletenessPct >= 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-surface-600 dark:text-surface-400')}>
+                  {profileCompletenessPct >= 100 ? <CheckCircle2 size={16} className="shrink-0" /> : <span className="w-4 h-4 rounded-full border-2 border-surface-400 shrink-0" />}
+                  Complete profile (100%)
+                </li>
+              </ul>
+            </div>
+          )}
+
           {/* Paste JD → ATS check */}
           {atsReportAllowed && candidate?.id && (
             <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 shadow-sm">
@@ -1092,8 +1120,12 @@ export default function CandidateDashboard() {
             </div>
           </div>
           {filteredAvailableForSaved.length === 0 ? (
-            <EmptyState icon={<Briefcase size={24} />} title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
-              description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all my jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'} />
+            <EmptyState
+              icon={<Briefcase size={24} />}
+              title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
+              description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all my jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'}
+              action={showSavedOnly || availableMatches.length > 0 ? <button onClick={() => setTab('matches')} className="btn-primary text-sm py-2 px-4">Browse matches</button> : undefined}
+            />
           ) : filteredAvailableForSaved.map(m => {
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;
@@ -1104,7 +1136,7 @@ export default function CandidateDashboard() {
             const canTailor = atsScore !== null && atsScore >= 61 && atsScore <= 79;
             const applyBlockedReason = atsScore === null ? 'Run ATS check first' : atsScore <= 60 ? 'ATS score below 60 — cannot apply or tailor' : 'Tailor resume first to reach 80+';
             return (
-              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-5 space-y-3 shadow-sm">
+              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-5 space-y-3 shadow-sm transition-shadow hover:shadow-md">
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col gap-3">
@@ -1118,12 +1150,20 @@ export default function CandidateDashboard() {
                             <span>${Math.round(m.job.salary_min / 1000)}k{m.job.salary_max ? `–$${Math.round(m.job.salary_max / 1000)}k` : '+'}</span>
                           )}
                           {atsScore !== null && (
-                            <span className={cn('font-semibold px-1.5 py-0.5 rounded', atsScore >= 80 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : atsScore >= 61 ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-red-500/10 text-red-600 dark:text-red-400')}>
+                            <span title={atsScore >= 80 ? '80+ = apply ready' : atsScore >= 61 ? '61–79 = tailor first' : '≤60 = improve resume'} className={cn('font-semibold px-1.5 py-0.5 rounded cursor-help', atsScore >= 80 ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : atsScore >= 61 ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-red-500/10 text-red-600 dark:text-red-400')}>
                               ATS {atsScore}
                             </span>
                           )}
                           {(() => { const badge = getJobAgeBadge(m.job?.created_at); return badge ? <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold', badge.className)}><Calendar size={9} />{badge.label}</span> : null; })()}
                         </div>
+                        {(m as any).match_reason && (
+                          <details className="mt-2 group">
+                            <summary className="text-xs text-brand-600 dark:text-brand-400 hover:underline cursor-pointer list-none flex items-center gap-1 [&::-webkit-details-marker]:hidden">
+                              Why you match
+                            </summary>
+                            <p className="text-xs text-surface-600 dark:text-surface-300 mt-1 italic">{(m as any).match_reason}</p>
+                          </details>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-2">
                         {applied
@@ -1155,12 +1195,21 @@ export default function CandidateDashboard() {
                           const status = tr?.generation_status;
                           if (status === 'done' || status === 'completed') {
                             return (
-                              <button
-                                onClick={() => downloadTailoredResume(tr.pdf_path, m.job?.title || 'Job')}
-                                className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px] text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
-                              >
-                                <Download size={14} /> Download Tailored Resume
-                              </button>
+                              <span className="inline-flex flex-wrap items-center gap-2">
+                                <button
+                                  onClick={() => downloadTailoredResume(tr.pdf_path, m.job?.title || 'Job')}
+                                  className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px] text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                                >
+                                  <Download size={14} /> Download Tailored Resume
+                                </button>
+                                {atsReportAllowed && (
+                                  <button onClick={() => runAtsForJob(m.job_id)} disabled={!!atsRunningByJob[m.job_id]}
+                                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium flex items-center gap-1">
+                                    {atsRunningByJob[m.job_id] ? <Spinner size={12} /> : <BarChart2 size={12} />}
+                                    Run ATS to see new score
+                                  </button>
+                                )}
+                              </span>
                             );
                           }
                           if (['pending', 'generating', 'compiling', 'uploading'].includes(status)) {
@@ -1302,8 +1351,12 @@ export default function CandidateDashboard() {
       {tab === 'applications' && (
         <div className="space-y-4">
           {applications.length === 0 ? (
-            <EmptyState icon={<ClipboardList size={24} />} title="No applications yet"
-              description="Apply to my jobs from the My Jobs tab, then confirm applied here." />
+            <EmptyState
+              icon={<ClipboardList size={24} />}
+              title="No applications yet"
+              description="Apply to my jobs from the My Jobs tab, then confirm applied here."
+              action={<button onClick={() => setTab('matches')} className="btn-primary text-sm py-2 px-4">Go to My Jobs</button>}
+            />
           ) : applications.map(a => (
             <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
               <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1400,7 +1453,9 @@ export default function CandidateDashboard() {
       {tab === 'reminders' && (
         <div className="space-y-4">
           {reminders.length === 0 ? (
-            <EmptyState icon={<Bell size={24} />} title="No upcoming reminders"
+            <EmptyState
+              icon={<Bell size={24} />}
+              title="No upcoming reminders"
               description="Add reminders from any application (e.g. “Remind me in 7 days”) to follow up on applications."
               action={<button onClick={() => setTab('applications')} className="btn-primary text-sm py-2 px-4">View applications</button>}
             />

@@ -245,9 +245,9 @@
 ## 16. Implementation Priority (Suggested)
 
 1. **Done:** Apply/tailor gating (<60, 61–79, ≥80); consistent badge colors; Saved tab rules.
-2. **Next:** Paste JD → ATS check; ATS breakdown collapsible; tailor progress; empty-state copy.
-3. **Then:** ATS tooltip; skill heatmap; match "why" explanation; evidence links.
-4. **Later:** Animations; dimension chart; command palette; bulk actions; real-time.
+2. **Done:** Paste JD → ATS check; ATS breakdown collapsible; tailor progress; empty-state copy.
+3. **Done:** ATS tooltip (hover band explanation); match "why" expand; calibration badge in collapsed panel; job age badge; tailor CTA ("Run ATS to see new score"); onboarding checklist; improved empty states with CTAs; Skeleton/CardSkeleton components; Modal Escape + focus trap; card hover transition.
+4. **Later:** Animations; dimension chart (already have bar in AtsBreakdownPanel); command palette; bulk actions; real-time.
 5. **Roadmap:** Accessibility; adverse-action notice; multi-tenant; voice/AR.
 
 ---

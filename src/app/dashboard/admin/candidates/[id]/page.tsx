@@ -309,7 +309,7 @@ export default function CandidateDetailPage() {
         tabs={[
           { key: 'profile', label: 'Profile' },
           { key: 'activity', label: 'Activity', count: savedJobs.length + reminders.length },
-          { key: 'matches', label: 'Matching Jobs', count: matches.length },
+          { key: 'matches', label: 'Matched Jobs', count: matches.length },
           { key: 'applications', label: 'Applications', count: applications.length },
           { key: 'resumes', label: 'Generated Resumes', count: resumes.length },
           { key: 'uploads', label: 'Uploaded Resumes', count: uploadedResumes.length },
@@ -743,7 +743,7 @@ export default function CandidateDetailPage() {
         <div>
           {resumes.length === 0 ? (
             <EmptyState icon={<FileText size={24} />} title="No generated resumes"
-              description="Generate resumes from the Matching Jobs tab" />
+              description="Generate resumes from the Matched Jobs tab" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {resumes.map(r => (

@@ -12,6 +12,7 @@ import {
   Save, Edit2, Plus, X, AlertCircle, Send, Upload,
 } from 'lucide-react';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
+import { useFeatureFlags } from '@/hooks';
 
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
 const VISA_OPTIONS = ['US Citizen','Green Card','H1B','H4 EAD','L2 EAD','OPT','CPT','TN Visa','O1','Requires Sponsorship','Other'];
@@ -90,6 +91,10 @@ export default function RecruiterCandidateDetail() {
   const [tab, setTab] = useState('profile');
   const [resumeGenerationAllowed, setResumeGenerationAllowed] = useState(false);
   const [viewingJdJob, setViewingJdJob] = useState<{ title: string; company: string; jd: string } | null>(null);
+  const { flags } = useFeatureFlags();
+  const atsCheckAllowed = flags.recruiter_run_ats_check !== false;
+  // Resume generation: profile OR user_feature_flags (Feature Access modal)
+  const effectiveResumeAllowed = resumeGenerationAllowed || flags.resume_generation_allowed === true;
 
   // Profile editing
   const [editingProfile, setEditingProfile] = useState(false);
@@ -595,7 +600,7 @@ export default function RecruiterCandidateDetail() {
       <Tabs
         tabs={[
           { key: 'profile', label: editingProfile ? '✏️ Editing Profile' : 'Profile' },
-          { key: 'matches', label: 'Matching Jobs', count: matches.length },
+          { key: 'matches', label: 'Matched Jobs', count: matches.length },
           { key: 'applications', label: 'Applications', count: applications.length },
           { key: 'resumes', label: 'Resumes', count: resumes.length + candidateResumes.length },
         ]}
@@ -888,29 +893,29 @@ export default function RecruiterCandidateDetail() {
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                        <button onClick={() => generateEmail(m.job_id)} className="btn-ghost text-xs flex items-center gap-1 py-1.5 px-2.5 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10">
-                          <Mail size={12} /> Email
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button onClick={() => generateEmail(m.job_id)} className="btn-ghost text-xs sm:text-sm flex items-center gap-1 py-2 px-3 min-h-[44px] text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10">
+                          <Mail size={14} /> Email
                         </button>
-                        <button onClick={() => generateBrief(m.job_id)} className="btn-ghost text-xs flex items-center gap-1 py-1.5 px-2.5 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10">
-                          <Brain size={12} /> Brief
+                        <button onClick={() => generateBrief(m.job_id)} className="btn-ghost text-xs sm:text-sm flex items-center gap-1 py-2 px-3 min-h-[44px] text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                          <Brain size={14} /> Brief
                         </button>
                         {(() => {
-                          const canGenerate = resumeGenerationAllowed && (m.fit_score ?? 0) < 75;
-                          const whyDisabled = !resumeGenerationAllowed ? 'Ask an admin to grant resume generation access' : (m.fit_score ?? 0) >= 75 ? 'Only available for matches with score below 75' : '';
+                          const canGenerate = effectiveResumeAllowed && (m.fit_score ?? 0) < 75;
+                          const whyDisabled = !effectiveResumeAllowed ? 'Ask an admin to grant resume generation access' : (m.fit_score ?? 0) >= 75 ? 'Only available for matches with score below 75' : '';
                           return (
                             <button
                               onClick={() => generateResume(m.job_id)}
                               disabled={generating === m.job_id || !canGenerate}
                               title={whyDisabled || undefined}
-                              className={cn('text-xs py-1.5 px-3 flex items-center gap-1', canGenerate ? 'btn-primary' : 'btn-secondary opacity-70 cursor-not-allowed')}
+                              className={cn('text-xs sm:text-sm py-2 px-3 min-h-[44px] flex items-center gap-1', canGenerate ? 'btn-primary' : 'btn-secondary opacity-70 cursor-not-allowed')}
                             >
-                              {generating === m.job_id ? <Spinner size={12} /> : <Sparkles size={12} />} Resume
+                              {generating === m.job_id ? <Spinner size={14} /> : <Sparkles size={14} />} Resume
                             </button>
                           );
                         })()}
 
-                        {(() => {
+                        {atsCheckAllowed && (() => {
                           const running = !!atsRunningByJob[m.job_id];
                           const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : null;
                           return (
@@ -918,7 +923,7 @@ export default function RecruiterCandidateDetail() {
                               onClick={() => runAtsForJob(m.job_id)}
                               disabled={running}
                               className={cn(
-                                'text-xs py-1.5 px-3 flex items-center gap-1 rounded-lg border font-medium transition-colors',
+                                'text-xs sm:text-sm py-2 px-3 min-h-[44px] flex items-center gap-1 rounded-lg border font-medium transition-colors',
                                 atsScore !== null
                                   ? atsScore >= 50
                                     ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
@@ -928,7 +933,7 @@ export default function RecruiterCandidateDetail() {
                               )}
                               title={`Run ATS check across all ${candidateResumes?.length || 0} resume(s) — picks best score automatically.`}
                             >
-                              {running ? <Spinner size={12} /> : <Brain size={12} />}
+                              {running ? <Spinner size={14} /> : <Brain size={14} />}
                               {atsScore !== null ? `ATS ${atsScore}` : 'ATS'}
                             </button>
                           );
@@ -960,9 +965,9 @@ export default function RecruiterCandidateDetail() {
                           // Default — step 1
                           <button
                             onClick={() => handleApplyNow(m.job_id, m.job?.url ?? null)}
-                            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                            className="btn-primary text-xs sm:text-sm py-2 px-3 min-h-[44px] flex items-center gap-1.5"
                           >
-                            <Send size={12} /> Apply Now
+                            <Send size={14} /> Apply Now
                           </button>
                         )}
                       </div>
@@ -1136,9 +1141,9 @@ export default function RecruiterCandidateDetail() {
           <div>
             <h3 className="text-sm font-semibold text-surface-700 mb-3">AI-Generated Resumes ({resumes.length})</h3>
             {resumes.length === 0 && candidateResumes.length === 0 ? (
-              <EmptyState icon={<FileText size={24} />} title="No resumes yet" description="Generate one from the Matching Jobs tab, or upload a resume for the candidate." />
+              <EmptyState icon={<FileText size={24} />} title="No resumes yet" description="Generate one from the Matched Jobs tab, or upload a resume for the candidate." />
             ) : resumes.length === 0 ? (
-              <p className="text-sm text-surface-400 italic">No AI-generated resumes yet. Generate one from the Matching Jobs tab.</p>
+              <p className="text-sm text-surface-400 italic">No AI-generated resumes yet. Generate one from the Matched Jobs tab.</p>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {resumes.map((r) => (

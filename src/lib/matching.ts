@@ -103,7 +103,7 @@ const DOMAIN_COMPATIBILITY: Record<Domain, Domain[]> = {
   'frontend': ['frontend', 'fullstack', 'software-engineering', 'mobile'],
   'fullstack': ['fullstack', 'frontend', 'software-engineering', 'mobile'],
   'data-engineering': ['data-engineering', 'data-science'],
-  'data-science': ['data-science', 'data-engineering', 'data-analytics'],
+  'data-science': ['data-science', 'data-engineering'],
   'data-analytics': ['data-analytics', 'data-science', 'bi'],
   'bi': ['bi', 'data-analytics'],
   'devops': ['devops', 'software-engineering'],
@@ -588,7 +588,6 @@ const TRIVIAL_TOKENS = new Set([
 function isTitleMatch(candidate: Candidate, job: Job): boolean {
   const candidateTitles = [
     candidate.primary_title || '',
-    ...(candidate.secondary_titles || []),
     ...(candidate.target_job_titles || []),
   ].filter(Boolean);
 
@@ -606,20 +605,35 @@ function isTitleMatch(candidate: Candidate, job: Job): boolean {
     // Step 2a: exact same specific domain → allow (e.g. both are data-engineering).
     // This lets "Data Engineer" match "Senior Data Engineer" without needing token
     // overlap (which would fail because "data" and "engineer" are both trivial).
-    if (cdDomain === jobDomain && cdDomain !== 'general') return true;
+    if (cdDomain === jobDomain && cdDomain !== 'general') {
+      if (process.env.DEBUG_MATCHING === 'true') {
+        devLog('[MATCH]', { candidate: candidate.full_name, primary_title: candidate.primary_title, target_job_titles: candidate.target_job_titles, job_title: job.title, candidate_title: ct, cdDomain, jobDomain, step: '2a' });
+      }
+      return true;
+    }
 
     // Step 2b: compatible but different domains → require at least one non-trivial
     // shared token (e.g. "React Developer" matching "Frontend React Engineer").
     const ctToks = titleTokens(ct);
     for (const tok of ctToks) {
-      if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && jobToksSet.has(tok)) return true;
+      if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && jobToksSet.has(tok)) {
+        if (process.env.DEBUG_MATCHING === 'true') {
+          devLog('[MATCH]', { candidate: candidate.full_name, primary_title: candidate.primary_title, target_job_titles: candidate.target_job_titles, job_title: job.title, candidate_title: ct, cdDomain, jobDomain, step: '2b', shared_token: tok });
+        }
+        return true;
+      }
     }
 
     // Step 2c: both classified as 'general' (e.g. "Coordinator") → require token overlap.
     if (cdDomain === 'general' && jobDomain === 'general') {
       const ctToksSet = new Set(ctToks);
       for (const tok of titleTokens(job.title)) {
-        if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && ctToksSet.has(tok)) return true;
+        if (!TRIVIAL_TOKENS.has(tok) && tok.length >= 3 && ctToksSet.has(tok)) {
+          if (process.env.DEBUG_MATCHING === 'true') {
+            devLog('[MATCH]', { candidate: candidate.full_name, primary_title: candidate.primary_title, target_job_titles: candidate.target_job_titles, job_title: job.title, candidate_title: ct, cdDomain, jobDomain, step: '2c', shared_token: tok });
+          }
+          return true;
+        }
       }
     }
   }
@@ -693,7 +707,6 @@ export async function runMatching(
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.secondary_titles || []).some(t => t?.trim()) ||
       (candidate.target_job_titles || []).some(t => t?.trim())
     );
 
@@ -795,7 +808,6 @@ export async function runMatchingForJobs(
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.secondary_titles || []).some(t => t?.trim()) ||
       (candidate.target_job_titles || []).some(t => t?.trim())
     );
     if (!hasTitles) continue;

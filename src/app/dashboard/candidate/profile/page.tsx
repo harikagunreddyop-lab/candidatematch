@@ -197,7 +197,7 @@ export default function CandidateProfilePage() {
 
           <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-white dark:bg-surface-800 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-1">Target job titles</h3>
-            <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Jobs matching these titles will appear in your Matched Jobs. Separate with commas.</p>
+            <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Jobs matching these titles will appear in your My Jobs. Separate with commas.</p>
             {editingProfile
               ? (
                 <input

@@ -12,6 +12,7 @@ import {
   ArrowRight, Lightbulb, Award, Brain,
 } from 'lucide-react';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
+import { useFeatureFlags } from '@/hooks';
 
 interface CandidateResume {
   id: string;
@@ -128,6 +129,8 @@ export default function CandidateDashboard() {
   // Application usage (rate limit display)
   const [applicationUsage, setApplicationUsage] = useState<{ used_today: number; limit: number } | null>(null);
   const { toasts, toast, dismiss } = useToast();
+  const { flags } = useFeatureFlags();
+  const tailorResumeAllowed = flags.candidate_tailor_resume !== false;
 
   // Profile edit + preferences + default pitch
   const [editingProfile, setEditingProfile] = useState(false);
@@ -551,14 +554,14 @@ export default function CandidateDashboard() {
     if (profileCompletenessPct < 80) return 'Complete your profile for better job visibility.';
     if (applicationsThisWeek === 0 && topUnappliedMatch) return 'Apply within 48h of a match for better response rates.';
     if (interviewApps.length > 0) return 'Prep for interviews: add dates and notes on the Interviews page.';
-    if (savedJobIds.size > 0 && savedMatches.some(m => !alreadyApplied.has(m.job_id))) return 'You have saved jobs ready to apply — check Matched Jobs.';
-    if (matches.length > 0) return 'Start applying to your matched jobs.';
+    if (savedJobIds.size > 0 && savedMatches.some(m => !alreadyApplied.has(m.job_id))) return 'You have saved jobs ready to apply — check My Jobs.';
+    if (matches.length > 0) return 'Start applying to your jobs.';
     return 'Complete your profile to get job matches based on your target titles.';
   })();
 
   const TABS = [
     { key: 'overview' as const, label: 'Overview', icon: <TrendingUp size={14} /> },
-    { key: 'matches' as const, label: 'Matched Jobs', icon: <Target size={14} />, count: availableMatches.length },
+    { key: 'matches' as const, label: 'My Jobs', icon: <Target size={14} />, count: availableMatches.length },
     { key: 'saved' as const, label: 'Saved', icon: <BookmarkCheck size={14} />, count: savedJobIds.size },
     { key: 'applications' as const, label: 'Applications', icon: <ClipboardList size={14} />, count: applications.length },
     { key: 'reminders' as const, label: 'Reminders', icon: <Bell size={14} />, count: reminders.length },
@@ -627,7 +630,7 @@ export default function CandidateDashboard() {
               <FileDown size={16} /> Export data
             </button>
             <button onClick={() => setTab('matches')} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-surface-900 font-semibold text-sm shadow-lg hover:bg-surface-50 hover:shadow-xl transition-all">
-              <Target size={18} /> Matched Jobs
+              <Target size={18} /> My Jobs
             </button>
           </div>
         </div>
@@ -673,7 +676,7 @@ export default function CandidateDashboard() {
 
       {/* ─── Quick stats ────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard label="Matched Jobs" value={matches.length} icon={<Briefcase size={22} className="text-brand-600 dark:text-brand-400" />} color="bg-brand-500/10 dark:bg-brand-500/20" subtext={applicationsThisWeek > 0 ? `${applicationsThisWeek} applied this week` : undefined} />
+        <StatCard label="My Jobs" value={matches.length} icon={<Briefcase size={22} className="text-brand-600 dark:text-brand-400" />} color="bg-brand-500/10 dark:bg-brand-500/20" subtext={applicationsThisWeek > 0 ? `${applicationsThisWeek} applied this week` : undefined} />
         <StatCard label="Applications" value={applications.length} icon={<ClipboardList size={22} className="text-violet-600 dark:text-violet-400" />} color="bg-violet-500/10 dark:bg-violet-500/20" />
         <StatCard label="Saved Jobs" value={savedJobIds.size} icon={<BookmarkCheck size={22} className="text-emerald-600 dark:text-emerald-400" />} color="bg-emerald-500/10 dark:bg-emerald-500/20" subtext="jobs you bookmarked" />
         <StatCard label="Interviews" value={interviewApps.length} icon={<Calendar size={22} className="text-amber-600 dark:text-amber-400" />} color="bg-amber-500/10 dark:bg-amber-500/20" />
@@ -940,19 +943,19 @@ export default function CandidateDashboard() {
           </div>
           {filteredAvailableForSaved.length === 0 ? (
             <EmptyState icon={<Briefcase size={24} />} title={showSavedOnly ? 'No saved jobs' : 'No matches yet'}
-              description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all matched jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'} />
+              description={showSavedOnly ? 'Save jobs from the list to see them here.' : availableMatches.length === 0 ? "You've applied to all my jobs, or no matches yet. Check Applications for status." : 'No matches in this date range.'} />
           ) : filteredAvailableForSaved.map(m => {
             const applied = alreadyApplied.has(m.job_id);
             const appStatus = applications.find(a => a.job_id === m.job_id)?.status;
             const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score as number : null;
             const atsBlocked = atsScore !== null && atsScore < 50;
             return (
-              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-3 shadow-sm">
-                <div className="flex items-start gap-4 flex-wrap">
+              <div key={m.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-5 space-y-3 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex flex-col gap-3">
                       <div>
-                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg truncate">{m.job?.title}</p>
+                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-base sm:text-lg truncate">{m.job?.title}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap text-xs text-surface-500 dark:text-surface-400">
                           <span>{m.job?.company}</span>
                           {m.job?.location && <span className="flex items-center gap-0.5"><MapPin size={10} />{m.job.location}</span>}
@@ -968,49 +971,62 @@ export default function CandidateDashboard() {
                           {(() => { const badge = getJobAgeBadge(m.job?.created_at); return badge ? <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold', badge.className)}><Calendar size={9} />{badge.label}</span> : null; })()}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-2">
                         {applied
                           ? <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl">
                             <CheckCircle2 size={12} /> {appStatus || 'Applied'}
                           </span>
                           : (
                             <>
-                              <button onClick={() => toggleSavedJob(m.job_id)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
+                              <button onClick={() => toggleSavedJob(m.job_id)} className="min-h-[44px] min-w-[44px] p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 hover:text-brand-600 dark:hover:text-brand-400 flex items-center justify-center" title={savedJobIds.has(m.job_id) ? 'Unsave' : 'Save for later'}>
                                 {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
                               </button>
                               {m.job?.url ? (
-                                <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 pointer-events-none')} title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
-                                  <ExternalLink size={12} /> Apply now
+                                <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', atsBlocked && 'opacity-40 pointer-events-none')} title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
+                                  <ExternalLink size={14} /> Apply now
                                 </a>
                               ) : (
-                                <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No application link</span>
+                                <span className="text-xs text-surface-400 dark:text-surface-500 px-2 py-2.5">No application link</span>
                               )}
                               <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || atsBlocked}
-                                className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', atsBlocked && 'opacity-40 cursor-not-allowed')}
+                                className={cn('btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', atsBlocked && 'opacity-40 cursor-not-allowed')}
                                 title={atsBlocked ? 'ATS score below 50 — cannot apply' : undefined}>
-                                {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                                {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={14} /> Confirm applied</>}
                               </button>
                             </>
                           )
                         }
-                        {(() => {
+                        {tailorResumeAllowed && (() => {
                           const tr = tailoredResumes[m.job_id];
                           const status = tr?.generation_status;
+                          const canTailor = (m.fit_score ?? 0) < 75;
                           if (status === 'done' || status === 'completed') {
                             return (
                               <button
                                 onClick={() => downloadTailoredResume(tr.pdf_path, m.job?.title || 'Job')}
-                                className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
+                                className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px] text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10"
                               >
-                                <Download size={12} /> Download Tailored Resume
+                                <Download size={14} /> Download Tailored Resume
                               </button>
                             );
                           }
                           if (['pending', 'generating', 'compiling', 'uploading'].includes(status)) {
                             return (
-                              <span className="inline-flex items-center gap-1.5 text-xs py-2 px-4 text-brand-600 dark:text-brand-400 font-medium">
-                                <Spinner size={12} /> Recruiter is tailoring your resume…
+                              <span className="inline-flex items-center gap-1.5 text-xs sm:text-sm py-2.5 px-4 min-h-[44px] text-brand-600 dark:text-brand-400 font-medium">
+                                <Spinner size={14} /> Tailoring your resume…
                               </span>
+                            );
+                          }
+                          if (canTailor && candidate) {
+                            return (
+                              <button
+                                onClick={() => triggerTailorResume(candidate.id, m.job_id)}
+                                disabled={tailoringJobId === m.job_id}
+                                className="btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]"
+                              >
+                                {tailoringJobId === m.job_id ? <Spinner size={14} /> : <Sparkles size={14} />}
+                                Tailor resume
+                              </button>
                             );
                           }
                           return null;
@@ -1035,7 +1051,7 @@ export default function CandidateDashboard() {
         <div className="space-y-4">
           {savedMatches.length === 0 ? (
             <EmptyState icon={<Bookmark size={24} />} title="No saved jobs"
-              description="Save jobs from Matched Jobs to see them here. Use the bookmark icon on any match."
+              description="Save jobs from My Jobs to see them here. Use the bookmark icon on any match."
               action={<button onClick={() => setTab('matches')} className="btn-primary text-sm py-2 px-4">Browse matches</button>}
             />
           ) : (
@@ -1087,7 +1103,7 @@ export default function CandidateDashboard() {
         <div className="space-y-4">
           {applications.length === 0 ? (
             <EmptyState icon={<ClipboardList size={24} />} title="No applications yet"
-              description="Apply to matched jobs from the Matched Jobs tab, then confirm applied here." />
+              description="Apply to my jobs from the My Jobs tab, then confirm applied here." />
           ) : applications.map(a => (
             <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
               <div className="flex items-start justify-between gap-4 flex-wrap">

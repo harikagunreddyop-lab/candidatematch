@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { EmptyState, Spinner } from '@/components/ui';
+import { useFeatureFlags } from '@/hooks';
 import { BarChart2, Target, Star, AlertCircle, Brain, X, User, FileText, Zap, Lightbulb } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import { getScoreBadgeClasses, SCORE_APPLY_OK } from '@/lib/ats-score';
@@ -27,6 +28,8 @@ function ATSScoreBadge({ score, decision }: { score: number; decision?: string }
 
 export default function CandidateSkillReportPage() {
   const supabase = createClient();
+  const { flags } = useFeatureFlags();
+  const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
   const [candidate, setCandidate] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
   const [resumes, setResumes] = useState<{ id: string; label: string; file_name: string }[]>([]);
@@ -106,6 +109,17 @@ export default function CandidateSkillReportPage() {
   };
 
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
+  if (!atsReportAllowed) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-6 text-center px-4 max-w-md mx-auto">
+      <div className="w-16 h-16 rounded-2xl bg-surface-200 dark:bg-surface-700 flex items-center justify-center">
+        <BarChart2 size={28} className="text-surface-500 dark:text-surface-400" />
+      </div>
+      <div>
+        <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">ATS fix report</h2>
+        <p className="text-sm text-surface-500 dark:text-surface-400">This feature is not enabled for your account. Ask an admin to grant access in Users &amp; Recruiters settings.</p>
+      </div>
+    </div>
+  );
   if (notLinked) return (
     <div className="flex flex-col items-center justify-center py-24 gap-6 text-center px-4">
       <p className="text-sm text-surface-500 dark:text-surface-300">Your account isn&apos;t linked to a candidate profile yet. Contact your recruiter.</p>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
+import { hasFeature } from '@/lib/feature-flags-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +27,16 @@ async function assertCanAccessCandidate(req: NextRequest, candidateId: string): 
   return null;
 }
 
-/** Recruiters need admin-granted access to resume generation. */
+/** Recruiters need admin-granted access to resume generation (profile or user_feature_flags). */
 async function assertResumeGenerationAllowed(req: NextRequest): Promise<NextResponse | null> {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
   if (authResult.profile.role === 'admin') return null;
   const supabase = createServiceClient();
+  const fromFlags = await hasFeature(supabase, authResult.profile.id, 'recruiter', 'resume_generation_allowed', false);
   const { data: profile } = await supabase.from('profiles').select('resume_generation_allowed').eq('id', authResult.profile.id).single();
-  if (profile?.resume_generation_allowed !== true) {
+  const allowed = fromFlags || profile?.resume_generation_allowed === true;
+  if (!allowed) {
     return NextResponse.json(
       { error: 'Resume generation is not enabled for your account. Ask an admin to grant access.' },
       { status: 403 }

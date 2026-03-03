@@ -184,6 +184,15 @@ const RECRUITER_FEATURES: FeatureDef[] = [
     group: 'Core',
   },
   {
+    key: 'recruiter_run_ats_check',
+    label: 'Run ATS check',
+    description: 'Recruiter can run on-demand ATS scoring for candidate–job matches.',
+    icon: <Target size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'AI Features',
+  },
+  {
     key: 'resume_generation_allowed',
     label: 'AI resume generation',
     description: 'Recruiter can trigger AI-powered resume generation for candidates (score < 75 only).',
@@ -245,7 +254,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
       type="button"
       onClick={() => onChange(!enabled)}
       className={cn(
-        'relative w-11 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-brand-500',
+        'relative w-12 h-6 rounded-full transition-colors shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 overflow-visible',
         enabled ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'
       )}
       aria-checked={enabled}
@@ -253,8 +262,8 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
     >
       <span
         className={cn(
-          'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform',
-          enabled ? 'translate-x-5' : 'translate-x-0.5'
+          'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-150',
+          enabled ? 'left-[calc(100%-1.25rem-2px)]' : 'left-0.5'
         )}
       />
     </button>
@@ -268,24 +277,26 @@ function FeatureRow({ feature, enabled, onChange }: {
 }) {
   return (
     <div className={cn(
-      'flex items-start gap-4 px-4 py-3.5 rounded-xl border transition-all',
+      'flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-all',
       enabled
         ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50/60 dark:bg-brand-500/10'
         : 'border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-700/30'
     )}>
       <div className={cn(
-        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5',
+        'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
         enabled ? 'bg-brand-500/20 text-brand-600 dark:text-brand-400' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400'
       )}>
         {feature.icon}
       </div>
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 py-0.5">
         <p className={cn('text-sm font-semibold', enabled ? 'text-surface-900 dark:text-surface-100' : 'text-surface-600 dark:text-surface-300')}>
           {feature.label}
         </p>
         <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5 leading-snug">{feature.description}</p>
       </div>
-      <Toggle enabled={enabled} onChange={(val) => onChange(feature.key, val)} />
+      <div className="shrink-0 self-center overflow-visible">
+        <Toggle enabled={enabled} onChange={(val) => onChange(feature.key, val)} />
+      </div>
     </div>
   );
 }
@@ -303,20 +314,21 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`/api/feature-flags/user?user_id=${user.id}`, {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
-      if (res.ok) {
-        const data = await res.json();
-        // Merge defaults first, then overrides
-        const merged: Record<string, boolean> = {};
-        for (const f of featureList) merged[f.key] = f.defaultEnabled;
-        for (const [k, v] of Object.entries(data.flags ?? {})) merged[k] = v as boolean;
-        setFlags(merged);
-      }
-    } catch { }
+      const data = await res.json().catch(() => ({}));
+      const merged: Record<string, boolean> = {};
+      for (const f of featureList) merged[f.key] = f.defaultEnabled;
+      for (const [k, v] of Object.entries(data?.flags ?? {})) merged[k] = v as boolean;
+      setFlags(merged);
+      if (!res.ok) setError((data as any)?.error || 'Failed to load feature flags');
+    } catch {
+      setError('Failed to load feature flags');
+    }
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, supabase]);
@@ -383,32 +395,32 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
     <Modal open onClose={onClose} title="" size="xl">
       {/* Header */}
       <div className="-mt-5 -mx-6 px-6 pt-5 pb-5 mb-5 border-b border-surface-100 dark:border-surface-700 bg-gradient-to-r from-surface-50 to-white dark:from-surface-700/50 dark:to-surface-800 rounded-t-2xl">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/20 dark:from-brand-500/30 dark:to-brand-600/30 flex items-center justify-center shrink-0">
-            <Sliders size={22} className="text-brand-600 dark:text-brand-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Feature Access</h2>
-              <span className={cn('px-2 py-0.5 rounded-md text-xs font-semibold', roleColor)}>
-                {user.role}
-              </span>
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/20 dark:from-brand-500/30 dark:to-brand-600/30 flex items-center justify-center shrink-0">
+              <Sliders size={22} className="text-brand-600 dark:text-brand-400" />
             </div>
-            <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
-              {user.name || user.email} · {enabledCount}/{featureList.length} features enabled
-            </p>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">Feature Access</h2>
+                <span className={cn('px-2 py-0.5 rounded-md text-xs font-semibold', roleColor)}>
+                  {user.role}
+                </span>
+              </div>
+              <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
+                {user.name || user.email} · {enabledCount}/{featureList.length} features enabled
+              </p>
+            </div>
           </div>
           {/* Bulk actions */}
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            <button onClick={enableAll} className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
+            <button onClick={enableAll} className="text-xs font-medium py-1.5 px-2 rounded-lg text-brand-600 dark:text-brand-400 hover:bg-brand-500/10 flex items-center gap-1">
               <Eye size={12} /> Enable all
             </button>
-            <span className="text-surface-300 dark:text-surface-600">·</span>
-            <button onClick={disableAll} className="text-xs font-medium text-surface-500 dark:text-surface-400 hover:underline flex items-center gap-1">
+            <button onClick={disableAll} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-500/10 flex items-center gap-1">
               <EyeOff size={12} /> Disable all
             </button>
-            <span className="text-surface-300 dark:text-surface-600">·</span>
-            <button onClick={resetToDefaults} className="text-xs font-medium text-surface-500 dark:text-surface-400 hover:underline flex items-center gap-1">
+            <button onClick={resetToDefaults} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-500/10 flex items-center gap-1">
               <RefreshCw size={12} /> Defaults
             </button>
           </div>
@@ -469,16 +481,17 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
         </p>
       )}
 
-      <div className="flex items-center justify-between mt-5 pt-4 border-t border-surface-200 dark:border-surface-700">
-        {saved && (
-          <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
-            <CheckCircle2 size={14} /> Changes saved successfully
-          </span>
-        )}
-        {!saved && <span />}
-        <div className="flex gap-3">
-          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-          <button onClick={handleSave} disabled={saving || loading} className="btn-primary text-sm min-w-[120px] flex items-center justify-center gap-2">
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-4 mt-5 pt-4 border-t border-surface-200 dark:border-surface-700">
+        <div className="flex justify-center sm:justify-start">
+          {saved && (
+            <span className="text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-medium">
+              <CheckCircle2 size={14} /> Changes saved successfully
+            </span>
+          )}
+        </div>
+        <div className="flex items-center justify-center sm:justify-end gap-3">
+          <button onClick={onClose} className="btn-secondary text-sm py-2.5 px-4 min-h-[44px]">Cancel</button>
+          <button onClick={handleSave} disabled={saving || loading} className="btn-primary text-sm py-2.5 px-4 min-h-[44px] min-w-[120px] flex items-center justify-center gap-2">
             {saving ? <Spinner size={14} /> : <Shield size={14} />}
             {saving ? 'Saving...' : 'Save access'}
           </button>

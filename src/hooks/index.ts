@@ -63,6 +63,27 @@ export function useSupabaseQuery<T>(
   return { data, loading, error, refetch };
 }
 
+export function useFeatureFlags() {
+  const [flags, setFlags] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/feature-flags', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : {})
+      .then(data => {
+        if (!cancelled && typeof data === 'object' && data !== null && !('error' in data))
+          setFlags(data as Record<string, boolean>);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const has = useCallback((key: string) => flags[key] === true, [flags]);
+  return { flags, loading, has };
+}
+
 export function useToast() {
   const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
 

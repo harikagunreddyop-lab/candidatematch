@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRecruiterOrAdmin, canAccessCandidate } from '@/lib/api-auth';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { hasFeature } from '@/lib/feature-flags-server';
 import { runAtsCheck } from '@/lib/matching';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const auth = await requireRecruiterOrAdmin(req);
+  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   const body = await req.json().catch(() => ({}));
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest) {
   const service = createServiceClient();
   const allowed = await canAccessCandidate(auth, candidateId, service);
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  // Admin-controlled access: recruiters need recruiter_run_ats_check, candidates need candidate_see_ats_fix_report
+  if (auth.profile.role === 'recruiter') {
+    const runAts = await hasFeature(service, auth.profile.id, 'recruiter', 'recruiter_run_ats_check', true);
+    if (!runAts) return NextResponse.json({ error: 'ATS check is not enabled for your account. Ask an admin to grant access.' }, { status: 403 });
+  } else if (auth.profile.role === 'candidate') {
+    const runAts = await hasFeature(service, auth.profile.id, 'candidate', 'candidate_see_ats_fix_report', false);
+    if (!runAts) return NextResponse.json({ error: 'ATS check is not enabled for your account. Ask an admin to grant access.' }, { status: 403 });
+  }
 
   const { data: matchRow, error: matchErr } = await service
     .from('candidate_job_matches')

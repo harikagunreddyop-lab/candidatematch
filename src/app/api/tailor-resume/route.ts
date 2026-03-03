@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
+import { hasFeature } from '@/lib/feature-flags-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +43,7 @@ export async function GET(req: NextRequest) {
 
 // POST — trigger resume tailoring for a job match
 export async function POST(req: NextRequest) {
-  // Only admins and recruiters can trigger tailoring (candidates cannot).
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
+  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   
   let body: { candidate_id?: string; job_id?: string };
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   
   const supabase = createServiceClient();
   
-  // Access control: recruiter must be assigned to the candidate; admins always allowed.
+  // Access control: recruiter must be assigned; candidate must own the candidate record; admins always allowed.
   if (authResult.profile.role === 'recruiter') {
     const { data: a } = await supabase
       .from('recruiter_candidate_assignments')
@@ -69,16 +69,34 @@ export async function POST(req: NextRequest) {
       .eq('recruiter_id', authResult.profile.id)
       .maybeSingle();
     if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  } else if (authResult.profile.role === 'candidate') {
+    const { data: c } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('id', candidate_id)
+      .eq('user_id', authResult.user.id)
+      .single();
+    if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  // Only recruiters with admin-granted permission can use tailoring (admins always allowed).
+  // Admin-controlled access: recruiters need resume_generation_allowed (profile or user_feature_flags); candidates need candidate_tailor_resume
   if (authResult.profile.role === 'recruiter') {
+    const fromFlags = await hasFeature(supabase, authResult.profile.id, 'recruiter', 'resume_generation_allowed', false);
     const { data: profile } = await supabase
       .from('profiles')
       .select('resume_generation_allowed')
       .eq('id', authResult.profile.id)
       .single();
-    if (profile?.resume_generation_allowed !== true) {
+    const allowed = fromFlags || profile?.resume_generation_allowed === true;
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'Resume tailoring is not enabled for your account. Ask an admin to grant access.' },
+        { status: 403 },
+      );
+    }
+  } else if (authResult.profile.role === 'candidate') {
+    const tailor = await hasFeature(supabase, authResult.profile.id, 'candidate', 'candidate_tailor_resume', true);
+    if (!tailor) {
       return NextResponse.json(
         { error: 'Resume tailoring is not enabled for your account. Ask an admin to grant access.' },
         { status: 403 },

@@ -229,7 +229,7 @@ export default function DashboardLayout({ children, profile }: { children: React
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 overflow-x-hidden min-w-0 w-full">
           {children}
         </main>
       </div>

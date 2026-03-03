@@ -257,4 +257,4 @@
 - **Score source:** Use `ats_score ?? fit_score` when `ats_score` is null.
 - **Feature flags:** `candidate_see_ats_fix_report`, `candidate_tailor_resume`, `ats_check_allowed`, `recruiter_run_ats_check`.
 - **Recruiter override:** Recruiters can confirm applied despite low score; audit should reflect.
-- **Paste JD ATS:** New `POST /api/ats/check-paste` — `jd_text`, `candidate_id`, `resume_id?`; ephemeral or optionally save as ad-hoc job.
+- **Paste JD ATS:** New `POST /api/ats/check-paste` — `jd_text`, `candidate_id`, `resume_id?`; ephemeral; **no word/character limit**.

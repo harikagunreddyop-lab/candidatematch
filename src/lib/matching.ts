@@ -660,7 +660,7 @@ export async function runAtsCheckPasted(
   options?: { scoringProfile?: ScoringProfile },
 ): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] }> {
   const jd = String(jdText || '').trim();
-  if (jd.length < 50) throw new Error('Job description must be at least 50 characters');
+  if (!jd) throw new Error('Job description cannot be empty');
 
   const scoringProfile: ScoringProfile = options?.scoringProfile ?? 'A';
   const policy = getPolicy(scoringProfile);

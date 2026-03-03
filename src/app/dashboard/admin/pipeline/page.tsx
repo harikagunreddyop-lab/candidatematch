@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner, StatusBadge } from '@/components/ui';
-import { Users, Briefcase, User, ChevronRight, BarChart3 } from 'lucide-react';
+import { Users, Briefcase, User, ChevronRight, BarChart3, Download } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
 
 const STAGES = [
@@ -57,6 +57,26 @@ export default function AdminPipelinePage() {
   }, {} as Record<string, number>);
   const totalInPipeline = STAGES.reduce((sum, s) => sum + pipelineCounts[s.key], 0);
 
+  const exportCsv = () => {
+    const headers = ['Candidate', 'Job', 'Company', 'Status', 'Recruiter', 'Updated'];
+    const rows = filtered.map(a => [
+      (a.candidate as any)?.full_name || '',
+      a.job?.title || '',
+      a.job?.company || '',
+      a.status || '',
+      getRecruiterName(a.candidate_id) || '',
+      a.updated_at ? formatDate(a.updated_at) : '',
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pipeline-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   let filtered = applications.filter(a => {
     const matchStage = stageFilter === 'all' || a.status === stageFilter;
     const recId = getRecruiterId(a.candidate_id);
@@ -78,6 +98,9 @@ export default function AdminPipelinePage() {
               <option key={r.id} value={r.id}>{r.name || r.email}</option>
             ))}
           </select>
+          <button onClick={exportCsv} className="btn-secondary text-sm py-2 px-4 flex items-center gap-2">
+            <Download size={14} /> Export CSV
+          </button>
           <Link href="/dashboard/admin/applications" className="btn-secondary text-sm py-2 px-4 flex items-center gap-2">
             View all applications <ChevronRight size={14} />
           </Link>

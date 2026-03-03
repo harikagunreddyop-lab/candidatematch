@@ -508,8 +508,8 @@ export default function CandidateDashboard() {
   };
 
   const runPasteJdAts = async () => {
-    if (!candidate || !pasteJdText.trim() || pasteJdText.trim().length < 50) {
-      setPasteJdError('Paste at least 50 characters of the job description');
+    if (!candidate || !pasteJdText.trim()) {
+      setPasteJdError('Paste a job description first');
       return;
     }
     setPasteJdRunning(true);
@@ -1613,7 +1613,7 @@ export default function CandidateDashboard() {
                   <BarChart2 size={20} className="text-amber-600 dark:text-amber-400" />
                   Check ATS for pasted job
                 </h3>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Paste any job description and see your score (min 50 characters)</p>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Paste any job description and see your ATS score</p>
               </div>
               <button onClick={() => setPasteJdOpen(false)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 shrink-0">
                 <X size={18} />
@@ -1655,7 +1655,7 @@ export default function CandidateDashboard() {
             </div>
             <div className="px-5 py-4 border-t border-surface-100 dark:border-surface-700 flex justify-end gap-2">
               <button onClick={() => setPasteJdOpen(false)} className="btn-secondary text-sm">Close</button>
-              <button onClick={runPasteJdAts} disabled={pasteJdRunning || pasteJdText.trim().length < 50} className="btn-primary text-sm flex items-center gap-1.5">
+              <button onClick={runPasteJdAts} disabled={pasteJdRunning || !pasteJdText.trim()} className="btn-primary text-sm flex items-center gap-1.5">
                 {pasteJdRunning ? <><Spinner size={14} /> Checking…</> : <><BarChart2 size={14} /> Check ATS</>}
               </button>
             </div>

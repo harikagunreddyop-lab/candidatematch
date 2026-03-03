@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Star,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   MapPin,
   Send,
   UserPlus,
@@ -44,7 +46,14 @@ function CandidatesPageContent() {
   const [filterAssignment, setFilterAssignment] = useState<'all' | 'unassigned' | 'assigned'>('all');
   const [filterActive, setFilterActive] = useState('all');
   const [filterRecruiter, setFilterRecruiter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'title'>('created_at');
+  const [sortAsc, setSortAsc] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+
+  const toggleSort = (col: 'name' | 'created_at' | 'title') => {
+    if (sortBy === col) setSortAsc(a => !a);
+    else { setSortBy(col); setSortAsc(true); }
+  };
 
   // Assign recruiter modal
   const [assignTarget, setAssignTarget] = useState<any | null>(null);
@@ -145,7 +154,7 @@ function CandidatesPageContent() {
     await load();
   };
 
-  const filtered = candidates.filter((c) => {
+  const filtered = [...candidates].filter((c) => {
     const matchSearch =
       c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       c.primary_title?.toLowerCase().includes(search.toLowerCase()) ||
@@ -161,6 +170,15 @@ function CandidatesPageContent() {
     const matchRecruiter = filterRecruiter === 'all' || assignedIds.includes(filterRecruiter);
 
     return matchSearch && matchAssignment && matchActive && matchRecruiter;
+  });
+
+  filtered.sort((a, b) => {
+    const mul = sortAsc ? 1 : -1;
+    if (sortBy === 'name') return mul * String(a.full_name || '').localeCompare(String(b.full_name || ''));
+    if (sortBy === 'title') return mul * String(a.primary_title || '').localeCompare(String(b.primary_title || ''));
+    const da = new Date(a.created_at || 0).getTime();
+    const db = new Date(b.created_at || 0).getTime();
+    return mul * (da - db);
   });
 
   const unassignedCount = candidates.filter((c) => !(assignments[c.id] || []).length).length;
@@ -253,6 +271,22 @@ function CandidatesPageContent() {
       ) : (
         <div className="card overflow-hidden min-w-0">
           <div className="divide-y divide-surface-50 min-w-0 overflow-x-auto">
+            <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 bg-surface-50 dark:bg-surface-700/40 text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide">
+              <div className="w-10 shrink-0" />
+              <div className="flex-1 flex items-center gap-2 min-w-0">
+                <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+                  Name {sortBy === 'name' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
+                </button>
+                <span className="text-surface-400">·</span>
+                <button onClick={() => toggleSort('title')} className="flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+                  Title {sortBy === 'title' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
+                </button>
+              </div>
+              <div className="hidden md:block w-24" />
+              <button onClick={() => toggleSort('created_at')} className="shrink-0 flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+                Added {sortBy === 'created_at' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
+              </button>
+            </div>
             {filtered.map((c) => {
               const latestStatus = c.applications?.[0]?.status;
               const assignedRecruiterIds = assignments[c.id] || [];

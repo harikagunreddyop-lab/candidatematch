@@ -348,6 +348,10 @@ export default function CandidateSkillReportPage() {
                           missingKeywords={Array.isArray(m.missing_keywords) ? m.missing_keywords : []}
                           visible
                           className="mt-3"
+                          candidateId={candidate?.id}
+                          jobId={m.job_id}
+                          jobTitle={m.job?.title}
+                          candidateTitle={candidate?.primary_title}
                         />
                       )}
                       <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
@@ -431,6 +435,10 @@ export default function CandidateSkillReportPage() {
                           missingKeywords={Array.isArray(m.missing_keywords) ? m.missing_keywords : []}
                           visible
                           className="mt-3"
+                          candidateId={candidate?.id}
+                          jobId={m.job_id}
+                          jobTitle={m.job?.title}
+                          candidateTitle={candidate?.primary_title}
                         />
                       )}
                       <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">

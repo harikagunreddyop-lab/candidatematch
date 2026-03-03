@@ -2,6 +2,7 @@
 // Server-side invite — uses SUPABASE_SERVICE_ROLE_KEY so admin API is available
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,9 @@ export async function POST(req: NextRequest) {
   const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error: authErr } = await adminClient.auth.getUser(token);
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const rl = rateLimitResponse(req, 'api', user.id);
+  if (rl) return rl;
 
   const { data: callerProfile } = await adminClient
     .from('profiles')

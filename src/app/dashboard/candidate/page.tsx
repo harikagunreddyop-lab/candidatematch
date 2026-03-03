@@ -100,6 +100,10 @@ export default function CandidateDashboard() {
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
 
+  // AI Apply Decision (Elite)
+  const [applyDecisionByJob, setApplyDecisionByJob] = useState<Record<string, { recommendation: string; reasoning: string; confidence: number }>>({});
+  const [applyDecisionLoading, setApplyDecisionLoading] = useState<string | null>(null);
+
   // Resume upload
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -1207,6 +1211,42 @@ export default function CandidateDashboard() {
                             <p className="text-xs text-surface-600 dark:text-surface-300 mt-1 italic">{(m as any).match_reason}</p>
                           </details>
                         )}
+                        {candidate?.id && atsScore !== null && (
+                          <div className="mt-2">
+                            {applyDecisionByJob[m.job_id] ? (
+                              <div className="text-xs rounded-lg bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/30 px-3 py-2">
+                                <span className="font-semibold text-brand-700 dark:text-brand-300">
+                                  AI: {applyDecisionByJob[m.job_id].recommendation.replace(/_/g, ' ')}
+                                </span>
+                                <p className="text-surface-600 dark:text-surface-300 mt-0.5">{applyDecisionByJob[m.job_id].reasoning}</p>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={async () => {
+                                  if (!candidate?.id) return;
+                                  setApplyDecisionLoading(m.job_id);
+                                  try {
+                                    const res = await fetch('/api/ats/apply-decision', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ candidate_id: candidate.id, job_id: m.job_id }),
+                                    });
+                                    const data = await res.json();
+                                    if (res.ok && data.recommendation) {
+                                      setApplyDecisionByJob(prev => ({ ...prev, [m.job_id]: data }));
+                                    }
+                                  } finally {
+                                    setApplyDecisionLoading(null);
+                                  }
+                                }}
+                                disabled={applyDecisionLoading === m.job_id}
+                                className="text-xs text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"
+                              >
+                                {applyDecisionLoading === m.job_id ? <><span className="inline-block animate-spin">⏳</span> Getting AI recommendation…</> : 'Get AI apply recommendation'}
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 sm:gap-2">
                         {applied
@@ -1324,6 +1364,8 @@ export default function CandidateDashboard() {
                     className="mt-3"
                     candidateId={candidate.id}
                     jobId={m.job_id}
+                    jobTitle={m.job?.title}
+                    candidateTitle={candidate?.primary_title}
                   />
                 )}
               </div>
@@ -1697,6 +1739,8 @@ export default function CandidateDashboard() {
                       missingKeywords={pasteJdResult.missing_keywords ?? []}
                       visible
                       className="mt-3"
+                      jobTitle="Pasted job"
+                      candidateTitle={candidate?.primary_title}
                     />
                   )}
                 </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
+import { rateLimitResponse, getClientId } from '@/lib/rate-limit';
 import { stripHtml } from '@/utils/helpers';
 import crypto from 'crypto';
 import { precomputeJobRequirements } from '@/lib/matching';
@@ -42,6 +43,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
+
+  const rl = rateLimitResponse(req, 'scraping', authResult.user.id);
+  if (rl) return rl;
 
   const supabase = createServiceClient();
   let body: {

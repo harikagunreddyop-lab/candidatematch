@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { rateLimitResponse } from '@/lib/rate-limit';
+import { isValidUuid } from '@/lib/security';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-};
+function getCorsOrigin(req: Request): string {
+  const allowed = process.env.AUTOFILL_ALLOWED_ORIGINS;
+  if (allowed) {
+    const origins = allowed.split(',').map(o => o.trim()).filter(Boolean);
+    const origin = req.headers.get('origin');
+    if (origin && origins.includes(origin)) return origin;
+    if (origins.length > 0) return origins[0];
+  }
+  return '*';
+}
 
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
+function corsHeaders(req: Request) {
+  return {
+    'Access-Control-Allow-Origin': getCorsOrigin(req),
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+  };
+}
+
+export async function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(req) });
 }
 
 function buildAutofillData(candidate: any, fallbackEmail?: string) {
@@ -89,11 +104,14 @@ function buildAutofillData(candidate: any, fallbackEmail?: string) {
 const CANDIDATE_FIELDS = 'id, full_name, email, phone, location, visa_status, primary_title, secondary_titles, skills, summary, default_pitch, linkedin_url, portfolio_url, github_url, experience, education, certifications, salary_min, salary_max, availability, open_to_remote, open_to_relocate';
 
 export async function GET(req: NextRequest) {
+  const rl = rateLimitResponse(req, 'api');
+  if (rl) return rl;
+
   const token = req.headers.get('authorization')?.replace('Bearer ', '');
   if (!token) {
     return NextResponse.json(
       { error: 'Missing authorization token' },
-      { status: 401, headers: CORS_HEADERS },
+      { status: 401, headers: corsHeaders(req) },
     );
   }
 
@@ -105,7 +123,7 @@ export async function GET(req: NextRequest) {
   if (authErr || !user) {
     return NextResponse.json(
       { error: 'Invalid or expired token' },
-      { status: 401, headers: CORS_HEADERS },
+      { status: 401, headers: corsHeaders(req) },
     );
   }
 
@@ -117,6 +135,9 @@ export async function GET(req: NextRequest) {
 
   const role = profile?.role || 'candidate';
   const candidateId = req.nextUrl.searchParams.get('candidate_id');
+  if (candidateId && !isValidUuid(candidateId)) {
+    return NextResponse.json({ error: 'Invalid candidate_id' }, { status: 400, headers: corsHeaders(req) });
+  }
 
   // ── Candidate: return their own profile ──
   if (role === 'candidate') {
@@ -129,16 +150,16 @@ export async function GET(req: NextRequest) {
     if (!candidate) {
       return NextResponse.json(
         { error: 'No candidate profile found' },
-        { status: 404, headers: CORS_HEADERS },
+        { status: 404, headers: corsHeaders(req) },
       );
     }
 
-    return NextResponse.json(buildAutofillData(candidate, user.email), { headers: CORS_HEADERS });
+    return NextResponse.json(buildAutofillData(candidate, user.email), { headers: corsHeaders(req) });
   }
 
   // ── Admin or Recruiter: list candidates or fetch a specific one ──
   if (role !== 'admin' && role !== 'recruiter') {
-    return NextResponse.json({ error: 'Unauthorized role' }, { status: 403, headers: CORS_HEADERS });
+    return NextResponse.json({ error: 'Unauthorized role' }, { status: 403, headers: corsHeaders(req) });
   }
 
   // If no candidate_id, return the list of available candidates
@@ -181,7 +202,7 @@ export async function GET(req: NextRequest) {
           active: c.active,
         })),
       },
-      { headers: CORS_HEADERS },
+      { headers: corsHeaders(req) },
     );
   }
 
@@ -197,7 +218,7 @@ export async function GET(req: NextRequest) {
     if (!assignment) {
       return NextResponse.json(
         { error: 'Candidate not assigned to you' },
-        { status: 403, headers: CORS_HEADERS },
+        { status: 403, headers: corsHeaders(req) },
       );
     }
   }
@@ -211,9 +232,9 @@ export async function GET(req: NextRequest) {
   if (!candidate) {
     return NextResponse.json(
       { error: 'Candidate not found' },
-      { status: 404, headers: CORS_HEADERS },
+      { status: 404, headers: corsHeaders(req) },
     );
   }
 
-  return NextResponse.json(buildAutofillData(candidate), { headers: CORS_HEADERS });
+  return NextResponse.json(buildAutofillData(candidate), { headers: corsHeaders(req) });
 }

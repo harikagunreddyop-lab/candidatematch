@@ -2,27 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runMatching } from '@/lib/matching';
 import { log, error as logError } from '@/lib/logger';
 import { createServiceClient } from '@/lib/supabase-server';
+import { validateCronAuth } from '@/lib/security';
 
-const CRON_SECRET = process.env.CRON_SECRET;
 const INTERVAL_HOURS = 6;
-
-function verifyCronAuth(req: NextRequest): boolean {
-  if (!CRON_SECRET) {
-    logError('[CRON] CRON_SECRET env var is not set — rejecting request');
-    return false;
-  }
-  const auth = req.headers.get('authorization');
-  if (auth !== `Bearer ${CRON_SECRET}`) {
-    logError('[CRON] Invalid authorization header');
-    return false;
-  }
-  return true;
-}
 
 export const maxDuration = 300;
 
 export async function GET(req: NextRequest) {
-  if (!verifyCronAuth(req)) {
+  if (!validateCronAuth(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

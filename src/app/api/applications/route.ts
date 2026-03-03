@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { getPolicy, evaluateGateDecision } from '@/lib/policy-engine';
 import { emitEvent, recordOutcome } from '@/lib/telemetry';
+import { rateLimitResponse } from '@/lib/rate-limit';
+import { isValidUuid } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,11 +28,17 @@ export async function POST(req: NextRequest) {
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 
+  const rl = rateLimitResponse(req, 'api', authResult.user.id);
+  if (rl) return rl;
+
   const body = await req.json().catch(() => ({}));
   const candidateId = body?.candidate_id;
   const jobId = body?.job_id;
   if (!candidateId || !jobId) {
     return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
+  }
+  if (!isValidUuid(candidateId) || !isValidUuid(jobId)) {
+    return NextResponse.json({ error: 'Invalid candidate_id or job_id' }, { status: 400 });
   }
 
   const supabase = createServiceClient();

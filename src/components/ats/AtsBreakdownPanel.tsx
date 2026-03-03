@@ -5,7 +5,7 @@
  * Access-controlled by parent: candidate_see_ats_fix_report for candidates; recruiters/admins always see.
  */
 
-import { ChevronDown, ChevronUp, BarChart2, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, BarChart2, Sparkles, MessageSquare, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/utils/helpers';
 
@@ -82,9 +82,11 @@ type Props = {
   visible?: boolean;
   className?: string;
   compact?: boolean;
-  /** For bullet rewrite: candidate + job context */
+  /** For bullet rewrite and AI: candidate + job context */
   candidateId?: string | null;
   jobId?: string | null;
+  jobTitle?: string | null;
+  candidateTitle?: string | null;
 };
 
 export function AtsBreakdownPanel({
@@ -98,10 +100,19 @@ export function AtsBreakdownPanel({
   compact = false,
   candidateId,
   jobId,
+  jobTitle: jobTitleProp,
+  candidateTitle: candidateTitleProp,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [bulletRewriteLoading, setBulletRewriteLoading] = useState(false);
   const [bulletRewrites, setBulletRewrites] = useState<string[] | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainResult, setExplainResult] = useState<{ narrative: string; risk_summary: string; audit_summary: string } | null>(null);
+  const [objectionLoading, setObjectionLoading] = useState(false);
+  const [objectionResult, setObjectionResult] = useState<{
+    rejection_reasons: Array<{ reason: string; likelihood: string; detail: string }>;
+    defense_talking_points: Array<{ objection: string; response: string }>;
+  } | null>(null);
 
   if (!visible) return null;
   if (typeof atsScore !== 'number') return null;
@@ -169,6 +180,99 @@ export function AtsBreakdownPanel({
         <div className="px-4 pb-4 pt-1 space-y-4 border-t border-surface-100 dark:border-surface-700">
           {atsReason && (
             <p className="text-sm text-surface-600 dark:text-surface-300">{atsReason}</p>
+          )}
+
+          {/* Elite AI: Plain-English explanation */}
+          <div className="rounded-lg bg-surface-100 dark:bg-surface-700/50 border border-surface-200 dark:border-surface-600 px-3 py-2.5">
+            {!explainResult ? (
+              <button
+                type="button"
+                onClick={async () => {
+                  setExplainLoading(true);
+                  setExplainResult(null);
+                  try {
+                    const res = await fetch('/api/ats/explain', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        ats_breakdown: atsBreakdown,
+                        ats_score: atsScore,
+                        job_title: jobTitleProp || 'this role',
+                        candidate_title: candidateTitleProp,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.narrative) setExplainResult({ narrative: data.narrative, risk_summary: data.risk_summary || '', audit_summary: data.audit_summary || '' });
+                  } finally {
+                    setExplainLoading(false);
+                  }
+                }}
+                disabled={explainLoading}
+                className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1.5"
+              >
+                {explainLoading ? 'Generating…' : <><MessageSquare size={12} /> AI explanation</>}
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-surface-700 dark:text-surface-200">AI explanation</p>
+                <p className="text-xs text-surface-600 dark:text-surface-300">{explainResult.narrative}</p>
+                {explainResult.risk_summary && <p className="text-xs text-amber-700 dark:text-amber-300"><strong>Risks:</strong> {explainResult.risk_summary}</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Elite AI: Objection predictor (when candidate + job context) */}
+          {candidateId && jobId && (
+            <div className="rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/50 px-3 py-2.5">
+              {!objectionResult ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setObjectionLoading(true);
+                    setObjectionResult(null);
+                    try {
+                      const res = await fetch('/api/ats/objection-predictor', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ candidate_id: candidateId, job_id: jobId }),
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.rejection_reasons) setObjectionResult(data);
+                    } finally {
+                      setObjectionLoading(false);
+                    }
+                  }}
+                  disabled={objectionLoading}
+                  className="text-xs font-medium text-violet-700 dark:text-violet-300 hover:underline flex items-center gap-1.5"
+                >
+                  {objectionLoading ? 'Analyzing…' : <><Shield size={12} /> Predict interview objections</>}
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-violet-800 dark:text-violet-200">Interview objections & defense</p>
+                  {objectionResult.rejection_reasons?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-surface-600 dark:text-surface-400 mb-1">Possible concerns:</p>
+                      <ul className="text-xs text-surface-600 dark:text-surface-300 space-y-0.5">
+                        {objectionResult.rejection_reasons.slice(0, 3).map((r: any, i: number) => (
+                          <li key={i}>• {r.reason}{r.likelihood === 'high' ? ' (high)' : ''}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {objectionResult.defense_talking_points?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-surface-600 dark:text-surface-400 mb-1">Talking points:</p>
+                      <ul className="text-xs text-surface-600 dark:text-surface-300 space-y-1">
+                        {objectionResult.defense_talking_points.slice(0, 3).map((d: any, i: number) => (
+                          <li key={i}><span className="text-violet-600 dark:text-violet-400">{d.objection}</span> → {d.response}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Per-resume scores when available */}

@@ -699,6 +699,10 @@ export default function CandidateDetailPage() {
                       missingKeywords={safeArray((m as any).missing_keywords)}
                       visible
                       className="mt-3"
+                      candidateId={id}
+                      jobId={m.job_id}
+                      jobTitle={(m as any).job?.title}
+                      candidateTitle={candidate?.primary_title}
                     />
                   )}
                 </div>

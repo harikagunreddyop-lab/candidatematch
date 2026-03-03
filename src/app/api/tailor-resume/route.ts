@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { hasFeature } from '@/lib/feature-flags-server';
+import { rateLimitResponse } from '@/lib/rate-limit';
+import { isValidUuid } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,11 +14,17 @@ const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
-  
+
+  const rl = rateLimitResponse(req, 'api', authResult.user.id);
+  if (rl) return rl;
+
   const candidateId = req.nextUrl.searchParams.get('candidate_id');
   const jobId = req.nextUrl.searchParams.get('job_id');
-  
+
   if (!candidateId) return NextResponse.json({ error: 'candidate_id required' }, { status: 400 });
+  if (!isValidUuid(candidateId) || (jobId && !isValidUuid(jobId))) {
+    return NextResponse.json({ error: 'Invalid candidate_id or job_id' }, { status: 400 });
+  }
   
   const supabase = createServiceClient();
   
@@ -47,16 +55,22 @@ export async function POST(req: NextRequest) {
     const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
+    const rl = rateLimitResponse(req, 'api', authResult.user.id);
+    if (rl) return rl;
+
     let body: { candidate_id?: string; job_id?: string };
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
-  
+
   const { candidate_id, job_id } = body || {};
   if (!candidate_id || !job_id) {
     return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
+  }
+  if (!isValidUuid(candidate_id) || !isValidUuid(job_id)) {
+    return NextResponse.json({ error: 'Invalid candidate_id or job_id' }, { status: 400 });
   }
   
   const supabase = createServiceClient();

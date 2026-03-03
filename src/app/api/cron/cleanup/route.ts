@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { log, error as logError } from '@/lib/logger';
+import { validateCronAuth } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
-
-const CRON_SECRET = process.env.CRON_SECRET;
 
 /** Default number of stale days if no setting is stored. */
 const DEFAULT_STALE_DAYS = 21;
@@ -16,19 +15,6 @@ const DEFAULT_STALE_DAYS = 21;
  * those represent meaningful recruiter decisions that must be preserved.
  */
 const STALE_STATUSES = ['applied', 'screening', 'ready'];
-
-function verifyCronAuth(req: NextRequest): boolean {
-    if (!CRON_SECRET) {
-        logError('[CLEANUP] CRON_SECRET env var is not set — rejecting');
-        return false;
-    }
-    const auth = req.headers.get('authorization');
-    if (auth !== `Bearer ${CRON_SECRET}`) {
-        logError('[CLEANUP] Invalid authorization header');
-        return false;
-    }
-    return true;
-}
 
 /**
  * GET /api/cron/cleanup
@@ -43,7 +29,7 @@ function verifyCronAuth(req: NextRequest): boolean {
  * Threshold is configurable via app_settings key `stale_application_days`.
  */
 export async function GET(req: NextRequest) {
-    if (!verifyCronAuth(req)) {
+    if (!validateCronAuth(req)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

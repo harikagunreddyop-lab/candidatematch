@@ -3,12 +3,17 @@ import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { hasFeature } from '@/lib/feature-flags-server';
 import { runAtsCheck } from '@/lib/matching';
+import { rateLimitResponse } from '@/lib/rate-limit';
+import { isValidUuid } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
+
+  const rl = rateLimitResponse(req, 'api', auth.user.id);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const candidateId = String(body.candidate_id || '');
@@ -18,6 +23,9 @@ export async function POST(req: NextRequest) {
 
   if (!candidateId || !jobId) {
     return NextResponse.json({ error: 'candidate_id and job_id are required' }, { status: 400 });
+  }
+  if (!isValidUuid(candidateId) || !isValidUuid(jobId)) {
+    return NextResponse.json({ error: 'Invalid candidate_id or job_id' }, { status: 400 });
   }
 
   const service = createServiceClient();

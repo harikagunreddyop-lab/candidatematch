@@ -9,7 +9,7 @@ import {
   ArrowLeft, MapPin, Sparkles, Download, CheckCircle2,
   ExternalLink, FileText, Briefcase, Brain, Mail,
   Calendar, Phone, Linkedin, Star, Copy, Check,
-  Save, Edit2, Plus, X, AlertCircle, Send, Upload, BarChart2,
+  Save, Edit2, Plus, X, AlertCircle, Send, Upload, BarChart2, ShieldAlert,
 } from 'lucide-react';
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
@@ -151,6 +151,10 @@ export default function RecruiterCandidateDetail() {
   const [confirmingApply, setConfirmingApply] = useState<string | null>(null);
   // Gate override: when apply blocked by ATS gate, store jobId to show "Override gate and apply"
   const [gateBlockedJob, setGateBlockedJob] = useState<{ jobId: string; reason: string; atsScore?: number } | null>(null);
+
+  // Pipeline risk (Elite AI)
+  const [pipelineRiskLoading, setPipelineRiskLoading] = useState(false);
+  const [pipelineRiskResult, setPipelineRiskResult] = useState<{ risks: Array<{ type: string; severity: string; description: string; suggested_action?: string }>; summary: string } | null>(null);
 
   const initForm = useCallback((cand: any) => {
     setProfileForm({
@@ -1086,6 +1090,8 @@ export default function RecruiterCandidateDetail() {
                         className="mt-3"
                         candidateId={id}
                         jobId={m.job_id}
+                        jobTitle={(m as any).job?.title}
+                        candidateTitle={candidate?.primary_title}
                       />
                     )}
                   </div>
@@ -1136,6 +1142,48 @@ export default function RecruiterCandidateDetail() {
       {/* ── APPLICATIONS TAB ── */}
       {tab === 'applications' && (
         <div className="space-y-3">
+          {applications.length > 0 && (
+            <div className="card p-4 border-amber-200 dark:border-amber-800/50 bg-amber-50/50 dark:bg-amber-900/10">
+              {!pipelineRiskResult ? (
+                <button
+                  onClick={async () => {
+                    setPipelineRiskLoading(true);
+                    setPipelineRiskResult(null);
+                    try {
+                      const res = await fetch('/api/ats/pipeline-risk', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ candidate_id: id }),
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.risks) setPipelineRiskResult(data);
+                    } finally {
+                      setPipelineRiskLoading(false);
+                    }
+                  }}
+                  disabled={pipelineRiskLoading}
+                  className="text-sm font-medium text-amber-800 dark:text-amber-200 hover:underline flex items-center gap-2"
+                >
+                  {pipelineRiskLoading ? <Spinner size={14} /> : <ShieldAlert size={14} />}
+                  Analyze pipeline risk
+                </button>
+              ) : (
+                <div>
+                  <p className="text-xs font-semibold text-amber-800 dark:text-amber-200 mb-1">Pipeline risk</p>
+                  <p className="text-xs text-surface-600 dark:text-surface-300 mb-2">{pipelineRiskResult.summary}</p>
+                  {pipelineRiskResult.risks?.length > 0 && (
+                    <ul className="text-xs space-y-1">
+                      {pipelineRiskResult.risks.slice(0, 5).map((r: any, i: number) => (
+                        <li key={i} className={r.severity === 'high' ? 'text-red-600 dark:text-red-400' : 'text-surface-600 dark:text-surface-400'}>
+                          • {r.description}{r.suggested_action ? ` — ${r.suggested_action}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {applications.length === 0
             ? <EmptyState icon={<FileText size={24} />} title="No applications yet" description="Click Apply Now on a matched job, then confirm applied to record it" />
             : applications.map((a) => (
@@ -1398,6 +1446,8 @@ export default function RecruiterCandidateDetail() {
                       missingKeywords={pasteJdResult.missing_keywords ?? []}
                       visible
                       className="mt-3"
+                      jobTitle="Pasted job"
+                      candidateTitle={candidate?.primary_title}
                     />
                   )}
                 </div>

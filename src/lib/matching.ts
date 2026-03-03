@@ -328,6 +328,8 @@ export async function runAtsCheck(
     actorUserId?: string | null;
     /** Source of the check (default: 'manual') */
     source?: string;
+    /** Tailored resume version (from resume_versions) — scored instead of candidate_resumes */
+    resumeVersionId?: string | null;
   },
 ): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string }> {
   const startMs = Date.now();
@@ -346,42 +348,66 @@ export async function runAtsCheck(
   if (jobErr || !job) throw new Error(jobErr?.message || 'Job not found');
 
   // ── Resume text resolution ──────────────────────────────────────────────────
-  // Pick resume text: explicit resumeId → match.best_resume_id → latest candidate resume → parsed_resume_text
-  let chosenResumeId: string | null = resumeId ?? null;
-  if (!chosenResumeId) {
-    const { data: matchRow } = await supabase
-      .from('candidate_job_matches')
-      .select('best_resume_id')
+  // Priority: resumeVersionId (tailored) → explicit resumeId → match.best_resume_id → latest candidate resume → parsed_resume_text
+  let chosenResumeId: string | null = null;
+  let resumeText = '';
+
+  if (options?.resumeVersionId) {
+    const { data: rv, error: rvErr } = await supabase
+      .from('resume_versions')
+      .select('id, pdf_path, generation_status, resume_text')
+      .eq('id', options.resumeVersionId)
       .eq('candidate_id', candidateId)
       .eq('job_id', jobId)
       .single();
-    chosenResumeId = matchRow?.best_resume_id ?? null;
+    if (!rvErr && rv?.generation_status === 'completed' && rv?.pdf_path) {
+      // Prefer stored plain text (DOCX tailored resumes); fallback to storage extraction (PDF)
+      if (rv.resume_text && String(rv.resume_text).trim()) {
+        resumeText = String(rv.resume_text).slice(0, MAX_RESUME_TEXT_LEN);
+      } else {
+        resumeText = await getResumeTextFromStorage(supabase, rv.pdf_path);
+      }
+      chosenResumeId = null; // Tailored resume: no candidate_resumes id
+    }
   }
 
-  let resumeText = '';
-  if (chosenResumeId) {
-    const { data: r, error: rErr } = await supabase
-      .from('candidate_resumes')
-      .select('id, candidate_id, pdf_path')
-      .eq('id', chosenResumeId)
-      .single();
-    if (!rErr && r?.candidate_id === candidateId) {
-      resumeText = await getResumeTextFromStorage(supabase, r.pdf_path);
-    }
-  }
   if (!resumeText) {
-    const { data: latest } = await supabase
-      .from('candidate_resumes')
-      .select('id, pdf_path')
-      .eq('candidate_id', candidateId)
-      .order('uploaded_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (latest?.pdf_path) {
-      chosenResumeId = latest.id;
-      resumeText = await getResumeTextFromStorage(supabase, latest.pdf_path);
+    chosenResumeId = resumeId ?? null;
+    if (!chosenResumeId) {
+      const { data: matchRow } = await supabase
+        .from('candidate_job_matches')
+        .select('best_resume_id')
+        .eq('candidate_id', candidateId)
+        .eq('job_id', jobId)
+        .single();
+      chosenResumeId = matchRow?.best_resume_id ?? null;
+    }
+
+    if (chosenResumeId) {
+      const { data: r, error: rErr } = await supabase
+        .from('candidate_resumes')
+        .select('id, candidate_id, pdf_path')
+        .eq('id', chosenResumeId)
+        .single();
+      if (!rErr && r?.candidate_id === candidateId) {
+        resumeText = await getResumeTextFromStorage(supabase, r.pdf_path);
+      }
+    }
+    if (!resumeText) {
+      const { data: latest } = await supabase
+        .from('candidate_resumes')
+        .select('id, pdf_path')
+        .eq('candidate_id', candidateId)
+        .order('uploaded_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latest?.pdf_path) {
+        chosenResumeId = latest.id;
+        resumeText = await getResumeTextFromStorage(supabase, latest.pdf_path);
+      }
     }
   }
+
   if (!resumeText) {
     resumeText = (candidate.parsed_resume_text || '').slice(0, MAX_RESUME_TEXT_LEN);
     chosenResumeId = chosenResumeId ?? null;
@@ -493,6 +519,8 @@ export async function runAtsCheck(
     ats_breakdown: enrichedBreakdown,
     ats_checked_at: now,
     ats_resume_id: chosenResumeId,
+    matched_keywords: result.matched_keywords || [],
+    missing_keywords: result.missing_keywords || [],
     // Phase-1 new columns:
     ats_model_version: ATS_MODEL_VERSION,
     ats_confidence: atsConfidence,
@@ -532,6 +560,8 @@ export async function runAtsCheck(
     ats_breakdown: enrichedBreakdown,
     ats_resume_id: chosenResumeId,
     ats_checked_at: now,
+    matched_keywords: result.matched_keywords || [],
+    missing_keywords: result.missing_keywords || [],
   };
 }
 

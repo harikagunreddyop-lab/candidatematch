@@ -153,6 +153,8 @@ export interface ResumeVersion {
   version_number: number;
   created_at: string;
   job?: Job;
+  /** Plain text for ATS scoring (tailored DOCX resumes) */
+  resume_text?: string | null;
 }
 
 export interface BulletGroup {

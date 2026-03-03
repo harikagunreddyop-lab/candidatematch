@@ -8,6 +8,7 @@ import {
   CheckCircle2, Sparkles, MapPin, Trash2, Plus, Link2,
   Mail, Phone, Star, RefreshCw, AlertCircle, Bell, BookmarkCheck, FileDown, Zap,
 } from 'lucide-react';
+import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 
 // Safe array helper — handles null, undefined, postgres text arrays
@@ -123,15 +124,23 @@ export default function CandidateDetailPage() {
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const resumeIds: (string | null)[] = uploadedResumes?.length
-        ? (uploadedResumes as any[]).map((r: any) => r.id)
-        : [null];
+      const tailoredForJob = (resumes || []).filter(
+        (r: any) => r.job_id === jobId && (r.generation_status === 'completed' || r.generation_status === 'done')
+      );
+      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
+        ...(uploadedResumes?.length ? (uploadedResumes as any[]).map((r: any) => ({ resume_id: r.id })) : [{ resume_id: null }]),
+        ...tailoredForJob.map((r: any) => ({ resume_version_id: r.id })),
+      ];
 
-      const results = await Promise.all(resumeIds.map(async (resumeId) => {
+      const results = await Promise.all(sources.map(async (src) => {
         const res = await fetch('/api/ats/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidate_id: id, job_id: jobId, resume_id: resumeId }),
+          body: JSON.stringify({
+            candidate_id: id,
+            job_id: jobId,
+            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return null;
@@ -146,7 +155,7 @@ export default function CandidateDetailPage() {
 
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
-          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at }
+          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
           : m
       ));
     } catch (e: any) {
@@ -658,7 +667,7 @@ export default function CandidateDetailPage() {
                                 : 'btn-secondary',
                               running && 'opacity-70 cursor-not-allowed'
                             )}
-                            title={`Run ATS check across all ${uploadedResumes?.length || 0} resume(s) — picks best score automatically.`}
+                            title="Run ATS check across uploaded and tailored resumes — picks best score."
                           >
                             {running ? <Spinner size={12} /> : <Zap size={12} />}
                             {atsScore !== null ? `ATS ${atsScore}` : 'ATS'}
@@ -692,6 +701,18 @@ export default function CandidateDetailPage() {
                       <span key={i} className="px-1.5 py-0.5 bg-red-50 text-red-600 rounded text-[11px]">✗ {k}</span>
                     ))}
                   </div>
+
+                  {typeof (m as any).ats_score === 'number' && (
+                    <AtsBreakdownPanel
+                      atsScore={(m as any).ats_score}
+                      atsReason={(m as any).ats_reason}
+                      atsBreakdown={(m as any).ats_breakdown}
+                      matchedKeywords={safeArray((m as any).matched_keywords)}
+                      missingKeywords={safeArray((m as any).missing_keywords)}
+                      visible
+                      className="mt-3"
+                    />
+                  )}
                 </div>
               </div>
             </div>

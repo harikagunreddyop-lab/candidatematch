@@ -150,15 +150,15 @@ export async function POST(req: NextRequest) {
     .eq('job_id', job_id);
   
   const versionNumber = (versionCount || 0) + 1;
-  const pdfPath = `generated/${candidate_id}/${job_id}/v${versionNumber}.pdf`;
-  
+  const filePath = `generated/${candidate_id}/${job_id}/v${versionNumber}.docx`;
+
   // Create resume_version record
   const { data: resumeVersion, error: rvErr } = await supabase
     .from('resume_versions')
     .insert({
       candidate_id,
       job_id,
-      pdf_path: pdfPath,
+      pdf_path: filePath,
       generation_status: 'pending',
       version_number: versionNumber,
       bullets: [],
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Resume tailoring service is not available. Please try again later.' }, { status: 503 });
   }
   
-  // Fire-and-forget to worker
+  // Fire-and-forget to worker (output: Word .docx)
   fetch(`${RESUME_WORKER_URL}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -198,7 +198,7 @@ export async function POST(req: NextRequest) {
       resume_version_id: resumeVersion.id,
       candidate,
       job,
-      pdf_path: pdfPath,
+      file_path: filePath,
     }),
   }).catch(err => {
     supabase.from('resume_versions').update({

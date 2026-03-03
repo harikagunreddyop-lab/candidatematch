@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
       .eq('job_id', job_id);
 
     const versionNumber = (versionCount || 0) + 1;
-    const pdfPath = `generated/${candidate_id}/${job_id}/v${versionNumber}.pdf`;
+    const filePath = `generated/${candidate_id}/${job_id}/v${versionNumber}.docx`;
 
     // Create the resume_version record in pending state
     const { data: resumeVersion, error: rvErr } = await supabase
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       .insert({
         candidate_id,
         job_id,
-        pdf_path: pdfPath,
+        pdf_path: filePath,
         generation_status: 'pending',
         version_number: versionNumber,
         bullets: [],
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest) {
         resume_version_id: resumeVersion.id,
         candidate,
         job,
-        pdf_path: pdfPath,
+        file_path: filePath,
       }),
     }).catch(err => {
       if (process.env.NODE_ENV === 'development') {

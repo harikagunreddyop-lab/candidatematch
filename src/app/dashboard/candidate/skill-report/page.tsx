@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { EmptyState, Spinner } from '@/components/ui';
 import { useFeatureFlags } from '@/hooks';
 import { BarChart2, Target, Star, AlertCircle, Brain, X, User, FileText, Zap, Lightbulb } from 'lucide-react';
+import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { cn } from '@/utils/helpers';
 import { getScoreBadgeClasses, SCORE_APPLY_OK } from '@/lib/ats-score';
 
@@ -41,20 +42,27 @@ export default function CandidateSkillReportPage() {
   const [briefError, setBriefError] = useState<string | null>(null);
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+  const [tailoredByJob, setTailoredByJob] = useState<Record<string, { id: string }>>({});
 
   const runAtsForJob = async (jobId: string) => {
     if (!candidate) return;
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const resumeIds: (string | null)[] = resumes.length
-        ? resumes.map((r: { id: string }) => r.id)
-        : [null];
-      const results = await Promise.all(resumeIds.map(async (resumeId) => {
+      const tailored = tailoredByJob[jobId];
+      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
+        ...(resumes.length ? resumes.map((r: { id: string }) => ({ resume_id: r.id })) : [{ resume_id: null }]),
+        ...(tailored ? [{ resume_version_id: tailored.id }] : []),
+      ];
+      const results = await Promise.all(sources.map(async (src) => {
         const res = await fetch('/api/ats/check', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ candidate_id: candidate.id, job_id: jobId, resume_id: resumeId }),
+          body: JSON.stringify({
+            candidate_id: candidate.id,
+            job_id: jobId,
+            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
+          }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) return null;
@@ -66,7 +74,7 @@ export default function CandidateSkillReportPage() {
       if (!best) throw new Error('ATS check failed for all resumes');
       setMatches(prev => prev.map((m: any) =>
         m.job_id === jobId
-          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at }
+          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
           : m
       ));
     } catch (e: any) {
@@ -83,15 +91,23 @@ export default function CandidateSkillReportPage() {
       const { data: cand } = await supabase.from('candidates').select('*').eq('user_id', session.user.id).single();
       if (!cand) { setNotLinked(true); setLoading(false); return; }
       setCandidate(cand);
-      const [mchRes, resumesRes] = await Promise.all([
+      const [mchRes, resumesRes, tailorRes] = await Promise.all([
         supabase.from('candidate_job_matches')
           .select('*, job:jobs(id, title, company, location)')
           .eq('candidate_id', cand.id)
           .order('fit_score', { ascending: false }),
         fetch(`/api/candidate-resumes?candidate_id=${cand.id}`).then(r => r.json()),
+        fetch(`/api/tailor-resume?candidate_id=${cand.id}`).then(r => r.json()),
       ]);
       setMatches(mchRes.data || []);
       setResumes((resumesRes.resumes || []).map((r: any) => ({ id: r.id, label: r.label || r.file_name || 'Resume', file_name: r.file_name || '' })));
+      const tailoredMap: Record<string, { id: string }> = {};
+      for (const tv of tailorRes.tailored_resumes || []) {
+        if ((tv.generation_status === 'completed' || tv.generation_status === 'done') && tv.job_id && tv.id) {
+          tailoredMap[tv.job_id] = { id: tv.id };
+        }
+      }
+      setTailoredByJob(tailoredMap);
       setLoading(false);
     }
     load();
@@ -318,6 +334,17 @@ export default function CandidateSkillReportPage() {
                       {atsErrorByJob[m.job_id] && (
                         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{atsErrorByJob[m.job_id]}</p>
                       )}
+                      {atsReportAllowed && typeof m.ats_score === 'number' && (
+                        <AtsBreakdownPanel
+                          atsScore={m.ats_score}
+                          atsReason={m.ats_reason}
+                          atsBreakdown={m.ats_breakdown}
+                          matchedKeywords={Array.isArray(m.matched_keywords) ? m.matched_keywords : []}
+                          missingKeywords={Array.isArray(m.missing_keywords) ? m.missing_keywords : []}
+                          visible
+                          className="mt-3"
+                        />
+                      )}
                       <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
                         <button
                           onClick={() => runAtsForJob(m.job_id)}
@@ -389,6 +416,17 @@ export default function CandidateSkillReportPage() {
                       </div>
                       {atsErrorByJob[m.job_id] && (
                         <p className="mt-2 text-xs text-red-600 dark:text-red-400">{atsErrorByJob[m.job_id]}</p>
+                      )}
+                      {atsReportAllowed && typeof m.ats_score === 'number' && (
+                        <AtsBreakdownPanel
+                          atsScore={m.ats_score}
+                          atsReason={m.ats_reason}
+                          atsBreakdown={m.ats_breakdown}
+                          matchedKeywords={Array.isArray(m.matched_keywords) ? m.matched_keywords : []}
+                          missingKeywords={Array.isArray(m.missing_keywords) ? m.missing_keywords : []}
+                          visible
+                          className="mt-3"
+                        />
                       )}
                       <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
                         <button

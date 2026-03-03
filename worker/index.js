@@ -8,6 +8,7 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const crypto = require('crypto');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { buildAtsDocx } = require('./ats-docx-builder');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,6 +16,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const PORT = process.env.WORKER_PORT || 3001;
 const TEMP_DIR = path.join(__dirname, 'tmp');
+const USE_LATEX = process.env.USE_LATEX === 'true' || process.env.USE_LATEX === '1';
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Missing env: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env (project root)');
@@ -30,12 +32,14 @@ if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
 // ─── Generate Resume Endpoint ────────────────────────────────────────────────
+// Output: Word (.docx) with Elite spec. file_path should end in .docx
 fastify.post('/generate', async (request, reply) => {
-  const { resume_version_id, candidate, job, pdf_path } = request.body || {};
+  const { resume_version_id, candidate, job, pdf_path, file_path } = request.body || {};
+  const storagePath = file_path || pdf_path;
 
-  if (!resume_version_id || !candidate || !job || !pdf_path) {
+  if (!resume_version_id || !candidate || !job || !storagePath) {
     return reply.code(400).send({
-      error: 'Missing required fields: resume_version_id, candidate, job, pdf_path',
+      error: 'Missing required fields: resume_version_id, candidate, job, pdf_path or file_path',
     });
   }
 
@@ -44,66 +48,34 @@ fastify.post('/generate', async (request, reply) => {
   }
 
   try {
-    // Step 1: Generate STAR bullets via Claude
+    // Step 1: Generate STAR bullets + summary via Claude
     await updateStatus(resume_version_id, 'generating');
-    const bullets = await generateBullets(candidate, job);
+    const { summary: generatedSummary, experience: experienceBullets } = await generateBullets(candidate, job);
 
-    // Step 2: Build PDF (try Tectonic first; fallback to pdf-lib if not installed)
+    // Step 2: Build Word (DOCX) — ATS-optimized Elite spec
     await updateStatus(resume_version_id, 'compiling');
-    let pdfBuffer;
+    const { buffer: docxBuffer, plainText } = await buildAtsDocx(candidate, experienceBullets, job, generatedSummary);
 
-    const workDir = path.join(TEMP_DIR, crypto.randomUUID());
-    fs.mkdirSync(workDir, { recursive: true });
-    const texPath = path.join(workDir, 'resume.tex');
-    const pdfPathLocal = path.join(workDir, 'resume.pdf');
+    const sizeKB = docxBuffer.length / 1024;
+    if (sizeKB < 1) throw new Error('DOCX too small, likely empty');
 
-    try {
-      const latex = buildLatex(candidate, bullets, job);
-      fs.writeFileSync(texPath, latex, 'utf-8');
-      execSync(`tectonic ${texPath} --outdir ${workDir}`, {
-        timeout: 60000,
-        stdio: 'pipe',
-      });
-      if (fs.existsSync(pdfPathLocal)) {
-        pdfBuffer = fs.readFileSync(pdfPathLocal);
-      }
-    } catch (texErr) {
-      fastify.log.warn('Tectonic failed, trying simplified template');
-      try {
-        const simplifiedLatex = buildSimplifiedLatex(candidate, bullets, job);
-        fs.writeFileSync(texPath, simplifiedLatex, 'utf-8');
-        execSync(`tectonic ${texPath} --outdir ${workDir}`, { timeout: 60000, stdio: 'pipe' });
-        if (fs.existsSync(pdfPathLocal)) pdfBuffer = fs.readFileSync(pdfPathLocal);
-      } catch (_) {}
-    }
-
-    // Fallback: generate PDF with pdf-lib (no Tectonic required)
-    if (!pdfBuffer || pdfBuffer.length < 1024) {
-      fastify.log.info('Using pdf-lib fallback (Tectonic not installed or failed)');
-      pdfBuffer = await buildPdfWithPdfLib(candidate, bullets, job);
-    }
-
-    fs.rmSync(workDir, { recursive: true, force: true });
-
-    const pdfSizeKB = pdfBuffer.length / 1024;
-    if (pdfSizeKB < 1) throw new Error('PDF too small, likely empty');
-
-    // Step 4: Upload to Supabase Storage
+    // Step 3: Upload to Supabase Storage (Word format)
     await updateStatus(resume_version_id, 'uploading');
     const { error: uploadError } = await supabase.storage
       .from('resumes')
-      .upload(pdf_path, pdfBuffer, {
-        contentType: 'application/pdf',
+      .upload(storagePath, docxBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         upsert: true,
       });
 
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    // Step 5: Update DB
+    // Step 4: Update DB (pdf_path column stores path to .docx; resume_text for ATS scoring)
     await supabase.from('resume_versions').update({
       generation_status: 'completed',
-      bullets,
-      pdf_path,
+      bullets: experienceBullets,
+      pdf_path: storagePath,
+      ...(plainText && { resume_text: plainText.slice(0, 20000) }),
     }).eq('id', resume_version_id);
 
     return { status: 'completed', resume_version_id };
@@ -118,14 +90,25 @@ fastify.post('/generate', async (request, reply) => {
   }
 });
 
-// ─── Claude STAR Bullet Generation ───────────────────────────────────────────
+// ─── Elite STAR Bullet + Summary Generation ───────────────────────────────────
 async function generateBullets(candidate, job) {
-  const prompt = `You are a professional resume writer. Generate STAR-format resume bullets for a candidate.
+  const expYears = candidate.years_of_experience ?? 5;
+  const maxRoles = expYears <= 5 ? 3 : 5;
+  const maxBulletsRecent = expYears <= 5 ? 4 : 6;
+  const maxBulletsOlder = expYears <= 5 ? 3 : 4;
+
+  const jd = (job.jd_clean || job.jd_raw || '').slice(0, 4000);
+
+  const prompt = `You are an elite ATS resume writer. Your job is to ANALYZE the job description and TAILOR the resume so it scores 85+ on ATS systems (Workday, Taleo, Greenhouse, Lever, etc.).
+
+GOAL: Produce content that will score 85+ on ATS. Extract and mirror job keywords, ensure 3-6% keyword density, use exact role titles and skill phrases from the JD where truthful.
 
 CANDIDATE:
 Name: ${candidate.full_name}
 Title: ${candidate.primary_title}
+Years experience: ${expYears}
 Skills: ${JSON.stringify(candidate.skills)}
+Tools: ${JSON.stringify(candidate.tools || [])}
 
 EXPERIENCE:
 ${JSON.stringify(candidate.experience, null, 2)}
@@ -133,19 +116,29 @@ ${JSON.stringify(candidate.experience, null, 2)}
 TARGET JOB:
 Title: ${job.title}
 Company: ${job.company}
-Description: ${(job.jd_clean || job.jd_raw || '').slice(0, 3000)}
+Description:
+${jd}
 
-RULES:
-1. DO NOT invent facts, companies, technologies, or metrics
-2. ONLY rewrite the candidate's existing responsibilities
-3. Use STAR format: Situation/Task, Action, Result
-4. Start each bullet with a strong action verb
-5. Optimize for JD keywords where truthful
-6. 3-5 bullets per role
-7. Include quantifiable results only if supported by original data
+ANALYZE THE JD: Extract must-have skills, technologies, role keywords, industry terms. Weave these NATURALLY into the summary and bullets. The resume must pass ATS parsing (scannable in 6 seconds, keyword density 3-6%, no formatting that breaks parsing).
+
+ELITE STAR BULLET RULES (MANDATORY):
+- Formula: Action Verb + Scope + Method + Measurable Outcome
+- Each bullet: 18-32 words, at least one number
+- Use elite verbs ONLY: Architected, Engineered, Orchestrated, Automated, Optimized, Accelerated, Reduced, Increased, Implemented, Delivered, Led, Directed, Rebuilt, Transformed
+- FORBIDDEN: "responsible for", "assisted with", "helped", "various", "several", "dynamic", "hardworking", "passionate", "worked on"
+- NO repetition across roles. Prioritize: revenue metric, cost reduction, efficiency/time, scale (users/records), accuracy/quality
+- Recent roles: ${maxBulletsRecent} bullets. Older roles: ${maxBulletsOlder} bullets. Max ${maxRoles} roles.
+- DO NOT invent facts. ONLY rewrite existing responsibilities with quantifiable impact where data supports it.
+- Embed JD keywords naturally (3-6% density) to maximize ATS score toward 85+.
+
+PROFESSIONAL SUMMARY (3-5 lines, single paragraph):
+- Start with target role title or close variant from the JD
+- Formula: [Title] with X years of experience in [domain from JD]. Specializes in [JD-relevant strengths]. Delivered measurable impact including [metric] and [metric]. Experienced supporting [stakeholder level].
+- NO adjectives: dynamic, motivated, hardworking, passionate.
+- Include 2 quantified achievements, domain, core tools. Use JD terminology.
 
 OUTPUT FORMAT (return ONLY this JSON, no markdown):
-[{"company":"...","title":"...","bullets":["...","..."]}]`;
+{"summary":"...","experience":[{"company":"...","title":"...","bullets":["...","..."]}]}`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -162,13 +155,27 @@ OUTPUT FORMAT (return ONLY this JSON, no markdown):
   });
 
   const data = await response.json();
-  const text = data.content?.[0]?.text || '[]';
+  const text = data.content?.[0]?.text || '{}';
 
   try {
-    return JSON.parse(text);
+    const parsed = JSON.parse(text);
+    // New format: { summary, experience }; legacy: [{ company, title, bullets }]
+    if (parsed && Array.isArray(parsed.experience)) {
+      return { summary: parsed.summary || '', experience: parsed.experience };
+    }
+    if (Array.isArray(parsed)) return { summary: '', experience: parsed };
+    return { summary: '', experience: [] };
   } catch {
-    const match = text.match(/\[[\s\S]*\]/);
-    return match ? JSON.parse(match[0]) : [];
+    const objMatch = text.match(/\{[\s\S]*\}/);
+    const arrMatch = text.match(/\[[\s\S]*\]/);
+    if (objMatch) {
+      try {
+        const p = JSON.parse(objMatch[0]);
+        return { summary: p.summary || '', experience: Array.isArray(p.experience) ? p.experience : [] };
+      } catch (_) {}
+    }
+    if (arrMatch) return { summary: '', experience: JSON.parse(arrMatch[0]) };
+    return { summary: '', experience: [] };
   }
 }
 

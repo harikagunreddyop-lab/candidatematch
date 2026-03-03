@@ -9,8 +9,9 @@ import {
   TrendingUp, Target, Star, CheckCircle2, X, MapPin,
   Linkedin, Phone, Mail, RefreshCw, Sparkles, Zap,
   Bookmark, BookmarkCheck, Bell, Calendar, FileDown, Settings,
-  ArrowRight, Lightbulb, Award, Brain,
+  ArrowRight, Lightbulb, Award, Brain, BarChart2,
 } from 'lucide-react';
+import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 import { useFeatureFlags } from '@/hooks';
 
@@ -131,6 +132,10 @@ export default function CandidateDashboard() {
   const { toasts, toast, dismiss } = useToast();
   const { flags } = useFeatureFlags();
   const tailorResumeAllowed = flags.candidate_tailor_resume !== false;
+  const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
+
+  const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
+  const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
 
   // Profile edit + preferences + default pitch
   const [editingProfile, setEditingProfile] = useState(false);
@@ -388,10 +393,10 @@ export default function CandidateDashboard() {
     setTimeout(poll, 2000);
   };
 
-  const downloadTailoredResume = async (pdfPath: string, jobTitle: string) => {
+  const downloadTailoredResume = async (filePath: string, jobTitle: string) => {
     try {
       const supabase2 = createClient();
-      const { data, error } = await supabase2.storage.from('resumes').download(pdfPath);
+      const { data, error } = await supabase2.storage.from('resumes').download(filePath);
       if (!data || error) {
         toast('Could not download tailored resume. Please try again.', 'error');
         return;
@@ -399,11 +404,55 @@ export default function CandidateDashboard() {
       const url = URL.createObjectURL(data);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Resume_Tailored_${jobTitle.replace(/\s+/g, '_')}.pdf`;
+      const ext = filePath.toLowerCase().endsWith('.docx') ? 'docx' : 'pdf';
+      a.download = `Resume_Tailored_${jobTitle.replace(/\s+/g, '_')}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch {
       toast('Could not download tailored resume. Please try again.', 'error');
+    }
+  };
+
+  const runAtsForJob = async (jobId: string) => {
+    if (!candidate) return;
+    setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
+    setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
+    try {
+      const tailored = tailoredResumes[jobId];
+      const tailoredVersion = (tailored?.generation_status === 'completed' || tailored?.generation_status === 'done') && tailored?.id;
+
+      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
+        ...(uploadedResumes.length ? uploadedResumes.map(r => ({ resume_id: r.id })) : [{ resume_id: null }]),
+        ...(tailoredVersion ? [{ resume_version_id: tailoredVersion }] : []),
+      ];
+
+      const results = await Promise.all(sources.map(async (src) => {
+        const res = await fetch('/api/ats/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidate_id: candidate.id,
+            job_id: jobId,
+            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return null;
+        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string };
+      }));
+      const best = results
+        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
+        .sort((a, b) => b.ats_score - a.ats_score)[0];
+      if (!best) throw new Error('ATS check failed for all resumes');
+      setMatches(prev => prev.map(m =>
+        m.job_id === jobId
+          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
+          : m
+      ));
+    } catch (e: any) {
+      setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
+    } finally {
+      setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
     }
   };
 
@@ -1031,6 +1080,24 @@ export default function CandidateDashboard() {
                           }
                           return null;
                         })()}
+                        {atsReportAllowed && (
+                          <button
+                            onClick={() => runAtsForJob(m.job_id)}
+                            disabled={!!atsRunningByJob[m.job_id]}
+                            className={cn(
+                              'text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px] rounded-xl border font-medium transition-colors',
+                              atsScore !== null
+                                ? atsScore >= 50
+                                  ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
+                                  : 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20'
+                                : 'btn-secondary'
+                            )}
+                            title="Run on-demand ATS check for this job"
+                          >
+                            {atsRunningByJob[m.job_id] ? <Spinner size={14} /> : <BarChart2 size={14} />}
+                            {atsScore !== null ? `ATS ${atsScore}` : 'ATS check'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1039,6 +1106,20 @@ export default function CandidateDashboard() {
                   <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 rounded-lg px-3 py-2 flex items-center gap-1.5">
                     <AlertCircle size={12} /> ATS score {atsScore} — below 50. Your recruiter scored this role with a resume and the fit is too low to apply.
                   </p>
+                )}
+                {atsErrorByJob[m.job_id] && (
+                  <p className="text-xs text-red-600 dark:text-red-400 bg-red-500/10 dark:bg-red-500/20 rounded-lg px-3 py-2">{atsErrorByJob[m.job_id]}</p>
+                )}
+                {atsReportAllowed && atsScore !== null && (
+                  <AtsBreakdownPanel
+                    atsScore={atsScore}
+                    atsReason={(m as any).ats_reason}
+                    atsBreakdown={(m as any).ats_breakdown}
+                    matchedKeywords={Array.isArray((m as any).matched_keywords) ? (m as any).matched_keywords : []}
+                    missingKeywords={Array.isArray((m as any).missing_keywords) ? (m as any).missing_keywords : []}
+                    visible
+                    className="mt-3"
+                  />
                 )}
               </div>
             );

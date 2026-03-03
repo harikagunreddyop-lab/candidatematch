@@ -84,7 +84,7 @@ const CANDIDATE_FEATURES: FeatureDef[] = [
   {
     key: 'candidate_see_ats_fix_report',
     label: 'ATS fix report & run ATS check',
-    description: 'Candidate can view ATS optimization tips and run on-demand ATS checks for their matches.',
+    description: 'Candidate can run on-demand ATS checks and view the score breakdown (what\'s missing, why score is lower, dimension-by-dimension explanation).',
     icon: <BarChart2 size={15} />,
     defaultEnabled: true,
     roles: ['candidate'],

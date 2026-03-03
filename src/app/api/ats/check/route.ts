@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
   const candidateId = String(body.candidate_id || '');
   const jobId = String(body.job_id || '');
   const resumeId = body.resume_id ? String(body.resume_id) : null;
+  const resumeVersionId = body.resume_version_id ? String(body.resume_version_id) : null;
 
   if (!candidateId || !jobId) {
     return NextResponse.json({ error: 'candidate_id and job_id are required' }, { status: 400 });
@@ -43,7 +44,7 @@ export async function POST(req: NextRequest) {
   if (!matchRow) return NextResponse.json({ error: 'Match not found. Run matching first.' }, { status: 400 });
 
   try {
-    const result = await runAtsCheck(service, candidateId, jobId, resumeId);
+    const result = await runAtsCheck(service, candidateId, jobId, resumeId, { resumeVersionId: resumeVersionId || undefined });
     return NextResponse.json(result);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'ATS check failed' }, { status: 500 });

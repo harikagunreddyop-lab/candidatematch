@@ -39,6 +39,42 @@ export default function CandidateSkillReportPage() {
   const [briefText, setBriefText] = useState<string | null>(null);
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
+  const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
+  const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+
+  const runAtsForJob = async (jobId: string) => {
+    if (!candidate) return;
+    setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
+    setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
+    try {
+      const resumeIds: (string | null)[] = resumes.length
+        ? resumes.map((r: { id: string }) => r.id)
+        : [null];
+      const results = await Promise.all(resumeIds.map(async (resumeId) => {
+        const res = await fetch('/api/ats/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidate_id: candidate.id, job_id: jobId, resume_id: resumeId }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) return null;
+        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string };
+      }));
+      const best = results
+        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
+        .sort((a, b) => b.ats_score - a.ats_score)[0];
+      if (!best) throw new Error('ATS check failed for all resumes');
+      setMatches(prev => prev.map((m: any) =>
+        m.job_id === jobId
+          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at }
+          : m
+      ));
+    } catch (e: any) {
+      setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
+    } finally {
+      setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -279,7 +315,24 @@ export default function CandidateSkillReportPage() {
                           {!reason.gap && (!missingKw || missingKw.length === 0) && <p className="text-surface-500 dark:text-surface-400">No major gaps</p>}
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex justify-end">
+                      {atsErrorByJob[m.job_id] && (
+                        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{atsErrorByJob[m.job_id]}</p>
+                      )}
+                      <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
+                        <button
+                          onClick={() => runAtsForJob(m.job_id)}
+                          disabled={!!atsRunningByJob[m.job_id]}
+                          className={cn(
+                            'text-xs py-1.5 px-2.5 flex items-center gap-1 rounded-lg border font-medium transition-colors',
+                            typeof m.ats_score === 'number'
+                              ? m.ats_score >= 50 ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                              : 'btn-ghost text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10'
+                          )}
+                          title="Run on-demand ATS check for this job"
+                        >
+                          {atsRunningByJob[m.job_id] ? <Spinner size={12} /> : <BarChart2 size={12} />}
+                          {typeof m.ats_score === 'number' ? `ATS ${m.ats_score}` : 'Run ATS check'}
+                        </button>
                         <button onClick={() => { setBriefJobId(m.job_id); setBriefText(null); setBriefError(null); generateJobBrief(m.job_id); }} className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                           <Brain size={12} /> AI brief for this role
                         </button>
@@ -334,7 +387,24 @@ export default function CandidateSkillReportPage() {
                           ) : <p className="text-surface-500 dark:text-surface-400">Few keywords matched</p>}
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex justify-end">
+                      {atsErrorByJob[m.job_id] && (
+                        <p className="mt-2 text-xs text-red-600 dark:text-red-400">{atsErrorByJob[m.job_id]}</p>
+                      )}
+                      <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
+                        <button
+                          onClick={() => runAtsForJob(m.job_id)}
+                          disabled={!!atsRunningByJob[m.job_id]}
+                          className={cn(
+                            'text-xs py-1.5 px-2.5 flex items-center gap-1 rounded-lg border font-medium transition-colors',
+                            typeof m.ats_score === 'number'
+                              ? m.ats_score >= 50 ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                              : 'btn-ghost text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10'
+                          )}
+                          title="Run on-demand ATS check for this job"
+                        >
+                          {atsRunningByJob[m.job_id] ? <Spinner size={12} /> : <BarChart2 size={12} />}
+                          {typeof m.ats_score === 'number' ? `ATS ${m.ats_score}` : 'Run ATS check'}
+                        </button>
                         <button onClick={() => { setBriefJobId(m.job_id); setBriefText(null); setBriefError(null); generateJobBrief(m.job_id); }} className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                           <Brain size={12} /> AI brief for this role
                         </button>

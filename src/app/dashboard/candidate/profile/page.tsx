@@ -1,11 +1,15 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
-import { FileDown, Mail, Phone, MapPin, Linkedin, AlertCircle, Sparkles } from 'lucide-react';
+import { useFeatureFlags } from '@/hooks';
+import { FileDown, Mail, Phone, MapPin, Linkedin, AlertCircle, Sparkles, BarChart2 } from 'lucide-react';
 
 export default function CandidateProfilePage() {
   const supabase = createClient();
+  const { flags } = useFeatureFlags();
+  const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
   const [candidate, setCandidate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
@@ -137,6 +141,15 @@ export default function CandidateProfilePage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">My Profile</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          {atsReportAllowed && (
+            <Link
+              href="/dashboard/candidate/skill-report"
+              className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
+              title="View ATS fix report and run on-demand ATS checks"
+            >
+              <BarChart2 size={14} /> ATS check
+            </Link>
+          )}
           <button
             onClick={handleAutofillWithAI}
             disabled={autofilling}

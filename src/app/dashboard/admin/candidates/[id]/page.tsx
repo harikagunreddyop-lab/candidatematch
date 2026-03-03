@@ -124,38 +124,17 @@ export default function CandidateDetailPage() {
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const tailoredForJob = (resumes || []).filter(
-        (r: any) => r.job_id === jobId && (r.generation_status === 'completed' || r.generation_status === 'done')
-      );
-      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
-        ...(uploadedResumes?.length ? (uploadedResumes as any[]).map((r: any) => ({ resume_id: r.id })) : [{ resume_id: null }]),
-        ...tailoredForJob.map((r: any) => ({ resume_version_id: r.id })),
-      ];
-
-      const results = await Promise.all(sources.map(async (src) => {
-        const res = await fetch('/api/ats/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            candidate_id: id,
-            job_id: jobId,
-            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return null;
-        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] };
-      }));
-
-      const best = results
-        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
-        .sort((a, b) => b.ats_score - a.ats_score)[0];
-
-      if (!best) throw new Error('ATS check failed for all resumes');
+      const res = await fetch('/api/ats/check-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id, job_id: jobId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
 
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
-          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
+          ? { ...m, ats_score: data.ats_score, ats_reason: data.ats_reason, ats_breakdown: data.ats_breakdown, ats_resume_id: data.ats_resume_id, ats_checked_at: data.ats_checked_at, matched_keywords: data.matched_keywords ?? [], missing_keywords: data.missing_keywords ?? [] }
           : m
       ));
     } catch (e: any) {
@@ -629,8 +608,8 @@ export default function CandidateDetailPage() {
                 {typeof (m as any).ats_score === 'number' && (
                   <div className="shrink-0 flex flex-col items-center gap-0.5">
                     <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
-                      (m as any).ats_score >= 75 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                      (m as any).ats_score >= 50 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                      (m as any).ats_score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                      (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
                       'bg-red-500/15 text-red-600 dark:text-red-400'
                     )}>
                       {(m as any).ats_score}
@@ -653,7 +632,7 @@ export default function CandidateDetailPage() {
 
                       {(() => {
                         const running = !!atsRunningByJob[m.job_id];
-                        const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : null;
+                        const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
                         return (
                           <button
                             onClick={() => runAtsForJob(m.job_id)}
@@ -661,9 +640,11 @@ export default function CandidateDetailPage() {
                             className={cn(
                               'text-xs py-1.5 px-3 flex items-center gap-1 rounded-lg border font-medium transition-colors',
                               atsScore !== null
-                                ? atsScore >= 50
+                                ? atsScore >= 80
                                   ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                  : 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
+                                  : atsScore >= 61
+                                    ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                    : 'border-red-300 bg-red-50 text-red-600 hover:bg-red-100'
                                 : 'btn-secondary',
                               running && 'opacity-70 cursor-not-allowed'
                             )}
@@ -675,14 +656,21 @@ export default function CandidateDetailPage() {
                         );
                       })()}
 
-                      <button
-                        onClick={() => generateResume(m.job_id)}
-                        disabled={generating === m.job_id || (m.fit_score ?? 0) >= 75}
-                        title={(m.fit_score ?? 0) >= 75 ? 'Resume generation is only available for matches with score below 75' : undefined}
-                        className={(m.fit_score ?? 0) >= 75 ? 'btn-secondary text-xs py-1.5 px-3 flex items-center gap-1 opacity-70 cursor-not-allowed' : 'btn-primary text-xs py-1.5 px-3 flex items-center gap-1'}
-                      >
-                        {generating === m.job_id ? <Spinner size={12} /> : <Sparkles size={12} />} Generate Resume
-                      </button>
+                      {(() => {
+                        const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
+                        const canGenerate = atsScore !== null && atsScore >= 61 && atsScore <= 79;
+                        const whyDisabled = atsScore === null ? 'Run ATS check first' : atsScore <= 60 ? 'Score below 60 — tailor not available' : atsScore >= 80 ? 'Score 80+ — apply directly, no tailor needed' : '';
+                        return (
+                          <button
+                            onClick={() => generateResume(m.job_id)}
+                            disabled={generating === m.job_id || !canGenerate}
+                            title={!canGenerate ? whyDisabled : undefined}
+                            className={cn('text-xs py-1.5 px-3 flex items-center gap-1', canGenerate ? 'btn-primary' : 'btn-secondary opacity-70 cursor-not-allowed')}
+                          >
+                            {generating === m.job_id ? <Spinner size={12} /> : <Sparkles size={12} />} Generate Resume
+                          </button>
+                        );
+                      })()}
                     </div>
                   </div>
                   {m.match_reason && <p className="text-xs text-surface-400 mt-1 italic line-clamp-2">{m.match_reason}</p>}

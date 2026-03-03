@@ -10,7 +10,8 @@ const MAX_FILE_SIZE_MB = 10;
 const raw = process.env.RESUME_WORKER_URL?.trim();
 const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.1:3001';
 
-const RESUME_GENERATION_MAX_SCORE = 75; // Only allow generation for matches with score below this
+const RESUME_GENERATION_MIN_SCORE = 61;
+const RESUME_GENERATION_MAX_SCORE = 79; // Tailor only for scores 61-79
 
 async function assertCanAccessCandidate(req: NextRequest, candidateId: string): Promise<NextResponse | null> {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
@@ -90,19 +91,27 @@ export async function POST(req: NextRequest) {
     if (resumeAllowed) return resumeAllowed;
 
     const supabase = createServiceClient();
-    // Enforce: resume generation only for matches with score < 75
+    // Enforce: resume generation only for matches with score 61-79
     const { data: match } = await supabase
       .from('candidate_job_matches')
-      .select('fit_score')
+      .select('ats_score, fit_score')
       .eq('candidate_id', candidate_id)
       .eq('job_id', job_id)
       .single();
-    const fitScore = match?.fit_score ?? null;
-    if (fitScore !== null && fitScore >= RESUME_GENERATION_MAX_SCORE) {
-      return NextResponse.json(
-        { error: `Resume generation is only available for matches with score below ${RESUME_GENERATION_MAX_SCORE}. This match has score ${fitScore}.` },
-        { status: 400 }
-      );
+    const score = match?.ats_score ?? match?.fit_score ?? null;
+    if (score !== null) {
+      if (score < RESUME_GENERATION_MIN_SCORE) {
+        return NextResponse.json(
+          { error: `Resume generation is only available for matches with ATS score 61-79. This match has score ${score}.` },
+          { status: 400 }
+        );
+      }
+      if (score > RESUME_GENERATION_MAX_SCORE) {
+        return NextResponse.json(
+          { error: `Resume generation is only for scores 61-79. This match scores ${score} — apply directly.` },
+          { status: 400 }
+        );
+      }
     }
 
     // Fetch candidate + job for the worker

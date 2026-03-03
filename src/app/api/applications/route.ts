@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
+import { getPolicy, evaluateGateDecision } from '@/lib/policy-engine';
+import { emitEvent, recordOutcome } from '@/lib/telemetry';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,19 +44,77 @@ export async function POST(req: NextRequest) {
 
   const { data: match } = await supabase
     .from('candidate_job_matches')
-    .select('ats_score')
+    .select('ats_score, ats_confidence_bucket, scoring_profile, matched_keywords, missing_keywords')
     .eq('candidate_id', candidateId)
     .eq('job_id', jobId)
     .maybeSingle();
 
-  // Only block if an ATS check has actually been run AND the score is below 50.
-  // If no ATS check has been run yet, always allow applying.
+  // Block only when policy gate blocks. Profile C never hard-blocks; Profile A blocks below threshold.
+  // Recruiters/admins can override with body.override_gate = true (audit trail emitted).
+  const overrideGate = body.override_gate === true && (profile.role === 'recruiter' || profile.role === 'admin');
   const atsScore = match?.ats_score;
-  if (typeof atsScore === 'number' && atsScore < 50) {
-    return NextResponse.json(
-      { error: `ATS score (${atsScore}) is below 50. Applying is not allowed.` },
-      { status: 400 }
-    );
+  if (typeof atsScore === 'number') {
+    const scoringProfile = (match?.scoring_profile as 'A' | 'C') || 'A';
+    const policy = getPolicy(scoringProfile);
+    const bucket = (match?.ats_confidence_bucket as 'insufficient' | 'moderate' | 'good' | 'high') || 'moderate';
+    const gate = evaluateGateDecision(atsScore, bucket, policy);
+    if (!gate.passes) {
+      if (overrideGate) {
+        // Recruiter/admin override — emit audit event, then proceed
+        void emitEvent(supabase, {
+          event_type: 'ats_gate_override',
+          candidate_id: candidateId,
+          job_id: jobId,
+          actor_user_id: authResult.user.id,
+          event_source: 'apply',
+          payload: {
+            ats_score: atsScore,
+            confidence_bucket: bucket,
+            threshold_used: gate.threshold_used,
+            scoring_profile: scoringProfile,
+            override_reason: body.override_reason || null,
+          },
+        });
+      } else {
+        // Emit adverse decision for audit (NYC AEDT / EU AI Act)
+        void emitEvent(supabase, {
+          event_type: 'ats_gate_blocked',
+          candidate_id: candidateId,
+          job_id: jobId,
+          actor_user_id: authResult.user.id,
+          event_source: 'apply',
+          payload: {
+            ats_score: atsScore,
+            confidence_bucket: bucket,
+            threshold_used: gate.threshold_used,
+            scoring_profile: scoringProfile,
+            recommend_review: gate.recommend_review,
+          },
+        });
+
+        const missingKeywords = (match?.missing_keywords as string[] | undefined) || [];
+
+        return NextResponse.json(
+          {
+            error: `ATS score (${atsScore}) did not meet the apply threshold.`,
+            gate_reason: gate.reason,
+            ats_score: atsScore,
+            recommend_review: gate.recommend_review,
+            adverse_action_notice: {
+              code: 'AEDT_BLOCKED',
+              reason: gate.reason,
+              ats_score: atsScore,
+              missing_skills: missingKeywords.slice(0, 10),
+              improvement_tip: missingKeywords.length > 0
+                ? `Consider adding these skills to your resume: ${missingKeywords.slice(0, 5).join(', ')}.`
+                : 'Review your resume against the job description and consider adding relevant skills or experience.',
+              right_to_request_human_review: true,
+            },
+          },
+          { status: 400 }
+        );
+      }
+    }
   }
 
   // Check if this is an update (existing row) or a new application
@@ -129,7 +189,7 @@ export async function PATCH(req: NextRequest) {
   const appId = body?.id;
   if (!appId) return NextResponse.json({ error: 'id required' }, { status: 400 });
 
-  const { data: app } = await supabase.from('applications').select('candidate_id, status').eq('id', appId).single();
+  const { data: app } = await supabase.from('applications').select('candidate_id, job_id, status').eq('id', appId).single();
   if (!app) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   if (profile.role === 'recruiter') {
     const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', app.candidate_id).eq('recruiter_id', profile.id).single();
@@ -138,14 +198,18 @@ export async function PATCH(req: NextRequest) {
 
   const fromStatus = app.status;
   const toStatus = body.status ?? fromStatus;
+  const updatePayload: Record<string, unknown> = {
+    status: toStatus,
+    notes: body.notes,
+    ...(toStatus === 'applied' ? { applied_at: new Date().toISOString() } : {}),
+  };
+  if (body.interview_date !== undefined) updatePayload.interview_date = body.interview_date || null;
+  if (body.interview_notes !== undefined) updatePayload.interview_notes = body.interview_notes ?? null;
+  if (body.notes !== undefined && toStatus === 'interview') updatePayload.notes = body.notes;
 
   const { data, error } = await supabase
     .from('applications')
-    .update({
-      status: toStatus,
-      notes: body.notes,
-      ...(toStatus === 'applied' ? { applied_at: new Date().toISOString() } : {}),
-    })
+    .update(updatePayload)
     .eq('id', body.id)
     .select()
     .single();
@@ -159,6 +223,28 @@ export async function PATCH(req: NextRequest) {
       notes: body.notes ?? null,
       actor_id: profile.id,
     });
+
+    // Outcome feedback loop: record for calibration (interview/offer/hired/rejected)
+    if (['interview', 'offer', 'hired', 'rejected'].includes(toStatus)) {
+      const { data: match } = await supabase
+        .from('candidate_job_matches')
+        .select('ats_score, ats_breakdown, scoring_profile')
+        .eq('candidate_id', app.candidate_id)
+        .eq('job_id', app.job_id)
+        .maybeSingle();
+      const breakdown = match?.ats_breakdown as { job_family?: string } | null;
+      void recordOutcome(supabase, {
+        candidateId: app.candidate_id,
+        jobId: app.job_id,
+        applicationId: appId,
+        newStatus: toStatus,
+        previousStatus: fromStatus,
+        atsScoreAtApplication: match?.ats_score ?? null,
+        jobFamily: breakdown?.job_family ?? null,
+        scoringProfile: (match?.scoring_profile as 'A' | 'C') ?? null,
+        actorUserId: profile.id,
+      });
+    }
   }
   return NextResponse.json(data);
 }

@@ -9,7 +9,7 @@ import {
   ArrowLeft, MapPin, Sparkles, Download, CheckCircle2,
   ExternalLink, FileText, Briefcase, Brain, Mail,
   Calendar, Phone, Linkedin, Star, Copy, Check,
-  Save, Edit2, Plus, X, AlertCircle, Send, Upload,
+  Save, Edit2, Plus, X, AlertCircle, Send, Upload, BarChart2,
 } from 'lucide-react';
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
@@ -124,6 +124,13 @@ export default function RecruiterCandidateDetail() {
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
 
+  // Paste JD → ATS check (ephemeral)
+  const [pasteJdOpen, setPasteJdOpen] = useState(false);
+  const [pasteJdText, setPasteJdText] = useState('');
+  const [pasteJdRunning, setPasteJdRunning] = useState(false);
+  const [pasteJdResult, setPasteJdResult] = useState<{ ats_score: number; ats_reason: string; ats_breakdown: any; matched_keywords?: string[]; missing_keywords?: string[] } | null>(null);
+  const [pasteJdError, setPasteJdError] = useState<string | null>(null);
+
   // Interview scheduling
   const [schedulingAppId, setSchedulingAppId] = useState<string | null>(null);
   const [interviewDate, setInterviewDate] = useState('');
@@ -142,6 +149,8 @@ export default function RecruiterCandidateDetail() {
   // Step 2 — "Confirm Applied" saves to DB and clears pendingApply
   const [pendingApply, setPendingApply] = useState<string | null>(null);
   const [confirmingApply, setConfirmingApply] = useState<string | null>(null);
+  // Gate override: when apply blocked by ATS gate, store jobId to show "Override gate and apply"
+  const [gateBlockedJob, setGateBlockedJob] = useState<{ jobId: string; reason: string; atsScore?: number } | null>(null);
 
   const initForm = useCallback((cand: any) => {
     setProfileForm({
@@ -378,46 +387,47 @@ export default function RecruiterCandidateDetail() {
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const tailoredForJob = (resumes || []).filter(
-        (r: any) => r.job_id === jobId && (r.generation_status === 'completed' || r.generation_status === 'done')
-      );
-      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
-        ...(candidateResumes?.length ? (candidateResumes as any[]).map((r: any) => ({ resume_id: r.id })) : [{ resume_id: null }]),
-        ...tailoredForJob.map((r: any) => ({ resume_version_id: r.id })),
-      ];
+      const res = await fetch('/api/ats/check-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id, job_id: jobId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
 
-      const results = await Promise.all(sources.map(async (src) => {
-        const res = await fetch('/api/ats/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            candidate_id: id,
-            job_id: jobId,
-            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return null;
-        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] };
-      }));
-
-      // Pick the best result by ats_score
-      const best = results
-        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
-        .sort((a, b) => b.ats_score - a.ats_score)[0];
-
-      if (!best) throw new Error('ATS check failed for all resumes');
-
-      // Update just this match in state — no full page reload
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
-          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
+          ? { ...m, ats_score: data.ats_score, ats_reason: data.ats_reason, ats_breakdown: data.ats_breakdown, ats_resume_id: data.ats_resume_id, ats_checked_at: data.ats_checked_at, matched_keywords: data.matched_keywords ?? [], missing_keywords: data.missing_keywords ?? [] }
           : m
       ));
     } catch (e: any) {
       setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
     } finally {
       setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
+    }
+  };
+
+  const runPasteJdAts = async () => {
+    if (!id || !pasteJdText.trim() || pasteJdText.trim().length < 50) {
+      setPasteJdError('Paste at least 50 characters of the job description');
+      return;
+    }
+    setPasteJdRunning(true);
+    setPasteJdError(null);
+    setPasteJdResult(null);
+    try {
+      const res = await fetch('/api/ats/check-paste', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: id, jd_text: pasteJdText.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
+      setPasteJdResult(data);
+    } catch (e: any) {
+      setPasteJdError(e?.message || 'ATS check failed');
+    } finally {
+      setPasteJdRunning(false);
     }
   };
 
@@ -428,22 +438,33 @@ export default function RecruiterCandidateDetail() {
   };
 
   // Step 2: recruiter confirms they actually submitted — saves to DB (via API for limit enforcement)
-  const confirmApplied = async (jobId: string) => {
+  const confirmApplied = async (jobId: string, overrideGate = false) => {
+    setGateBlockedJob(null);
     setConfirmingApply(jobId);
     try {
       const res = await fetch('/api/applications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ candidate_id: id, job_id: jobId, status: 'applied', applied_at: new Date().toISOString() }),
+        body: JSON.stringify({
+          candidate_id: id,
+          job_id: jobId,
+          status: 'applied',
+          applied_at: new Date().toISOString(),
+          override_gate: overrideGate || undefined,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.gate_reason && !overrideGate) {
+          setGateBlockedJob({ jobId, reason: data.gate_reason, atsScore: data.ats_score });
+        }
         setResumeError(data.error || 'Could not record application');
         setConfirmingApply(null);
         return;
       }
       setPendingApply(null);
       setConfirmingApply(null);
+      setGateBlockedJob(null);
       await load(false);
     } finally {
       setConfirmingApply(null);
@@ -451,7 +472,8 @@ export default function RecruiterCandidateDetail() {
   };
 
   // Used from Resumes tab
-  const markApplied = async (jobId: string, resumeVersionId?: string) => {
+  const markApplied = async (jobId: string, resumeVersionId?: string, overrideGate = false) => {
+    setGateBlockedJob(null);
     const res = await fetch('/api/applications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -461,28 +483,45 @@ export default function RecruiterCandidateDetail() {
         resume_version_id: resumeVersionId ?? null,
         status: 'applied',
         applied_at: new Date().toISOString(),
+        override_gate: overrideGate || undefined,
       }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) setResumeError(data.error || 'Could not record application');
+    if (!res.ok) {
+      if (data.gate_reason && !overrideGate) {
+        setGateBlockedJob({ jobId, reason: data.gate_reason, atsScore: data.ats_score });
+      }
+      setResumeError(data.error || 'Could not record application');
+    } else {
+      setGateBlockedJob(null);
+    }
     await load(false);
   };
 
   const updateStatus = async (appId: string, status: string) => {
-    await supabase.from('applications').update({
-      status,
-      ...(status === 'applied' ? { applied_at: new Date().toISOString() } : {}),
-    }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: appId, status }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update');
     await load(false);
   };
 
   const saveInterview = async (appId: string) => {
     setSavingInterview(true);
-    await supabase.from('applications').update({
-      status: 'interview',
-      interview_date: interviewDate || null,
-      interview_notes: interviewNotes || null,
-    }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: appId,
+        status: 'interview',
+        interview_date: interviewDate || null,
+        interview_notes: interviewNotes || null,
+        notes: interviewNotes || null,
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
     setSchedulingAppId(null);
     setSavingInterview(false);
     await load(false);
@@ -844,10 +883,17 @@ export default function RecruiterCandidateDetail() {
       {/* ── MATCHES TAB ── */}
       {tab === 'matches' && (
         <div className="space-y-3">
-          {/* Legend */}
-          <div className="flex items-center gap-4 px-1 text-xs text-surface-400">
-            <span className="flex items-center gap-1.5"><Send size={11} className="text-brand-500" /> Apply Now — opens job site</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-green-500" /> Confirm Applied — records application</span>
+          {/* Legend + Paste JD */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-4 text-xs text-surface-400">
+              <span className="flex items-center gap-1.5"><Send size={11} className="text-brand-500" /> Apply Now — opens job site</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 size={11} className="text-green-500" /> Confirm Applied — records application</span>
+            </div>
+            {atsCheckAllowed && candidate?.id && (
+              <button onClick={() => { setPasteJdOpen(true); setPasteJdText(''); setPasteJdResult(null); setPasteJdError(null); }} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
+                <BarChart2 size={14} /> Paste JD & check ATS
+              </button>
+            )}
           </div>
 
           {resumeError && (
@@ -873,8 +919,8 @@ export default function RecruiterCandidateDetail() {
                   {typeof (m as any).ats_score === 'number' && (
                     <div className="shrink-0 flex flex-col items-center gap-0.5">
                       <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
-                        (m as any).ats_score >= 75 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                        (m as any).ats_score >= 50 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                        (m as any).ats_score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                        (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
                         'bg-red-500/15 text-red-600 dark:text-red-400'
                       )}>
                         {(m as any).ats_score}
@@ -909,8 +955,9 @@ export default function RecruiterCandidateDetail() {
                           <Brain size={14} /> Brief
                         </button>
                         {(() => {
-                          const canGenerate = effectiveResumeAllowed && (m.fit_score ?? 0) < 75;
-                          const whyDisabled = !effectiveResumeAllowed ? 'Ask an admin to grant resume generation access' : (m.fit_score ?? 0) >= 75 ? 'Only available for matches with score below 75' : '';
+                          const atsScore = typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
+                          const canGenerate = effectiveResumeAllowed && atsScore !== null && atsScore >= 61 && atsScore <= 79;
+                          const whyDisabled = !effectiveResumeAllowed ? 'Ask an admin to grant resume generation access' : atsScore === null ? 'Run ATS check first' : atsScore <= 60 ? 'Score below 60 — tailor not available' : atsScore >= 80 ? 'Score 80+ — apply directly, no tailor needed' : '';
                           return (
                             <button
                               onClick={() => generateResume(m.job_id)}
@@ -933,9 +980,11 @@ export default function RecruiterCandidateDetail() {
                               className={cn(
                                 'text-xs sm:text-sm py-2 px-3 min-h-[44px] flex items-center gap-1 rounded-lg border font-medium transition-colors',
                                 atsScore !== null
-                                  ? atsScore >= 50
+                                  ? atsScore >= 80
                                     ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-500/20'
-                                    : 'border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20'
+                                    : atsScore >= 61
+                                      ? 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-500/20'
+                                      : 'border-red-300 dark:border-red-500/40 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20'
                                   : 'btn-secondary',
                                 running && 'opacity-70 cursor-not-allowed'
                               )}
@@ -997,6 +1046,25 @@ export default function RecruiterCandidateDetail() {
                       </div>
                     )}
 
+                    {/* Gate override — ATS blocked apply; recruiter can override */}
+                    {gateBlockedJob?.jobId === m.job_id && gateBlockedJob && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 px-3 py-2.5 bg-red-50 dark:bg-red-900/25 border border-red-200 dark:border-red-500/40 rounded-lg">
+                        <p className="text-xs text-red-800 dark:text-red-200 flex-1 min-w-0">
+                          {gateBlockedJob.atsScore != null && `ATS score ${gateBlockedJob.atsScore} — `}
+                          {gateBlockedJob.reason}
+                        </p>
+                        <button
+                          onClick={() => confirmApplied(m.job_id, true)}
+                          disabled={isConfirming}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-60 flex items-center gap-1"
+                        >
+                          {isConfirming ? <Spinner size={12} /> : null}
+                          Override gate and apply
+                        </button>
+                        <button onClick={() => setGateBlockedJob(null)} className="text-xs text-red-600 hover:underline">Dismiss</button>
+                      </div>
+                    )}
+
                     {/* Keyword pills */}
                     <div className="flex flex-wrap gap-1 mt-2">
                       {safeArray(m.matched_keywords).slice(0, 5).map((k: string, i: number) => (
@@ -1016,6 +1084,8 @@ export default function RecruiterCandidateDetail() {
                         missingKeywords={safeArray((m as any).missing_keywords)}
                         visible
                         className="mt-3"
+                        candidateId={id}
+                        jobId={m.job_id}
                       />
                     )}
                   </div>
@@ -1177,9 +1247,17 @@ export default function RecruiterCandidateDetail() {
                     </div>
                     <p className="text-xs text-surface-400 mt-2">{formatRelative(r.created_at)}</p>
                     {r.generation_status === 'completed' && (
-                      <div className="flex gap-2 mt-3">
+                      <div className="flex flex-wrap gap-2 mt-3">
                         <button onClick={() => downloadResume(r.pdf_path)} className="btn-secondary text-xs py-1.5 flex items-center gap-1"><Download size={13} /> Download</button>
                         <button onClick={() => markApplied(r.job_id, r.id)} className="btn-primary text-xs py-1.5 flex items-center gap-1"><CheckCircle2 size={13} /> Mark Applied</button>
+                        {gateBlockedJob?.jobId === r.job_id && (
+                          <button
+                            onClick={() => markApplied(r.job_id, r.id, true)}
+                            className="text-xs font-medium px-2 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white"
+                          >
+                            Override gate
+                          </button>
+                        )}
                       </div>
                     )}
                     {r.generation_status === 'failed' && r.error_message && (
@@ -1271,6 +1349,66 @@ export default function RecruiterCandidateDetail() {
               <button type="button" onClick={() => setViewingJdJob(null)} className="btn-ghost p-1.5"><X size={18} /></button>
             </div>
             <div className="p-5 overflow-y-auto flex-1 text-sm text-surface-700 dark:text-surface-200 whitespace-pre-wrap">{viewingJdJob.jd || 'No description available.'}</div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Paste JD → ATS check modal ── */}
+      {pasteJdOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setPasteJdOpen(false)}>
+          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-surface-100 dark:border-surface-700">
+              <div>
+                <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
+                  <BarChart2 size={20} className="text-amber-600 dark:text-amber-400" />
+                  Check ATS for pasted job
+                </h3>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Paste any job description and see this candidate&apos;s score (min 50 characters)</p>
+              </div>
+              <button onClick={() => setPasteJdOpen(false)} className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 shrink-0">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              <div>
+                <label className="label dark:text-surface-200">Job description</label>
+                <textarea
+                  className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 min-h-[140px] resize-y"
+                  placeholder="Paste the full job description from LinkedIn, Indeed, company site, etc."
+                  value={pasteJdText}
+                  onChange={e => setPasteJdText(e.target.value)}
+                  disabled={pasteJdRunning}
+                />
+              </div>
+              {pasteJdError && <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2 flex items-center gap-1.5"><AlertCircle size={14} />{pasteJdError}</p>}
+              {pasteJdResult && (
+                <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-700/30 p-4 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <span className={cn('text-2xl font-bold px-3 py-1 rounded-lg', pasteJdResult.ats_score >= 80 ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : pasteJdResult.ats_score >= 61 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' : 'bg-red-500/20 text-red-600 dark:text-red-400')}>
+                      ATS {pasteJdResult.ats_score}
+                    </span>
+                    <p className="text-sm text-surface-600 dark:text-surface-300">{pasteJdResult.ats_reason}</p>
+                  </div>
+                  {candidate?.id && (
+                    <AtsBreakdownPanel
+                      atsScore={pasteJdResult.ats_score}
+                      atsReason={pasteJdResult.ats_reason}
+                      atsBreakdown={pasteJdResult.ats_breakdown}
+                      matchedKeywords={pasteJdResult.matched_keywords ?? []}
+                      missingKeywords={pasteJdResult.missing_keywords ?? []}
+                      visible
+                      className="mt-3"
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-surface-100 dark:border-surface-700 flex justify-end gap-2">
+              <button onClick={() => setPasteJdOpen(false)} className="btn-secondary text-sm">Close</button>
+              <button onClick={runPasteJdAts} disabled={pasteJdRunning || pasteJdText.trim().length < 50} className="btn-primary text-sm flex items-center gap-1.5">
+                {pasteJdRunning ? <><Spinner size={14} /> Checking…</> : <><BarChart2 size={14} /> Check ATS</>}
+              </button>
+            </div>
           </div>
         </div>
       )}

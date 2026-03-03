@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { createServiceClient } from '@/lib/supabase-server';
 import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
@@ -11,6 +12,9 @@ import {
   type ScoringProfile,
 } from '@/lib/policy-engine';
 import { emitEvent, logAiCall } from '@/lib/telemetry';
+import { buildFixReport } from '@/lib/fix-report';
+import { computeSemanticSimilarity } from '@/lib/semantic-similarity';
+import { lookupCalibration } from '@/lib/calibration/isotonic';
 
 const MAX_MATCHES_PER_CANDIDATE = 500;
 const MAX_RESUME_TEXT_LEN = 4000;
@@ -18,7 +22,7 @@ const MAX_RESUME_TEXT_LEN = 4000;
 // ── Engine version ────────────────────────────────────────────────────────────
 // Increment this string whenever scoring logic changes materially.
 // Stored in candidate_job_matches.ats_model_version for reproducibility.
-const ATS_MODEL_VERSION = 'v1';
+const ATS_MODEL_VERSION = 'v2';
 
 // ── Feature flag helpers ─────────────────────────────────────────────────────
 // We inline a lightweight synchronous check here to avoid circular deps.
@@ -249,7 +253,8 @@ async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise
 
 async function getOrExtractRequirements(supabase: any, job: Job): Promise<JobRequirements | null> {
   if (job.structured_requirements && typeof job.structured_requirements === 'object' && job.structured_requirements.must_have_skills) {
-    return job.structured_requirements as JobRequirements;
+    const cached = job.structured_requirements as JobRequirements;
+    return { ...cached, responsibilities: cached.responsibilities ?? [] };
   }
 
   const jd = (job.jd_clean || job.jd_raw || '').trim();
@@ -270,6 +275,7 @@ async function getOrExtractRequirements(supabase: any, job: Job): Promise<JobReq
     industry_vertical: null,
     behavioral_keywords: [],
     context_phrases: [],
+    responsibilities: [],
   };
 
   // Avoid re-attempting extraction forever for jobs with missing/too-short JDs.
@@ -330,6 +336,8 @@ export async function runAtsCheck(
     source?: string;
     /** Tailored resume version (from resume_versions) — scored instead of candidate_resumes */
     resumeVersionId?: string | null;
+    /** When false, compute score but do not persist or emit (used by runAtsCheckBatch) */
+    persist?: boolean;
   },
 ): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] }> {
   const startMs = Date.now();
@@ -473,46 +481,88 @@ export async function runAtsCheck(
   if (!reqs) throw new Error('Could not extract job requirements');
 
   const jd = (job.jd_clean || job.jd_raw || '').trim();
-  const result = await computeATSScore(job.title, jd, reqs, candidateData);
+  const resumeBullets = candidateData.experience.flatMap(e => e.responsibilities || []).filter(Boolean);
+  const jdResponsibilities = (reqs.responsibilities?.length ? reqs.responsibilities : job.structured_requirements?.responsibilities) ?? [];
+
+  // Compute semantic similarity BEFORE scoring (v4 needs it for C_resp)
+  let bulletsResponsibilitiesSim: number | null = null;
+  if (
+    (await isFlagEnabled(supabase, 'elite.semantic_similarity')) &&
+    chosenResumeId &&
+    resumeBullets.length > 0 &&
+    jdResponsibilities.length > 0
+  ) {
+    const sem = await computeSemanticSimilarity(
+      supabase,
+      chosenResumeId,
+      jobId,
+      resumeText,
+      jd,
+      resumeBullets,
+      jdResponsibilities,
+      candidateId,
+    );
+    bulletsResponsibilitiesSim = sem?.bullets_responsibilities_similarity ?? null;
+  }
+
+  const result = await computeATSScore(job.title, jd, reqs, candidateData, {
+    bulletsResponsibilitiesSim,
+  });
 
   const computationMs = Date.now() - startMs;
 
-  // ── Confidence computation ──────────────────────────────────────────────────
-  // Confidence is derived from evidence density across dimensions.
-  // Current v1 heuristic: use keyword match rate as primary signal.
-  // Phase 2 will add per-dimension confidence from evidence-matcher.ts.
-  const matchedCount = result.matched_keywords.length;
-  const requiredCount = (reqs.must_have_skills.length || 1);
-  const keywordConfidenceRaw = Math.min(1.0, matchedCount / requiredCount);
-  // Blend with experience date confidence
-  const overallConfidenceFloat = (keywordConfidenceRaw * 0.7 + computedExp.confidence * 0.3);
-  const atsConfidence = floatConfidenceToInt(overallConfidenceFloat);
+  // ── Confidence (from v4 scorer: 0–1, convert to 0–100 for bucket)
+  const atsConfidence = floatConfidenceToInt(result.confidence ?? 0.5);
   const confidenceBucket = computeConfidenceBucket(atsConfidence);
+  const matchedCount = result.matched_keywords.length;
 
   // ── Apply gate via policy engine ────────────────────────────────────────────
   // NOTE: gateDecision is computed and logged but does NOT change existing gate
   // behavior until feature flag 'elite.confidence_gate' is ON.
   const gateDecision = evaluateGateDecision(result.total_score, confidenceBucket, policy);
 
+  const jobFamily = reqs.domain || 'general';
+  const calibration = await lookupCalibration(supabase, scoringProfile, result.total_score, jobFamily);
+
+  // ── Fix report (actionable recommendations) ─────────────────────────────────
+  const fixReport = buildFixReport({
+    total_score: result.total_score,
+    dimensions: result.dimensions,
+    matched_keywords: result.matched_keywords,
+    missing_keywords: result.missing_keywords,
+    evidence_spans: result.dimensions?.must?.evidence_spans,
+    gate_passed: result.gate_passed,
+    negative_signals: result.negative_signals,
+  });
+
   // ── Build the enriched breakdown ────────────────────────────────────────────
   const enrichedBreakdown = {
     dimensions: result.dimensions,
-    // New Phase-1 fields (additive — existing consumers of this JSONB are unaffected)
+    fix_report: fixReport,
     model_version: ATS_MODEL_VERSION,
     scoring_profile: scoringProfile,
     confidence: atsConfidence,
     confidence_bucket: confidenceBucket,
     evidence_count: matchedCount,
+    band: result.band,
+    gate_passed: result.gate_passed,
+    gate_reason: result.gate_reason,
+    negative_signals: result.negative_signals,
     // Experience computation
     computed_years: computedExp.years,
     computed_years_confidence: computedExp.confidence,
     experience_months: computedExp.evidence.total_months,
     // Gate evaluation (computed; not enforced until flag is ON)
     gate_decision: gateDecision,
+    // Responsibility semantic alignment (JD duties ↔ resume bullets); set when elite.semantic_similarity ON
+    bullets_responsibilities_similarity: bulletsResponsibilitiesSim,
+    // Role-family calibration: P(interview) from score + job_family (when calibration curves exist)
+    job_family: jobFamily,
+    p_interview: calibration?.p_interview ?? null,
+    calibration_reliable: calibration?.reliable ?? false,
   };
 
-  // ── Persist to candidate_job_matches ───────────────────────────────────────
-  // All new columns added in migration 018 — backwards compatible.
+  // ── Persist to candidate_job_matches (skip when persist: false for batch mode) ──
   const atsRow = {
     ats_score: result.total_score,
     ats_reason: result.reason,
@@ -521,7 +571,6 @@ export async function runAtsCheck(
     ats_resume_id: chosenResumeId,
     matched_keywords: result.matched_keywords || [],
     missing_keywords: result.missing_keywords || [],
-    // Phase-1 new columns:
     ats_model_version: ATS_MODEL_VERSION,
     ats_confidence: atsConfidence,
     ats_confidence_bucket: confidenceBucket,
@@ -530,12 +579,47 @@ export async function runAtsCheck(
     scoring_profile: scoringProfile,
   };
 
-  await supabase
-    .from('candidate_job_matches')
-    .upsert([{ candidate_id: candidateId, job_id: jobId, ...atsRow }], { onConflict: 'candidate_id,job_id' });
+  if (options?.persist !== false) {
+    await supabase
+      .from('candidate_job_matches')
+      .upsert([{ candidate_id: candidateId, job_id: jobId, ...atsRow }], { onConflict: 'candidate_id,job_id' });
+  }
 
-  // ── Telemetry: emit ats_score_computed event ─────────────────────────────
-  // Fire-and-forget — never blocks the scoring response.
+  // ── Scoring runs: audit trail for reproducibility (Profile C / governance) ──
+  if (options?.persist !== false && policy.governance.always_write_scoring_run) {
+    const inputsSummary = {
+      candidate_id: candidateId,
+      job_id: jobId,
+      ats_resume_id: chosenResumeId,
+      resume_version_id: options?.resumeVersionId ?? null,
+      model_version: ATS_MODEL_VERSION,
+      scoring_profile: scoringProfile,
+      job_title: (job as any).title,
+      jd_length: ((job as any).jd_clean || (job as any).jd_raw || '').length,
+      must_have_count: reqs.must_have_skills.length,
+      resume_text_length: resumeText.length,
+    };
+    const canonical = JSON.stringify(inputsSummary, Object.keys(inputsSummary).sort());
+    const inputsHash = createHash('sha256').update(canonical).digest('hex');
+    void supabase.from('scoring_runs').insert({
+      candidate_id: candidateId,
+      job_id: jobId,
+      model_version: ATS_MODEL_VERSION,
+      scoring_profile: scoringProfile,
+      inputs_hash: inputsHash,
+      inputs_summary: inputsSummary,
+      total_score: result.total_score,
+      dimensions_json: result.dimensions,
+      confidence: atsConfidence,
+      confidence_bucket: confidenceBucket,
+      evidence_count: matchedCount,
+    }).then(({ error }: { error: { message: string } | null }) => {
+      if (error) logError('scoring_runs insert failed', { error: error.message, candidateId, jobId });
+    });
+  }
+
+  // ── Telemetry: emit ats_score_computed event (skip when persist: false) ──
+  if (options?.persist !== false) {
   void emitEvent(supabase, {
     event_type: 'ats_score_computed',
     candidate_id: candidateId,
@@ -549,10 +633,12 @@ export async function runAtsCheck(
       ats_evidence_count: matchedCount,
       model_version: ATS_MODEL_VERSION,
       scoring_profile: scoringProfile,
+      job_family: jobFamily,
       computation_ms: computationMs,
-      ai_tokens_used: null, // populated in Phase 2 when AI token counts are tracked
+      ai_tokens_used: null,
     },
   });
+  }
 
   return {
     ats_score: result.total_score,
@@ -562,6 +648,273 @@ export async function runAtsCheck(
     ats_checked_at: now,
     matched_keywords: result.matched_keywords || [],
     missing_keywords: result.missing_keywords || [],
+  };
+}
+
+/** Run ATS check against a pasted job description (no job in DB). Ephemeral — no persist, no emit. */
+export async function runAtsCheckPasted(
+  supabase: any,
+  candidateId: string,
+  jdText: string,
+  resumeId?: string | null,
+  options?: { scoringProfile?: ScoringProfile },
+): Promise<{ ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] }> {
+  const jd = String(jdText || '').trim();
+  if (jd.length < 50) throw new Error('Job description must be at least 50 characters');
+
+  const scoringProfile: ScoringProfile = options?.scoringProfile ?? 'A';
+  const policy = getPolicy(scoringProfile);
+  const now = new Date().toISOString();
+
+  const { data: candidate, error: candErr } = await supabase.from('candidates').select('*').eq('id', candidateId).single();
+  if (candErr || !candidate) throw new Error(candErr?.message || 'Candidate not found');
+
+  const titleMatch = jd.split(/\n/)[0]?.trim().slice(0, 100);
+  const jobTitle = titleMatch && titleMatch.length > 5 ? titleMatch : 'Pasted Job';
+
+  const reqs = await extractJobRequirements(jobTitle, jd);
+  const minimal: JobRequirements = {
+    must_have_skills: [],
+    nice_to_have_skills: [],
+    implicit_skills: [],
+    min_years_experience: null,
+    preferred_years_experience: null,
+    seniority_level: null,
+    required_education: null,
+    preferred_education_fields: [],
+    certifications: [],
+    location_type: null,
+    location_city: null,
+    visa_sponsorship: null,
+    domain: classifyDomain(jobTitle),
+    industry_vertical: null,
+    behavioral_keywords: [],
+    context_phrases: [],
+    responsibilities: reqs?.responsibilities ?? [],
+  };
+  const finalReqs = reqs || minimal;
+
+  let chosenResumeId: string | null = resumeId ?? null;
+  let resumeText = '';
+
+  if (chosenResumeId) {
+    const { data: r } = await supabase.from('candidate_resumes').select('id, pdf_path').eq('id', chosenResumeId).eq('candidate_id', candidateId).single();
+    if (r?.pdf_path) resumeText = await getResumeTextFromStorage(supabase, r.pdf_path);
+  }
+  if (!resumeText) {
+    const { data: latest } = await supabase.from('candidate_resumes').select('id, pdf_path').eq('candidate_id', candidateId).order('uploaded_at', { ascending: false }).limit(1).maybeSingle();
+    if (latest?.pdf_path) {
+      chosenResumeId = latest.id;
+      resumeText = await getResumeTextFromStorage(supabase, latest.pdf_path);
+    }
+  }
+  if (!resumeText) resumeText = (candidate.parsed_resume_text || '').slice(0, MAX_RESUME_TEXT_LEN);
+
+  const candidateExp = parseArray(candidate.experience);
+  const computedExp = getComputedYears(candidateExp, true);
+  const profileYears: number | null = candidate.years_of_experience ?? null;
+  const candidateSkills = parseSkills(candidate.skills);
+  const candidateTools = parseSkills(candidate.tools);
+  const candidateEdu = parseArray(candidate.education);
+  const candidateCerts = parseArray(candidate.certifications);
+  const rawCandidateData = {
+    primary_title: candidate.primary_title,
+    secondary_titles: candidate.secondary_titles || [],
+    skills: candidateSkills,
+    tools: candidateTools,
+    experience: candidateExp,
+    education: candidateEdu,
+    certifications: candidateCerts,
+    location: candidate.location,
+    visa_status: candidate.visa_status,
+    years_of_experience: profileYears ?? undefined,
+    open_to_remote: (candidate as any).open_to_remote ?? true,
+    open_to_relocation: (candidate as any).open_to_relocation ?? false,
+    target_locations: (candidate as any).target_locations || [],
+    resume_text: resumeText,
+  };
+  const candidateData = applyFairnessExclusions(rawCandidateData, policy);
+
+  const result = await computeATSScore(jobTitle, jd, finalReqs, candidateData, { bulletsResponsibilitiesSim: null });
+  const atsConfidence = floatConfidenceToInt(result.confidence ?? 0.5);
+  const confidenceBucket = computeConfidenceBucket(atsConfidence);
+  const matchedCount = result.matched_keywords.length;
+  const gateDecision = evaluateGateDecision(result.total_score, confidenceBucket, policy);
+  const jobFamily = finalReqs.domain || 'general';
+  const calibration = await lookupCalibration(supabase, scoringProfile, result.total_score, jobFamily);
+  const fixReport = buildFixReport({
+    total_score: result.total_score,
+    dimensions: result.dimensions,
+    matched_keywords: result.matched_keywords,
+    missing_keywords: result.missing_keywords,
+    evidence_spans: result.dimensions?.must?.evidence_spans,
+    gate_passed: result.gate_passed,
+    negative_signals: result.negative_signals,
+  });
+  const enrichedBreakdown = {
+    dimensions: result.dimensions,
+    fix_report: fixReport,
+    model_version: ATS_MODEL_VERSION,
+    scoring_profile: scoringProfile,
+    confidence: atsConfidence,
+    confidence_bucket: confidenceBucket,
+    evidence_count: matchedCount,
+    band: result.band,
+    gate_passed: result.gate_passed,
+    gate_reason: result.gate_reason,
+    negative_signals: result.negative_signals,
+    computed_years: computedExp.years,
+    computed_years_confidence: computedExp.confidence,
+    experience_months: computedExp.evidence.total_months,
+    gate_decision: gateDecision,
+    bullets_responsibilities_similarity: null,
+    job_family: jobFamily,
+    p_interview: calibration?.p_interview ?? null,
+    calibration_reliable: calibration?.reliable ?? false,
+  };
+
+  return {
+    ats_score: result.total_score,
+    ats_reason: result.reason,
+    ats_breakdown: enrichedBreakdown,
+    ats_resume_id: chosenResumeId,
+    ats_checked_at: now,
+    matched_keywords: result.matched_keywords || [],
+    missing_keywords: result.missing_keywords || [],
+  };
+}
+
+/** Per-resume score for batch ATS check */
+export interface PerResumeScore {
+  label: string;
+  resume_id?: string | null;
+  resume_version_id?: string | null;
+  ats_score: number;
+  is_best?: boolean;
+}
+
+/**
+ * Scores all available resumes (uploaded + tailored) for a job, persists best, returns all scores.
+ */
+export async function runAtsCheckBatch(
+  supabase: any,
+  candidateId: string,
+  jobId: string,
+  options?: {
+    scoringProfile?: ScoringProfile;
+    actorUserId?: string | null;
+    source?: string;
+  },
+): Promise<{
+  ats_score: number;
+  ats_reason: string;
+  ats_breakdown: any;
+  ats_resume_id: string | null;
+  ats_checked_at: string;
+  matched_keywords?: string[];
+  missing_keywords?: string[];
+  per_resume_scores: PerResumeScore[];
+}> {
+  const jobTitle = (await supabase.from('jobs').select('title').eq('id', jobId).single()).data?.title || 'this role';
+
+  const [{ data: candidateResumes }, { data: tailoredVersions }] = await Promise.all([
+    supabase.from('candidate_resumes').select('id, label').eq('candidate_id', candidateId).order('uploaded_at', { ascending: false }),
+    supabase.from('resume_versions')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .in('generation_status', ['completed', 'done']),
+  ]);
+
+  const sources: { label: string; resume_id?: string | null; resume_version_id?: string }[] = [];
+  for (const r of candidateResumes || []) {
+    sources.push({ label: r.label || 'Resume', resume_id: r.id });
+  }
+  if (sources.length === 0) {
+    sources.push({ label: 'Profile', resume_id: null });
+  }
+  for (const tv of tailoredVersions || []) {
+    sources.push({ label: `Tailored for ${jobTitle}`, resume_version_id: tv.id });
+  }
+
+  const results: Array<{ label: string; resume_id?: string | null; resume_version_id?: string; r: Awaited<ReturnType<typeof runAtsCheck>> }> = [];
+  for (const src of sources) {
+    try {
+      const r = await runAtsCheck(supabase, candidateId, jobId, src.resume_id ?? undefined, {
+        resumeVersionId: src.resume_version_id,
+        persist: false,
+        ...options,
+      });
+      results.push({ label: src.label, resume_id: src.resume_id, resume_version_id: src.resume_version_id, r });
+    } catch (e) {
+      devLog('[matching] runAtsCheckBatch: skip failed resume', src.label, e);
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error('ATS check failed for all resumes');
+  }
+
+  const sorted = [...results].sort((a, b) => b.r.ats_score - a.r.ats_score);
+  const best = sorted[0].r;
+
+  const perResumeScores: PerResumeScore[] = sorted.map(({ label, resume_id, resume_version_id, r }, i) => ({
+    label,
+    resume_id: resume_id ?? undefined,
+    resume_version_id,
+    ats_score: r.ats_score,
+    is_best: i === 0,
+  }));
+
+  const enrichedWithPerResume = {
+    ...best.ats_breakdown,
+    per_resume_scores: perResumeScores,
+  };
+
+  const atsRow = {
+    ats_score: best.ats_score,
+    ats_reason: best.ats_reason,
+    ats_breakdown: enrichedWithPerResume,
+    ats_checked_at: new Date().toISOString(),
+    ats_resume_id: best.ats_resume_id,
+    best_resume_id: best.ats_resume_id,
+    matched_keywords: best.matched_keywords || [],
+    missing_keywords: best.missing_keywords || [],
+    ats_model_version: ATS_MODEL_VERSION,
+    ats_confidence: (best.ats_breakdown as any)?.confidence,
+    ats_confidence_bucket: (best.ats_breakdown as any)?.confidence_bucket,
+    ats_evidence_count: (best.ats_breakdown as any)?.evidence_count,
+    ats_last_scored_at: new Date().toISOString(),
+    scoring_profile: options?.scoringProfile ?? 'A',
+  };
+
+  await supabase
+    .from('candidate_job_matches')
+    .upsert([{ candidate_id: candidateId, job_id: jobId, ...atsRow }], { onConflict: 'candidate_id,job_id' });
+
+  void emitEvent(supabase, {
+    event_type: 'ats_score_computed',
+    candidate_id: candidateId,
+    job_id: jobId,
+    actor_user_id: options?.actorUserId ?? null,
+    event_source: options?.source ?? 'manual',
+    payload: {
+      ats_score: best.ats_score,
+      ats_confidence: (best.ats_breakdown as any)?.confidence ?? null,
+      ats_confidence_bucket: (best.ats_breakdown as any)?.confidence_bucket ?? null,
+      ats_evidence_count: (best.ats_breakdown as any)?.evidence_count ?? null,
+      model_version: ATS_MODEL_VERSION,
+      scoring_profile: (options?.scoringProfile ?? 'A') as 'A' | 'C',
+      job_family: (best.ats_breakdown as any)?.job_family,
+      computation_ms: null,
+      ai_tokens_used: null,
+    },
+  });
+
+  return {
+    ...best,
+    ats_breakdown: enrichedWithPerResume,
+    per_resume_scores: perResumeScores,
   };
 }
 

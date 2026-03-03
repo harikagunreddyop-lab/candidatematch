@@ -43,15 +43,16 @@ export async function GET(req: NextRequest) {
 
 // POST — trigger resume tailoring for a job match
 export async function POST(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
-  if (authResult instanceof Response) return authResult;
-  
-  let body: { candidate_id?: string; job_id?: string };
   try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
-  }
+    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    if (authResult instanceof Response) return authResult;
+
+    let body: { candidate_id?: string; job_id?: string };
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
   
   const { candidate_id, job_id } = body || {};
   if (!candidate_id || !job_id) {
@@ -104,32 +105,41 @@ export async function POST(req: NextRequest) {
     }
   }
   
-  // Check match exists
+  // Check match exists — tailor only when ATS score 61-79
   const { data: match } = await supabase
     .from('candidate_job_matches')
-    .select('fit_score')
+    .select('ats_score, fit_score')
     .eq('candidate_id', candidate_id)
     .eq('job_id', job_id)
     .single();
   if (!match) {
     return NextResponse.json({ error: 'No match found for this candidate and job' }, { status: 404 });
   }
-  const fitScore = match.fit_score ?? null;
-  if (fitScore !== null && fitScore >= 75) {
-    return NextResponse.json(
-      { error: 'Resume tailoring is only available for matches with ATS score below 75.' },
-      { status: 400 },
-    );
+  const score = match.ats_score ?? match.fit_score ?? null;
+  if (score !== null) {
+    if (score < 61) {
+      return NextResponse.json(
+        { error: 'Tailor resume is not available for scores below 61. Focus on improving your resume and run ATS check again.' },
+        { status: 400 },
+      );
+    }
+    if (score >= 80) {
+      return NextResponse.json(
+        { error: 'Tailor resume is not needed — your score is already 80+. You can apply directly.' },
+        { status: 400 },
+      );
+    }
   }
   
   // Check if already generating
-  const { data: existing } = await supabase
+  const { data: existingList } = await supabase
     .from('resume_versions')
     .select('id, generation_status')
     .eq('candidate_id', candidate_id)
     .eq('job_id', job_id)
     .in('generation_status', ['pending', 'generating', 'compiling', 'uploading'])
-    .single();
+    .limit(1);
+  const existing = existingList?.[0];
   if (existing) {
     return NextResponse.json({ error: 'A tailored resume is already being generated for this job', resume_version_id: existing.id }, { status: 409 });
   }
@@ -207,9 +217,18 @@ export async function POST(req: NextRequest) {
     }).eq('id', resumeVersion.id);
   });
   
-  return NextResponse.json({
-    resume_version_id: resumeVersion.id,
-    status: 'pending',
-    message: 'Resume tailoring started. This usually takes 30-60 seconds.',
-  });
+    return NextResponse.json({
+      resume_version_id: resumeVersion.id,
+      status: 'pending',
+      message: 'Resume tailoring started. This usually takes 30-60 seconds.',
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error('[tailor-resume] POST error:', message, stack);
+    return NextResponse.json(
+      { error: 'Resume tailoring failed', detail: process.env.NODE_ENV === 'development' ? message : undefined },
+      { status: 500 }
+    );
+  }
 }

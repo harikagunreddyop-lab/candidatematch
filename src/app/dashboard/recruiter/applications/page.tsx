@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, StatusBadge } from '@/components/ui';
-import { ClipboardList, Calendar } from 'lucide-react';
+import { ClipboardList, Calendar, UserCheck, Check, X, Brain } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
 
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
@@ -27,6 +27,9 @@ export default function RecruiterApplicationsPage() {
   const [interviewDate, setInterviewDate] = useState('');
   const [interviewNotes, setInterviewNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [interviewKitAppId, setInterviewKitAppId] = useState<string | null>(null);
+  const [interviewKitLoading, setInterviewKitLoading] = useState(false);
+  const [interviewKit, setInterviewKit] = useState<{ questions: string[] } | null>(null);
   const supabase = createClient();
 
   const load = useCallback(async () => {
@@ -66,10 +69,12 @@ export default function RecruiterApplicationsPage() {
   }, [load, supabase]);
 
   const updateStatus = async (appId: string, status: string) => {
-    await supabase.from('applications').update({
-      status,
-      ...(status === 'applied' ? { applied_at: new Date().toISOString() } : {}),
-    }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: appId, status }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update');
     await load();
   };
 
@@ -79,13 +84,37 @@ export default function RecruiterApplicationsPage() {
     setInterviewNotes(app.interview_notes || app.notes || '');
   };
 
+  const fetchInterviewKit = async (app: any) => {
+    setInterviewKitAppId(app.id);
+    setInterviewKitLoading(true);
+    setInterviewKit(null);
+    try {
+      const res = await fetch('/api/ats/interview-kit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: app.candidate_id, job_id: app.job_id }),
+      });
+      const data = await res.json();
+      if (res.ok) setInterviewKit({ questions: data.questions || [] });
+    } finally {
+      setInterviewKitLoading(false);
+    }
+  };
+
   const saveInterview = async (appId: string) => {
     setSaving(true);
-    await supabase.from('applications').update({
-      status: 'interview',
-      interview_date: interviewDate || null,
-      interview_notes: interviewNotes || null,
-    }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: appId,
+        status: 'interview',
+        interview_date: interviewDate || null,
+        interview_notes: interviewNotes || null,
+        notes: interviewNotes || null,
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
     setSchedulingAppId(null);
     setSaving(false);
     await load();
@@ -204,9 +233,32 @@ export default function RecruiterApplicationsPage() {
                 </div>
               </div>
 
-              {/* Interview scheduler — inline, appears when status = interview */}
+              {/* Interview scheduler + interview kit — when status = interview */}
               {a.status === 'interview' && (
-                <div className="mt-3 pt-3 border-t border-surface-100">
+                <div className="mt-3 pt-3 border-t border-surface-100 space-y-3">
+                  {/* Interview kit */}
+                  <div>
+                    {interviewKitAppId === a.id && interviewKit ? (
+                      <div className="space-y-2">
+                        <p className="text-xs font-semibold text-purple-700">Interview questions</p>
+                        <ol className="list-decimal list-inside text-xs text-surface-600 space-y-1">
+                          {interviewKit.questions.map((q, i) => (
+                            <li key={i}>{q}</li>
+                          ))}
+                        </ol>
+                        <button onClick={() => setInterviewKitAppId(null)} className="text-xs text-surface-500 hover:underline">Close</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => fetchInterviewKit(a)}
+                        disabled={interviewKitLoading}
+                        className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1.5"
+                      >
+                        <Brain size={12} />
+                        {interviewKitLoading && interviewKitAppId === a.id ? 'Generating…' : 'Generate interview questions'}
+                      </button>
+                    )}
+                  </div>
                   {schedulingAppId === a.id ? (
                     <div className="space-y-2">
                       <div className="flex gap-2">

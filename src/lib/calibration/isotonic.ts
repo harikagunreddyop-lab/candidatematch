@@ -144,9 +144,29 @@ export async function rebuildCalibrationCurves(
     let rebuilt = 0;
     const errors: string[] = [];
 
+    // Auto-discover job families from ats_events when jobFamilies is empty
+    let familiesToBuild = Array.isArray(jobFamilies) ? jobFamilies : [];
+    if (familiesToBuild.length === 0) {
+        try {
+            const { data: events } = await supabase
+                .from('ats_events')
+                .select('payload')
+                .eq('event_type', 'ats_score_computed')
+                .limit(5000);
+            const discovered = new Set<string>();
+            for (const row of events || []) {
+                const f = (row?.payload as any)?.job_family;
+                if (typeof f === 'string' && f) discovered.add(f);
+            }
+            familiesToBuild = Array.from(discovered).sort();
+        } catch (e: any) {
+            logError('[calibration] auto-discover job families failed', e?.message);
+        }
+    }
+
     for (const profile of profiles) {
         // Include global (null job_family) + each specific family
-        const families: (string | null)[] = [null, ...jobFamilies];
+        const families: (string | null)[] = [null, ...familiesToBuild];
 
         for (const jobFamily of families) {
             try {
@@ -168,28 +188,30 @@ async function rebuildOneCalibration(
     profile: ScoringProfile,
     jobFamily: string | null,
 ): Promise<void> {
-    // Pull all scored events with known outcomes for this profile.
-    // We read payload->>'ats_score' and payload->>'scoring_profile' from JSONB.
-    let query = supabase
+    // Pull outcome events (interview/offer/hired/rejected) with ats_score_at_application.
+    // These are recorded when recruiters update application status via applications PATCH.
+    const { data: rawEvents, error } = await supabase
         .from('ats_events')
         .select('payload')
-        .in('event_type', ['ats_score_computed'])
-        .not('payload->outcome', 'is', null);
+        .in('event_type', ['outcome_interview', 'outcome_offer', 'outcome_hired', 'outcome_rejected'])
+        .not('payload->ats_score_at_application', 'is', null);
 
-    const { data: rawEvents, error } = await query;
     if (error) throw new Error(error.message);
     if (!rawEvents?.length) return;
 
-    // Filter by profile and extract score + outcome
+    // Filter by profile and job_family; extract score + outcome
     const events: OutcomeEvent[] = rawEvents
         .map((row: any) => row.payload)
         .filter((p: any) =>
             (p?.scoring_profile ?? 'A') === profile &&
-            p?.ats_score != null &&
+            p?.ats_score_at_application != null &&
             p?.outcome != null &&
             (!jobFamily || p?.job_family === jobFamily)
         )
-        .map((p: any) => ({ ats_score: Number(p.ats_score), outcome: String(p.outcome) }));
+        .map((p: any) => ({
+            ats_score: Number(p.ats_score_at_application),
+            outcome: String(p.outcome),
+        }));
 
     if (events.length === 0) return;
 

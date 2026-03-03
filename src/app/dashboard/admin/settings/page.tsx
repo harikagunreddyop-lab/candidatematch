@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
-import { Settings, Save, AlertCircle } from 'lucide-react';
+import { Settings, Save, AlertCircle, RefreshCw } from 'lucide-react';
+import { cn } from '@/utils/helpers';
 import MatchingPanel from '@/components/MatchingPanel';
 
 const FEATURE_DEFAULTS: Record<string, { label: string; key: string; type: 'boolean'; default: boolean }> = {
@@ -109,10 +110,65 @@ export default function AdminSettingsPage() {
       {/* Stale application auto-cleanup */}
       <StaleCleanupSettings />
 
+      {/* Calibration rebuild */}
+      <CalibrationRebuildCard />
+
       {/* Matching engine controls */}
       <div className="card p-4 sm:p-6">
         <MatchingPanel />
       </div>
+    </div>
+  );
+}
+
+// ─── Calibration Rebuild ─────────────────────────────────────────────────────
+
+function CalibrationRebuildCard() {
+  const [rebuilding, setRebuilding] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; message: string; rebuilt?: number; duration_ms?: number } | null>(null);
+
+  const rebuild = async () => {
+    setRebuilding(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/admin/calibration/rebuild', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      const data = await res.json().catch(() => ({}));
+      setResult({
+        ok: res.ok && data.ok,
+        message: data.message || data.error || (res.ok ? 'Done' : 'Failed'),
+        rebuilt: data.rebuilt,
+        duration_ms: data.duration_ms,
+      });
+    } catch (e: any) {
+      setResult({ ok: false, message: e.message || 'Request failed' });
+    } finally {
+      setRebuilding(false);
+    }
+  };
+
+  return (
+    <div className="card p-4 sm:p-6 space-y-5">
+      <div>
+        <h3 className="text-sm font-semibold text-surface-800 dark:text-surface-200 flex items-center gap-2">
+          <RefreshCw size={16} /> Rebuild calibration curves
+        </h3>
+        <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
+          Recomputes P(interview) from outcome data. Requires <code className="text-xs bg-surface-100 dark:bg-surface-700 px-1 rounded">elite.calibration</code> feature flag.
+        </p>
+      </div>
+      <button onClick={rebuild} disabled={rebuilding} className="btn-primary text-sm py-2 px-4 flex items-center gap-2">
+        {rebuilding ? <Spinner size={14} /> : <RefreshCw size={14} />} Rebuild calibration
+      </button>
+      {result && (
+        <div className={cn(
+          'rounded-xl border px-4 py-3 text-sm',
+          result.ok ? 'border-green-200 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200' : 'border-red-200 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-200'
+        )}>
+          {result.message}
+          {result.rebuilt != null && <span className="ml-1"> ({result.rebuilt} curves)</span>}
+          {result.duration_ms != null && <span className="text-surface-500"> · {result.duration_ms}ms</span>}
+        </div>
+      )}
     </div>
   );
 }

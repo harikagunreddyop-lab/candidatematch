@@ -9,7 +9,7 @@ import type { Profile } from '@/types';
 import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
-  Zap, Menu, X, Link2, MessageCircle,
+  Zap, Menu, X, Link2, Plug, MessageCircle,
   BarChart3, Settings, Calendar, FileText, Shield,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
@@ -39,6 +39,7 @@ const recruiterNav: NavItem[] = [
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
   { label: 'Pipeline',     href: '/dashboard/recruiter/pipeline',     icon: <Cpu size={18} /> },
   { label: 'Talent report', href: '/dashboard/recruiter/reports',     icon: <BarChart3 size={18} /> },
+  { label: 'Integrations', href: '/dashboard/recruiter/integrations', icon: <Plug size={18} /> },
   { label: 'Messages',     href: '/dashboard/recruiter/messages',     icon: <MessageCircle size={18} /> },
 ];
 

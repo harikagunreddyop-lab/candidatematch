@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
+import { error as logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,35 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ policies: data || [] });
   }
 
+  if (type === 'human-review-requests' && (authResult.profile.role === 'recruiter' || authResult.profile.role === 'admin')) {
+    const { data: assignments } = await supabase
+      .from('recruiter_candidate_assignments')
+      .select('candidate_id')
+      .eq('recruiter_id', authResult.profile.id);
+    const candidateIds = (assignments || []).map((a: any) => a.candidate_id as string);
+    if (authResult.profile.role === 'admin') {
+      // Admin sees all
+      const { data, error } = await supabase
+        .from('human_review_requests')
+        .select('*, candidate:candidates(full_name, primary_title), job:jobs(title, company)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ requests: data || [] });
+    }
+    if (candidateIds.length === 0) {
+      return NextResponse.json({ requests: [] });
+    }
+    const { data, error } = await supabase
+      .from('human_review_requests')
+      .select('*, candidate:candidates(full_name, primary_title), job:jobs(title, company)')
+      .in('candidate_id', candidateIds)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ requests: data || [] });
+  }
+
   if (type === 'stats' && authResult.profile.role === 'admin') {
     const [consents, deletions, policies, profilesWithConsent] = await Promise.all([
       supabase.from('consent_records').select('consent_type, granted', { count: 'exact' }),
@@ -85,6 +115,113 @@ export async function POST(req: NextRequest) {
   try { body = await req.json(); } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }); }
 
   const { action } = body;
+
+  if (action === 'request_human_review') {
+    const { candidate_id, job_id, ats_score, gate_reason, missing_keywords } = body;
+    if (!candidate_id || !job_id) {
+      return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
+    }
+
+    if (authResult.profile.role !== 'candidate') {
+      return NextResponse.json({ error: 'Only candidates can request human review' }, { status: 403 });
+    }
+
+    const { data: c } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('id', candidate_id)
+      .eq('user_id', authResult.user.id)
+      .single();
+    if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    const { data: existing } = await supabase
+      .from('human_review_requests')
+      .select('id, status')
+      .eq('candidate_id', candidate_id)
+      .eq('job_id', job_id)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === 'pending') {
+        return NextResponse.json({ request: existing, message: 'Review request already pending' });
+      }
+      if (existing.status === 'approved') {
+        return NextResponse.json({ request: existing, message: 'Review was already approved' });
+      }
+    }
+
+    const { data: req, error } = await supabase
+      .from('human_review_requests')
+      .upsert({
+        candidate_id,
+        job_id,
+        ats_score: ats_score ?? null,
+        gate_reason: gate_reason ?? null,
+        missing_keywords: Array.isArray(missing_keywords) ? missing_keywords : [],
+        status: 'pending',
+      }, { onConflict: 'candidate_id,job_id' })
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    return NextResponse.json({ request: req, message: 'Human review requested. A recruiter will review your application.' });
+  }
+
+  if (action === 'review_human_request' && (authResult.profile.role === 'recruiter' || authResult.profile.role === 'admin')) {
+    const { request_id, status, reviewer_notes, apply_on_behalf } = body;
+    if (!request_id || !['approved', 'rejected'].includes(status)) {
+      return NextResponse.json({ error: 'request_id and status (approved/rejected) required' }, { status: 400 });
+    }
+
+    const { data: reqRow } = await supabase
+      .from('human_review_requests')
+      .select('id, candidate_id, job_id, status')
+      .eq('id', request_id)
+      .single();
+
+    if (!reqRow) return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    if (reqRow.status !== 'pending') return NextResponse.json({ error: 'Request already reviewed' }, { status: 400 });
+
+    if (authResult.profile.role === 'recruiter') {
+      const { data: a } = await supabase
+        .from('recruiter_candidate_assignments')
+        .select('recruiter_id')
+        .eq('candidate_id', reqRow.candidate_id)
+        .eq('recruiter_id', authResult.profile.id)
+        .single();
+      if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { data: updated, error } = await supabase
+      .from('human_review_requests')
+      .update({
+        status,
+        reviewed_at: new Date().toISOString(),
+        reviewer_id: authResult.profile.id,
+        reviewer_notes: reviewer_notes ?? null,
+      })
+      .eq('id', request_id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    if (status === 'approved' && apply_on_behalf) {
+      const { error: appErr } = await supabase
+        .from('applications')
+        .upsert({
+          candidate_id: reqRow.candidate_id,
+          job_id: reqRow.job_id,
+          status: 'applied',
+          applied_at: new Date().toISOString(),
+          notes: 'Applied on behalf after human review (AEDT override)',
+        }, { onConflict: 'candidate_id,job_id' });
+      if (appErr) logError('[compliance] apply_on_behalf failed', appErr.message);
+    }
+
+    return NextResponse.json({ request: updated, message: status === 'approved' ? 'Review approved' : 'Review rejected' });
+  }
 
   if (action === 'record_consent') {
     const { consent_type, granted } = body;

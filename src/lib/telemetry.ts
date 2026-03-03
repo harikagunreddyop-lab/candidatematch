@@ -26,6 +26,8 @@ export interface AtsScoreComputedPayload {
     ats_evidence_count: number | null;
     model_version: string;
     scoring_profile: 'A' | 'C';
+    /** Role-family for per-family calibration (e.g. software-engineering, data-engineering) */
+    job_family?: string;
     computation_ms: number | null;
     ai_tokens_used: number | null;
     // Shadow scoring fields (populated only when shadow mode is active)
@@ -46,6 +48,10 @@ export interface OutcomePayload {
     outcome: 'interview' | 'offer' | 'hired' | 'rejected' | 'withdrawn';
     previous_status: string;
     ats_score_at_application?: number | null;
+    /** For calibration: job family (e.g. data-engineering, frontend) */
+    job_family?: string | null;
+    /** For calibration: scoring profile A or C */
+    scoring_profile?: 'A' | 'C' | null;
 }
 
 export interface CandidateYearsDiscrepancyPayload {
@@ -77,6 +83,15 @@ export interface GovernanceFlagPayload {
     affected_fields?: string[];
 }
 
+/** Recruiter/admin override of ATS gate — audit trail */
+export interface GateOverridePayload {
+    ats_score: number;
+    confidence_bucket: string;
+    threshold_used: number;
+    scoring_profile: 'A' | 'C';
+    override_reason?: string | null;
+}
+
 // Union of all payload types
 export type EventPayloadMap = {
     ats_score_computed: AtsScoreComputedPayload;
@@ -91,6 +106,7 @@ export type EventPayloadMap = {
     outreach_sent: OutreachPayload;
     outreach_replied: Record<string, unknown>;
     governance_flag: GovernanceFlagPayload;
+    ats_gate_override: GateOverridePayload;
 };
 
 // ── Event input shape ─────────────────────────────────────────────────────────
@@ -192,6 +208,8 @@ export async function recordOutcome(
         newStatus: string;
         previousStatus: string;
         atsScoreAtApplication?: number | null;
+        jobFamily?: string | null;
+        scoringProfile?: 'A' | 'C' | null;
         actorUserId?: string | null;
     },
 ): Promise<void> {
@@ -215,6 +233,8 @@ export async function recordOutcome(
             outcome: params.newStatus as any,
             previous_status: params.previousStatus,
             ats_score_at_application: params.atsScoreAtApplication ?? null,
+            job_family: params.jobFamily ?? null,
+            scoring_profile: params.scoringProfile ?? null,
         },
     });
 }

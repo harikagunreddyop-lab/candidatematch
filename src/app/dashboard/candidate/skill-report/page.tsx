@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { EmptyState, Spinner } from '@/components/ui';
 import { useFeatureFlags } from '@/hooks';
-import { BarChart2, Target, Star, AlertCircle, Brain, X, User, FileText, Zap, Lightbulb } from 'lucide-react';
+import { BarChart2, Target, Star, AlertCircle, Brain, X, User, FileText, Zap, Lightbulb, Sparkles, Info } from 'lucide-react';
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { cn } from '@/utils/helpers';
 import { getScoreBadgeClasses, SCORE_APPLY_OK } from '@/lib/ats-score';
@@ -49,32 +49,16 @@ export default function CandidateSkillReportPage() {
     setAtsRunningByJob(p => ({ ...p, [jobId]: true }));
     setAtsErrorByJob(p => ({ ...p, [jobId]: '' }));
     try {
-      const tailored = tailoredByJob[jobId];
-      const sources: { resume_id?: string | null; resume_version_id?: string }[] = [
-        ...(resumes.length ? resumes.map((r: { id: string }) => ({ resume_id: r.id })) : [{ resume_id: null }]),
-        ...(tailored ? [{ resume_version_id: tailored.id }] : []),
-      ];
-      const results = await Promise.all(sources.map(async (src) => {
-        const res = await fetch('/api/ats/check', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            candidate_id: candidate.id,
-            job_id: jobId,
-            ...(src.resume_version_id ? { resume_version_id: src.resume_version_id } : { resume_id: src.resume_id }),
-          }),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) return null;
-        return data as { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords?: string[]; missing_keywords?: string[] };
-      }));
-      const best = results
-        .filter((r): r is NonNullable<typeof r> => r !== null && typeof r.ats_score === 'number')
-        .sort((a, b) => b.ats_score - a.ats_score)[0];
-      if (!best) throw new Error('ATS check failed for all resumes');
+      const res = await fetch('/api/ats/check-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidate_id: candidate.id, job_id: jobId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'ATS check failed');
       setMatches(prev => prev.map((m: any) =>
         m.job_id === jobId
-          ? { ...m, ats_score: best.ats_score, ats_reason: best.ats_reason, ats_breakdown: best.ats_breakdown, ats_resume_id: best.ats_resume_id, ats_checked_at: best.ats_checked_at, matched_keywords: best.matched_keywords ?? [], missing_keywords: best.missing_keywords ?? [] }
+          ? { ...m, ats_score: data.ats_score, ats_reason: data.ats_reason, ats_breakdown: data.ats_breakdown, ats_resume_id: data.ats_resume_id, ats_checked_at: data.ats_checked_at, matched_keywords: data.matched_keywords ?? [], missing_keywords: data.missing_keywords ?? [] }
           : m
       ));
     } catch (e: any) {
@@ -127,7 +111,7 @@ export default function CandidateSkillReportPage() {
   const whatToAdd = Object.entries(missingFreq).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k]) => k);
   const bestFitRoles = matches.slice(0, 10);
   const resumeAnalysis = resumes.map(r => {
-    const forResume = matches.filter((m: any) => m.best_resume_id === r.id);
+    const forResume = matches.filter((m: any) => m.best_resume_id === r.id || m.ats_resume_id === r.id);
     const kw: Record<string, number> = {};
     for (const m of forResume) {
       for (const k of (m.matched_keywords || []) as string[]) {
@@ -138,7 +122,12 @@ export default function CandidateSkillReportPage() {
     const bestFor = forResume.map((m: any) => ({ title: m.job?.title, company: m.job?.company, score: m.fit_score })).sort((a: any, b: any) => (b.score || 0) - (a.score || 0)).slice(0, 5);
     return { resume: r, forResume, strongIn, bestFor };
   });
-  const profileOnlyMatches = matches.filter((m: any) => !m.best_resume_id);
+  const tailoredResumeMatches = matches.filter((m: any) => tailoredByJob[m.job_id] && (m.ats_checked_at || m.ats_score != null));
+  const profileOnlyMatches = matches.filter((m: any) =>
+    !m.best_resume_id &&
+    !m.ats_resume_id &&
+    !(m.ats_checked_at && tailoredByJob[m.job_id])
+  );
 
   const generateJobBrief = async (jobId: string) => {
     setBriefJobId(jobId);
@@ -186,6 +175,14 @@ export default function CandidateSkillReportPage() {
           Skill report
         </h1>
         <p className="text-xs text-surface-500 dark:text-surface-400 mb-6">Why your profile gets the scores it does — what matched and what’s missing for each role.</p>
+
+        {/* AEDT / NYC LL144 notice */}
+        <div className="mb-6 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50/80 dark:bg-surface-700/40 px-3 py-2.5 flex gap-2.5 text-xs text-surface-600 dark:text-surface-400">
+          <Info size={14} className="shrink-0 mt-0.5 text-surface-500 dark:text-surface-400" />
+          <p>
+            Automated screening is used to evaluate applications. If you are blocked from applying due to a low score, you have the right to <strong>request human review</strong> of your application.
+          </p>
+        </div>
 
         {matches.length === 0 ? (
           <EmptyState icon={<Target size={24} />} title="No matches yet" description="Run matching to see why you score high or low for each role. Your recruiter will add jobs and run the engine." />
@@ -241,12 +238,12 @@ export default function CandidateSkillReportPage() {
             </div>
 
             {/* Resume analysis */}
-            {(resumes.length > 0 || profileOnlyMatches.length > 0) && (
+            {(resumes.length > 0 || profileOnlyMatches.length > 0 || tailoredResumeMatches.length > 0) && (
               <div className="mb-8 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-5">
                 <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                   <FileText size={12} /> Resume analysis
                 </h4>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mb-4">What each resume is strong at and which roles it fits best.</p>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mb-4">What each resume is strong at and which roles it fits best. Run ATS check to refresh scores after uploading or tailoring.</p>
                 <div className="space-y-4">
                   {resumeAnalysis.filter(ra => ra.forResume.length > 0).map(ra => (
                     <div key={ra.resume.id} className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
@@ -274,16 +271,24 @@ export default function CandidateSkillReportPage() {
                       <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-2">Used as best match for {ra.forResume.length} job{ra.forResume.length !== 1 ? 's' : ''}.</p>
                     </div>
                   ))}
+                  {tailoredResumeMatches.length > 0 && (
+                    <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
+                        <Sparkles size={14} className="text-brand-500" /> Tailored resumes
+                      </p>
+                      <p className="text-xs text-surface-500 dark:text-surface-400">You have tailored resumes for {tailoredResumeMatches.length} job{tailoredResumeMatches.length !== 1 ? 's' : ''} — scores reflect tailored or uploaded resume content.</p>
+                    </div>
+                  )}
                   {profileOnlyMatches.length > 0 && (
                     <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
                       <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
                         <Zap size={14} className="text-amber-500" /> Profile-only (no resume)
                       </p>
-                      <p className="text-xs text-surface-500 dark:text-surface-400">{profileOnlyMatches.length} match{profileOnlyMatches.length !== 1 ? 'es' : ''} scored using your profile only. Upload a resume to improve scores for these roles.</p>
+                      <p className="text-xs text-surface-500 dark:text-surface-400">{profileOnlyMatches.length} match{profileOnlyMatches.length !== 1 ? 'es' : ''} scored from profile data only. Upload a resume or tailor one for these roles to improve ATS scores.</p>
                     </div>
                   )}
-                  {resumeAnalysis.every(ra => ra.forResume.length === 0) && profileOnlyMatches.length === 0 && resumes.length > 0 && (
-                    <p className="text-xs text-surface-500 dark:text-surface-400">Match data doesn’t yet indicate which resume was used per job. Run matching again after jobs are added.</p>
+                  {resumeAnalysis.every(ra => ra.forResume.length === 0) && profileOnlyMatches.length === 0 && tailoredResumeMatches.length === 0 && resumes.length > 0 && (
+                    <p className="text-xs text-surface-500 dark:text-surface-400">Use the Run ATS check button on each job to populate which resume was used and refresh scores.</p>
                   )}
                 </div>
               </div>

@@ -53,7 +53,12 @@ export default function AdminApplicationsPage() {
   useEffect(() => { load(); }, [load]);
 
   const updateStatus = async (appId: string, status: string) => {
-    await supabase.from('applications').update({ status }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: appId, status }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to update');
     await load();
   };
 
@@ -65,12 +70,18 @@ export default function AdminApplicationsPage() {
 
   const saveInterview = async (appId: string) => {
     setSaving(true);
-    await supabase.from('applications').update({
-      status: 'interview',
-      interview_date: interviewDate || null,
-      interview_notes: interviewNotes || null,
-      notes: interviewNotes || null,
-    }).eq('id', appId);
+    const res = await fetch('/api/applications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: appId,
+        status: 'interview',
+        interview_date: interviewDate || null,
+        interview_notes: interviewNotes || null,
+        notes: interviewNotes || null,
+      }),
+    });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Failed to save');
     setSchedulingAppId(null);
     setSaving(false);
     await load();

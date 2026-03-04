@@ -130,15 +130,15 @@ export function JobBoardsPanel() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          csv_path: csvFileContent ? null : (csvPath || null),
-          csv_url: csvFileContent ? null : (csvUrl || null),
-          csv_file_content: csvFileContent,
+          csvPath: csvFileContent ? null : (csvPath || null),
+          csvUrl: csvFileContent ? null : (csvUrl || null),
+          csvContent: csvFileContent,
           limit,
         }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Discovery failed');
-      setDiscoveryResult(data.summary || null);
+      setDiscoveryResult(data || null);
       await load();
     } catch (e: any) {
       setDiscoveryError(e.message || 'Discovery failed');

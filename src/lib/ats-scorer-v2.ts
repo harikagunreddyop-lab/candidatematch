@@ -21,10 +21,11 @@ import type { EvidenceSpan } from '@/lib/ats-engine';
 
 export const ATS_V2 = {
   /**
-   * Must-skill evidence threshold: met only if Credit ≥ 0.50.
-   * Slightly relaxed so strong-but-not-perfect evidence is still rewarded.
+   * Must-skill evidence threshold: met only if Credit ≥ theta_must.
+   * Set at 0.35 so that skills explicitly listed on a candidate's profile
+   * (evidence ≈ 0.40) clear the gate even without bullet-level proof.
    */
-  theta_must: 0.50,
+  theta_must: 0.35,
   /**
    * Allowed missing must-haves before the gate blocks.
    * We now tolerate 1 missing must-have so otherwise excellent candidates
@@ -153,16 +154,36 @@ function countSkillOccurrences(
   return { bullet, project, list };
 }
 
-/** Evidence strength E(s) — skills-list-only capped at 0.55 */
+/** Evidence strength E(s) — skills-list entries provide a meaningful floor */
 function evidenceStrength(
   counts: { bullet: number; project: number; list: number },
 ): number {
+  const hasBullet = counts.bullet > 0;
+  const hasProject = counts.project > 0;
+  const hasListEntry = counts.list > 0;
+
+  if (!hasBullet && !hasProject && !hasListEntry) return 0;
+
   const E_bullet = 1 - Math.exp(-0.6 * counts.bullet);
   const E_proj = 1 - Math.exp(-0.4 * counts.project);
-  const E_list = 1 - Math.exp(-0.2 * counts.list);
-  let E = clip(0.65 * E_bullet + 0.25 * E_proj + 0.1 * E_list, 0, 1);
-  if (counts.bullet === 0 && counts.project === 0) E = Math.min(E, 0.55);
-  return E;
+
+  // Work-evidence: bullets are strongest, projects secondary
+  const workE = 0.70 * E_bullet + 0.30 * E_proj;
+
+  // A skill explicitly listed on the candidate's profile is a real signal —
+  // they self-reported knowing it. Give a meaningful floor (0.40) so that
+  // list-only skills aren't treated as zero-evidence.
+  const listFloor = hasListEntry ? 0.40 : 0;
+
+  let E = Math.max(workE, listFloor);
+
+  // Corroboration bonus: skill both listed AND demonstrated in bullets
+  if (hasListEntry && hasBullet) E = Math.min(1.0, E + 0.10);
+
+  // Purely-listed skills capped — not as strong as bullet-evidenced
+  if (!hasBullet && !hasProject) E = Math.min(E, 0.55);
+
+  return clip(E, 0, 1);
 }
 
 /** Months since last use of skill (from experience) */
@@ -225,6 +246,12 @@ function buildCandidateSkillMap(
   const roleFamily = input.requirements.domain || 'general';
   const result = new Map<string, { E: number; recency: number }>();
 
+  // Canonical skills explicitly listed by the candidate (profile-level claim)
+  const listedCanonicals = new Set<string>();
+  for (const s of skillListTerms) {
+    listedCanonicals.add(canonicalize(s));
+  }
+
   const allCandidateCanon = new Set<string>();
   for (const s of [...input.candidateSkills, ...input.candidateTools]) {
     allCandidateCanon.add(canonicalize(s));
@@ -242,7 +269,14 @@ function buildCandidateSkillMap(
   for (const canon of Array.from(allCandidateCanon)) {
     const counts = countSkillOccurrences(canon, bullets, projectBullets, skillListTerms);
     const E = evidenceStrength(counts);
-    const m = monthsSinceLastUse(canon, input.experience);
+    let m = monthsSinceLastUse(canon, input.experience);
+    // Skills explicitly listed on the candidate's profile are assumed currently
+    // active even when not mentioned in experience bullets. Without this,
+    // listed-but-not-bulleted skills get monthsSince=999 → recency=0.35,
+    // making their credit ≈ 0.14 (too low to pass the must-have gate).
+    if (m >= 999 && listedCanonicals.has(canon)) {
+      m = 0;
+    }
     const rec = recencyDecay(m, roleFamily);
     result.set(canon, { E, recency: rec });
   }
@@ -322,11 +356,14 @@ function C_must(
     if (cred >= ATS_V2.theta_must) matched.push(c);
     else missing.push(c);
   }
+  // Match rate: binary fraction of must-haves that clear the evidence threshold
+  const matchRate = matched.length / mustSkills.length;
+  // Coverage: average evidence quality across all must-haves
   const covM = sum / mustSkills.length;
-  const missM = missing.length;
-  // Softer penalty curve so partially-met must-haves aren't driven to near-zero.
-  const penM = Math.min(0.4, missM * 0.12);
-  const score = 100 * clip(covM - penM, 0, 1);
+  // Blended score emphasises match rate (you have it or not) while also
+  // rewarding deeper evidence quality. A 4/5 match yields ~65 instead of ~20.
+  const blended = 0.60 * matchRate + 0.40 * covM;
+  const score = 100 * clip(blended, 0, 1);
   return { score, matched, missing };
 }
 
@@ -340,6 +377,38 @@ function C_nice(niceSkills: string[], credits: Map<string, number>): number {
   return 100 * clip(sum / niceSkills.length, 0, 1);
 }
 
+/**
+ * Keyword-overlap proxy for responsibility matching when semantic similarity
+ * (vector-space / embeddings) is not available. Extracts meaningful keywords
+ * from JD responsibilities and checks how many appear in resume bullets.
+ */
+function keywordOverlapProxy(jdResp: string[], resumeBullets: string[]): number {
+  if (!jdResp.length || !resumeBullets.length) return 0.5;
+  const STOP = new Set([
+    'the', 'a', 'an', 'and', 'or', 'to', 'in', 'for', 'of', 'with', 'on',
+    'at', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has',
+    'had', 'do', 'does', 'did', 'will', 'would', 'should', 'can', 'could',
+    'may', 'must', 'that', 'this', 'from', 'as', 'but', 'not', 'all', 'any',
+    'each', 'so', 'if', 'its', 'our', 'your', 'their', 'more', 'other',
+    'than', 'also', 'into', 'about', 'such', 'new', 'use', 'using', 'used',
+    'work', 'working', 'ensure', 'across', 'within', 'between', 'through',
+  ]);
+  const jdKeywords = new Set<string>();
+  for (const r of jdResp) {
+    for (const word of r.toLowerCase().split(/\W+/)) {
+      if (word.length >= 3 && !STOP.has(word)) jdKeywords.add(word);
+    }
+  }
+  if (!jdKeywords.size) return 0.5;
+  const bulletText = resumeBullets.join(' ').toLowerCase();
+  let matched = 0;
+  for (const kw of jdKeywords) {
+    if (bulletText.includes(kw)) matched++;
+  }
+  // 0.30 baseline (some latent overlap assumed) + 0.70 scaled by actual overlap
+  return 0.30 + 0.70 * (matched / jdKeywords.size);
+}
+
 function C_resp(
   jdResponsibilities: string[],
   resumeBullets: string[],
@@ -347,7 +416,10 @@ function C_resp(
   sharedEvidence: number,
 ): number {
   if (jdResponsibilities.length === 0) return 100;
-  const baseSim = bulletsSim ?? 0.5;
+  // When real semantic similarity is available, use it. Otherwise compute a
+  // keyword-overlap proxy instead of the old hardcoded 0.5 fallback which
+  // capped C_resp at ~44 even for well-matched candidates.
+  const baseSim = bulletsSim ?? keywordOverlapProxy(jdResponsibilities, resumeBullets);
   const ground = 0.6 + 0.4 * sharedEvidence;
   const adjSim = baseSim * ground;
   const unmatched = adjSim < ATS_V2.sim_min ? 1 : 0;
@@ -384,12 +456,20 @@ function C_scope(
 ): number {
   const yMin = requirements.min_years_experience ?? 0;
   const yMax = requirements.preferred_years_experience ?? yMin + 2;
-  let fit_years = 0.6;
-  if (yMin != null || yMax != null) {
-    const mid = (yMin + yMax) / 2;
-    const spread = Math.max(2, (yMax - yMin) / 2);
-    fit_years = 1 - Math.min(1, Math.abs(candidateYears - mid) / spread);
+
+  // Full credit within the stated range. Gentle penalty outside.
+  let fit_years: number;
+  if (candidateYears >= yMin && candidateYears <= yMax) {
+    fit_years = 1.0;
+  } else if (candidateYears < yMin) {
+    const gap = yMin - candidateYears;
+    fit_years = Math.max(0, 1 - gap / Math.max(2, yMin));
+  } else {
+    // Over-qualified: gentler penalty (extra experience is still valuable)
+    const gap = candidateYears - yMax;
+    fit_years = Math.max(0.3, 1 - gap / Math.max(4, yMax));
   }
+
   const leadership = (resumeText.match(/\b(led|managed|directed|mentored|headed)\b/gi) || []).length;
   const lead = clip(leadership / 3, 0, 1);
   const scale = (resumeText.match(/million|billion|10k\+|100k\+|\d+%|\d+x/gi) || []).length;
@@ -657,17 +737,10 @@ export function computeATSScoreV2(
     raw = 0;
   }
 
+  // Final ATS score: pure weighted combination of components, clipped to [0, 100]
+  // with NO artificial floor. Extremely low scores are possible when must-haves,
+  // responsibilities and domain are badly mismatched.
   raw = Math.round(clip(raw, 0, 100));
-
-  // Policy tweak: if we have real resume evidence but the weighted score collapses
-  // to a very low number, clamp to a softer floor (40) so clearly-qualified
-  // candidates don't all appear as "20" while still distinguishing strong fits.
-  const hasEvidence =
-    (input.resumeText && input.resumeText.trim().length > 200) ||
-    input.experience.length > 0;
-  if (hasEvidence && raw < 40) {
-    raw = 40;
-  }
 
   const band = raw >= 90 ? 'elite' : raw >= 80 ? 'strong' : raw >= 70 ? 'possible' : 'weak';
 
@@ -756,3 +829,11 @@ function computeConfidence(
   const m = totalBullets === 0 ? 0 : bulletsWithImpact / totalBullets;
   return clip(0.35 * p + 0.35 * e + 0.2 * r + 0.1 * m, 0, 1);
 }
+
+// ── Test-only exports ────────────────────────────────────────────────────────
+// Exposed so unit tests can verify individual component functions in isolation.
+export const _test = {
+  evidenceStrength,
+  keywordOverlapProxy,
+  clip,
+} as const;

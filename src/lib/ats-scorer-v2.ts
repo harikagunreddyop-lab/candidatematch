@@ -409,7 +409,7 @@ function keywordOverlapProxy(jdResp: string[], resumeBullets: string[]): number 
   if (!jdKeywords.size) return 0.5;
   const bulletText = resumeBullets.join(' ').toLowerCase();
   let matched = 0;
-  for (const kw of jdKeywords) {
+  for (const kw of Array.from(jdKeywords)) {
     if (bulletText.includes(kw)) matched++;
   }
   // 0.30 baseline (some latent overlap assumed) + 0.70 scaled by actual overlap

@@ -1082,6 +1082,108 @@ const TRIVIAL_TOKENS = new Set([
   'technology',
 ]);
 
+// ── Title/domain compatibility helper ──────────────────────────────────────────
+
+function hasQaToken(title: string): boolean {
+  const t = canonicalTerm(title);
+  if (!t) return false;
+  return (
+    /\bqa\b/.test(t) ||
+    /\bq\.a\.\b/.test(t) ||
+    /quality\s*assur/.test(t) ||
+    /\bquality\s*engineer/.test(t) ||
+    /\btest(ing)?\s*(eng|engineer|lead|manager|analyst)\b/.test(t) ||
+    /\bsdet\b/.test(t) ||
+    /automation\s*(tester|engineer|qa)/.test(t) ||
+    /\bsoftware\s*tester\b/.test(t)
+  );
+}
+
+function hasAnalystWord(title: string): boolean {
+  return /\banalyst\b/i.test(title || '');
+}
+
+/**
+ * Title compatibility gate used to prevent obviously irrelevant cross-domain
+ * matches (e.g. QA Analyst ↔ Compliance Analyst).
+ *
+ * Rules:
+ * - First enforce existing DOMAIN_COMPATIBILITY between candidate and job.
+ * - QA/QC specialization: if the candidate looks like QA/test, only allow jobs
+ *   whose titles are also QA/test-like.
+ * - For overloaded "Analyst" titles, require at least one shared domain keyword
+ *   between candidate titles and job title (e.g. "compliance", "risk", "data").
+ *
+ * When a candidate has no usable titles, this gate returns true to avoid
+ * over-filtering; other signals (skills, domain, ATS) must carry the match.
+ */
+export function isTitleCompatible(candidate: Candidate, job: Job): boolean {
+  const jobTitle = job.title || '';
+  const candidateTitles = [
+    candidate.primary_title || '',
+    ...(candidate.secondary_titles || []),
+    ...(candidate.target_job_titles || []),
+  ].filter(t => (t || '').trim().length > 0);
+
+  // If we have no title information, do not gate — let other signals decide.
+  if (!candidateTitles.length || !jobTitle.trim()) return true;
+
+  const jobDomain = classifyDomain(jobTitle);
+  const candidateDomains = getCandidateDomains(candidate);
+
+  // 1) Hard domain compatibility gate using existing mapping.
+  if (!isDomainCompatible(candidateDomains, jobDomain)) {
+    return false;
+  }
+
+  // 2) QA/QC specialization — QA candidates should only match QA/test jobs.
+  const jobIsQa = hasQaToken(jobTitle) || jobDomain === 'qa';
+  const candidateIsQa = candidateTitles.some(t => hasQaToken(t) || classifyDomain(t) === 'qa');
+
+  if (candidateIsQa && !jobIsQa) {
+    return false;
+  }
+
+  // 3) Overloaded "Analyst" titles — require a shared domain keyword.
+  const jobIsAnalyst = hasAnalystWord(jobTitle);
+  const candidateHasAnalyst = candidateTitles.some(t => hasAnalystWord(t));
+
+  if ((jobIsAnalyst || candidateHasAnalyst) && !candidateIsQa && !jobIsQa) {
+    const domainKeywords = new Set([
+      'qa', 'quality', 'test', 'testing', 'automation', 'sdet',
+      'compliance', 'risk', 'fraud', 'credit',
+      'data', 'analytics', 'bi',
+      'marketing', 'growth',
+      'finance', 'financial',
+      'security', 'cyber', 'infosec',
+      'it', 'ops', 'operations',
+      'sales', 'revenue',
+    ].map(canonicalTerm));
+
+    const jobTokens = new Set(titleTokens(jobTitle));
+    const candidateTokens = new Set<string>();
+    for (const ct of candidateTitles) {
+      for (const tok of titleTokens(ct)) {
+        candidateTokens.add(tok);
+      }
+    }
+
+    let hasSharedDomainKeyword = false;
+    for (const kw of Array.from(domainKeywords)) {
+      if (jobTokens.has(kw) && candidateTokens.has(kw)) {
+        hasSharedDomainKeyword = true;
+        break;
+      }
+    }
+
+    if (!hasSharedDomainKeyword) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 /**
  * Returns true only when BOTH of these hold for at least one candidate title:
  *   1. The domain of the candidate title is compatible with the job domain.
@@ -1216,6 +1318,8 @@ export async function runMatching(
   const summary: any[] = [];
   const now = new Date().toISOString();
 
+  const titleGatingEnabled = await isFlagEnabled(supabase, 'matching.title_gating.enabled');
+
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
@@ -1230,6 +1334,7 @@ export async function runMatching(
 
     const matchedJobs = (jobs as Job[]).filter(job => {
       if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
+      if (titleGatingEnabled && !isTitleCompatible(candidate, job)) return false;
       return isTitleMatch(candidate, job);
     });
 
@@ -1341,6 +1446,8 @@ export async function runMatchingForJobs(
   const summary: any[] = [];
   const now = new Date().toISOString();
 
+  const titleGatingEnabled = await isFlagEnabled(supabase, 'matching.title_gating.enabled');
+
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
@@ -1350,6 +1457,7 @@ export async function runMatchingForJobs(
 
     const matchedJobs = (jobs as Job[]).filter(job => {
       if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
+      if (titleGatingEnabled && !isTitleCompatible(candidate, job)) return false;
       return isTitleMatch(candidate, job);
     });
     if (!matchedJobs.length) continue;

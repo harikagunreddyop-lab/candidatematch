@@ -18,20 +18,21 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
 
 const adminNav: NavItem[] = [
-  { label: 'Dashboard',    href: '/dashboard/admin',              icon: <LayoutDashboard size={18} /> },
-  { label: 'Candidates',  href: '/dashboard/admin/candidates',  icon: <Users size={18} /> },
-  { label: 'Applications', href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
-  { label: 'Pipeline',    href: '/dashboard/admin/pipeline',      icon: <Cpu size={18} /> },
-  { label: 'Jobs',        href: '/dashboard/admin/jobs',         icon: <Briefcase size={18} /> },
-  { label: 'Assignments', href: '/dashboard/admin/assignments',  icon: <Link2 size={18} /> },
-  { label: 'Scraping',    href: '/dashboard/admin/scraping',     icon: <Zap size={18} /> },
-  { label: 'Users',       href: '/dashboard/admin/users',        icon: <UserCircle size={18} /> },
-  { label: 'Reports',     href: '/dashboard/admin/reports',      icon: <BarChart3 size={18} /> },
-  { label: 'Audit log',   href: '/dashboard/admin/audit',        icon: <FileText size={18} /> },
-  { label: 'Interviews',  href: '/dashboard/admin/interviews',   icon: <Calendar size={18} /> },
-  { label: 'Messages',    href: '/dashboard/admin/messages',     icon: <MessageCircle size={18} /> },
-  { label: 'Compliance',  href: '/dashboard/admin/compliance',   icon: <Shield size={18} /> },
-  { label: 'Settings',    href: '/dashboard/admin/settings',     icon: <Settings size={18} /> },
+  { label: 'Dashboard',     href: '/dashboard/admin',              icon: <LayoutDashboard size={18} /> },
+  { label: 'Candidates',    href: '/dashboard/admin/candidates',   icon: <Users size={18} /> },
+  { label: 'Applications',  href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
+  { label: 'Pipeline',      href: '/dashboard/admin/pipeline',     icon: <Cpu size={18} /> },
+  { label: 'Jobs',          href: '/dashboard/admin/jobs',         icon: <Briefcase size={18} /> },
+  { label: 'Assignments',   href: '/dashboard/admin/assignments',  icon: <Link2 size={18} /> },
+  { label: 'Job boards',    href: '/dashboard/admin/job-boards',   icon: <Plug size={18} /> },
+  { label: 'Scraping',      href: '/dashboard/admin/scraping',     icon: <Zap size={18} /> },
+  { label: 'Users',         href: '/dashboard/admin/users',        icon: <UserCircle size={18} /> },
+  { label: 'Reports',       href: '/dashboard/admin/reports',      icon: <BarChart3 size={18} /> },
+  { label: 'Audit log',     href: '/dashboard/admin/audit',        icon: <FileText size={18} /> },
+  { label: 'Interviews',    href: '/dashboard/admin/interviews',   icon: <Calendar size={18} /> },
+  { label: 'Messages',      href: '/dashboard/admin/messages',     icon: <MessageCircle size={18} /> },
+  { label: 'Compliance',    href: '/dashboard/admin/compliance',   icon: <Shield size={18} /> },
+  { label: 'Settings',      href: '/dashboard/admin/settings',     icon: <Settings size={18} /> },
 ];
 
 const recruiterNav: NavItem[] = [

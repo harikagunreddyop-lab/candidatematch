@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { computeATSScoreV2, ATS_V2, W_V2, _test, type ScorerInput } from '@/lib/ats-scorer-v2';
 import type { JobRequirements } from '@/lib/ats-engine';
 
-const { evidenceStrength, keywordOverlapProxy, clip } = _test;
+const { evidenceStrength, keywordOverlapProxy, clip, safeDate } = _test;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -500,6 +500,108 @@ describe('computeATSScoreV2', () => {
       const out = computeATSScoreV2(input);
       const jobHop = out.negative_signals?.find(s => s.type === 'job_hopping');
       expect(jobHop).toBeDefined();
+    });
+  });
+
+  describe('NaN guard — invalid dates must not collapse score to 0', () => {
+    it('produces non-zero score even with invalid date strings in experience', () => {
+      const input = makeInput({
+        requirements: makeRequirements({
+          must_have_skills: ['Python'],
+          domain: 'software-engineering',
+        }),
+        candidateSkills: ['Python', 'SQL'],
+        resumeText: 'Skills: Python, SQL\nExperience\n- Built Python apps\n- Wrote SQL queries',
+        experience: [
+          {
+            company: 'GoodCo',
+            title: 'Developer',
+            start_date: '2022-01-01',
+            end_date: 'INVALID-DATE',
+            responsibilities: ['Built Python apps'],
+          },
+          {
+            company: 'BadCo',
+            title: 'Dev',
+            start_date: 'not-a-date',
+            end_date: '2023-06-01',
+            responsibilities: ['Wrote SQL queries'],
+          },
+        ],
+        primary_title: 'Software Developer',
+      });
+      const out = computeATSScoreV2(input);
+      expect(out.total_score).toBeGreaterThan(0);
+      expect(Number.isFinite(out.total_score)).toBe(true);
+      expect(Number.isFinite(out.components.risk)).toBe(true);
+    });
+
+    it('handles completely missing dates gracefully', () => {
+      const input = makeInput({
+        candidateSkills: ['React'],
+        resumeText: 'Skills: React\n- Built dashboards',
+        experience: [
+          { company: 'Co', title: 'Dev', responsibilities: ['Built dashboards'] },
+        ],
+        primary_title: 'Developer',
+      });
+      const out = computeATSScoreV2(input);
+      expect(out.total_score).toBeGreaterThan(0);
+      expect(Number.isFinite(out.total_score)).toBe(true);
+    });
+  });
+
+  describe('safeDate', () => {
+    it('returns Date for valid strings', () => {
+      expect(safeDate('2023-01-15')).toBeInstanceOf(Date);
+      expect(safeDate('2023-01-15')!.getFullYear()).toBe(2023);
+    });
+    it('returns null for invalid strings', () => {
+      expect(safeDate('INVALID')).toBeNull();
+      expect(safeDate('not-a-date')).toBeNull();
+    });
+    it('returns null for empty/undefined', () => {
+      expect(safeDate('')).toBeNull();
+      expect(safeDate(undefined)).toBeNull();
+      expect(safeDate(null)).toBeNull();
+    });
+  });
+
+  describe('job with 0 must-haves should still score > 0', () => {
+    it('gives non-zero total when requirements are empty', () => {
+      const input = makeInput({
+        requirements: makeRequirements({
+          must_have_skills: [],
+          nice_to_have_skills: [],
+          responsibilities: [],
+          domain: 'qa',
+        }),
+        candidateSkills: ['Selenium', 'JIRA', 'SQL'],
+        resumeText: [
+          'Skills: Selenium, JIRA, SQL',
+          'Experience',
+          'QA Analyst at TestCorp — 2020-present',
+          '- Automated regression tests using Selenium reducing manual effort by 60%',
+          '- Managed defect tracking in JIRA for 3 product teams',
+        ].join('\n'),
+        experience: [{
+          company: 'TestCorp',
+          title: 'QA Analyst',
+          start_date: '2020-01-01',
+          current: true,
+          responsibilities: [
+            'Automated regression tests using Selenium reducing manual effort by 60%',
+            'Managed defect tracking in JIRA for 3 product teams',
+          ],
+        }],
+        years_of_experience: 5,
+        primary_title: 'QA Analyst',
+      });
+      const out = computeATSScoreV2(input);
+      expect(out.total_score).toBeGreaterThan(50);
+      expect(out.gate_passed).toBe(true);
+      expect(out.components.must).toBe(100);
+      expect(out.components.resp).toBe(100);
     });
   });
 });

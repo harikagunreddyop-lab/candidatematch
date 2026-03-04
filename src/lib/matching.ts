@@ -217,11 +217,22 @@ function classifyDomain(title: string): Domain {
   // BI / Reporting
   if (/\bpow(er)?\s*bi\b|\btableau\b|\blooker\b|bi\s*(dev|analyst|engineer|spec)|business\s*intel/i.test(t)) return 'bi';
 
-  // Data Analytics / Business Analyst — MUST come before 'software-engineering' to avoid token bleed
-  if (/data\s*anal|business\s*anal|operations?\s*anal|marketing\s*anal|product\s*anal|financial\s*anal(?!yst\s*(dev|eng))|analyst/i.test(t)) return 'data-analytics';
+  // ── Specific domains MUST come BEFORE the data-analytics catch-all ────────
+  // Otherwise "QA Analyst", "Security Analyst", "Financial Analyst" etc. are
+  // all swallowed by the bare |analyst alternation in data-analytics.
+
+  // QA — expanded to catch "Quality Analyst", "Quality Systems", etc.
+  if (/\bqa\b|quality\s*(assur|engineer|analyst|systems|control)|test\s*(auto|eng)|\bsdet\b|\bsoftware\s*tester\b/i.test(t)) return 'qa';
+
+  // Security
+  if (/secur|cyber|infosec|penetration/i.test(t)) return 'security';
 
   // Finance / investment analyst
   if (/financ(ial)?\s*anal|investment\s*anal|credit\s*anal|equity\s*anal|risk\s*anal/i.test(t)) return 'finance-analyst';
+
+  // Data Analytics / Business Analyst — catch-all "analyst" is now safe because
+  // QA, security, and finance have already been handled above.
+  if (/data\s*anal|business\s*anal|operations?\s*anal|marketing\s*anal|product\s*anal|\banalyst\b/i.test(t)) return 'data-analytics';
 
   // Product Management
   if (/product\s*manag|program\s*manag|project\s*manag|engineering\s*manag|\bscrum\b|\bpmo\b/i.test(t)) return 'management';
@@ -240,12 +251,6 @@ function classifyDomain(title: string): Domain {
 
   // Frontend
   if (/front[\s-]*end|ui\s*(dev|eng)|react\s*(dev|eng)|angular\s*(dev|eng)|vue\s*(dev|eng)/i.test(t)) return 'frontend';
-
-  // QA
-  if (/\bqa\b|quality\s*assur|test\s*(auto|eng)|\bsdet\b/i.test(t)) return 'qa';
-
-  // Security
-  if (/secur|cyber|infosec|penetration/i.test(t)) return 'security';
 
   // Design
   if (/\bux\b|ui\s*design|product\s*design/i.test(t)) return 'design';
@@ -1506,3 +1511,6 @@ export async function runMatchingForJobs(
 
   return { candidates_processed: (candidates as Candidate[]).length, total_matches_upserted: totalMatchesUpserted, summary };
 }
+
+// Test-only export for unit testing classifyDomain
+export const _testClassifyDomain = classifyDomain;

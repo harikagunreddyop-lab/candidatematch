@@ -128,6 +128,13 @@ function clip(x: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, x));
 }
 
+/** Safely parse a date string, returning null for invalid/empty values */
+function safeDate(val: string | undefined | null): Date | null {
+  if (!val) return null;
+  const d = new Date(val);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** Count skill occurrences in bullets, projects, skills list */
 function countSkillOccurrences(
   canonicalSkill: string,
@@ -200,7 +207,7 @@ function monthsSinceLastUse(
     const hasSkill = terms.some(t => text.includes(t));
     if (!hasSkill) continue;
 
-    const end = exp.current ? now : (exp.end_date ? new Date(exp.end_date) : now);
+    const end = exp.current ? now : (safeDate(exp.end_date) ?? now);
     if (!lastEnd || end > lastEnd) lastEnd = end;
   }
   if (!lastEnd) return 999;
@@ -497,7 +504,7 @@ function C_domain(jobDomain: string, candidateTitles: string[]): number {
     'fullstack': /full[\s-]*stack/i,
     'devops': /devops|\bsre\b|cloud\s*(eng|arch)/i,
     'mobile': /mobile|ios|android|react\s*native|flutter/i,
-    'qa': /\bqa\b|test\s*(auto|eng)/i,
+    'qa': /\bqa\b|quality\s*(assur|eng|analyst|systems|control)|test\s*(auto|eng)|\bsdet\b/i,
     'security': /secur|cyber|infosec/i,
   };
   const re = domainPatterns[jobDomain];
@@ -514,8 +521,8 @@ function detectNegativeSignals(
 ): NegativeSignal[] {
   const signals: NegativeSignal[] = [];
   const sorted = [...experience].sort((a, b) => {
-    const dA = a.start_date ? new Date(a.start_date).getTime() : 0;
-    const dB = b.start_date ? new Date(b.start_date).getTime() : 0;
+    const dA = safeDate(a.start_date)?.getTime() ?? 0;
+    const dB = safeDate(b.start_date)?.getTime() ?? 0;
     return dA - dB;
   });
 
@@ -524,10 +531,10 @@ function detectNegativeSignals(
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const curr = sorted[i];
-    const prevStart = prev.start_date ? new Date(prev.start_date) : null;
-    const prevEnd = prev.current ? new Date() : (prev.end_date ? new Date(prev.end_date) : null);
-    const currStart = curr.start_date ? new Date(curr.start_date) : null;
-    const currEnd = curr.current ? new Date() : (curr.end_date ? new Date(curr.end_date) : null);
+    const prevStart = safeDate(prev.start_date);
+    const prevEnd = prev.current ? new Date() : safeDate(prev.end_date);
+    const currStart = safeDate(curr.start_date);
+    const currEnd = curr.current ? new Date() : safeDate(curr.end_date);
     if (prevStart && prevEnd && currStart && currEnd && currStart < prevEnd) {
       overlaps++;
     }
@@ -553,8 +560,8 @@ function detectNegativeSignals(
 
   const roles = experience.length;
   const careerMonths = experience.reduce((acc, e) => {
-    const start = e.start_date ? new Date(e.start_date) : null;
-    const end = e.current ? new Date() : (e.end_date ? new Date(e.end_date) : null);
+    const start = safeDate(e.start_date);
+    const end = e.current ? new Date() : safeDate(e.end_date);
     if (!start || !end) return acc;
     return acc + Math.max(0, (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()));
   }, 0);
@@ -597,8 +604,8 @@ function C_risk(
 ): number {
   const roles = experience.length;
   const careerMonths = experience.reduce((acc, e) => {
-    const start = e.start_date ? new Date(e.start_date) : null;
-    const end = e.current ? new Date() : (e.end_date ? new Date(e.end_date) : null);
+    const start = safeDate(e.start_date);
+    const end = e.current ? new Date() : safeDate(e.end_date);
     if (!start || !end) return acc;
     return acc + (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   }, 0);
@@ -608,15 +615,15 @@ function C_risk(
   let overlaps = 0;
   let gap_months = 0;
   const sorted = [...experience].sort((a, b) => {
-    const dA = a.start_date ? new Date(a.start_date).getTime() : 0;
-    const dB = b.start_date ? new Date(b.start_date).getTime() : 0;
+    const dA = safeDate(a.start_date)?.getTime() ?? 0;
+    const dB = safeDate(b.start_date)?.getTime() ?? 0;
     return dA - dB;
   });
   for (let i = 1; i < sorted.length; i++) {
     const prev = sorted[i - 1];
     const curr = sorted[i];
-    const prevEnd = prev.current ? new Date() : (prev.end_date ? new Date(prev.end_date) : null);
-    const currStart = curr.start_date ? new Date(curr.start_date) : null;
+    const prevEnd = prev.current ? new Date() : safeDate(prev.end_date);
+    const currStart = safeDate(curr.start_date);
     if (prevEnd && currStart) {
       if (currStart < prevEnd) overlaps++;
       else gap_months += (currStart.getFullYear() - prevEnd.getFullYear()) * 12 + (currStart.getMonth() - prevEnd.getMonth());
@@ -720,18 +727,23 @@ export function computeATSScoreV2(
 
   const w = W_V2;
   const wDomain = input.requirements.domain && input.requirements.domain !== 'general' ? w.domain : 0;
-  const totalWeight = w.parse + w.must + w.nice + w.resp + w.impact + w.scope + w.recent + wDomain + w.risk;
 
-  // Guard against divide-by-zero / NaN so we always return a numeric score.
-  let raw = (parseScore * w.parse
-    + mustResult.score * w.must
-    + niceScore * w.nice
-    + respScore * w.resp
-    + impactScore * w.impact
-    + scopeScore * w.scope
-    + recentScore * w.recent
-    + domainScore * wDomain
-    + riskScore * w.risk) / (totalWeight || 1);
+  // Defensive: sanitise each component so a single NaN (e.g. from an invalid
+  // date in experience) can never poison the entire weighted sum.
+  const safe = (v: number) => (Number.isFinite(v) ? v : 0);
+  const components: [number, number][] = [
+    [safe(parseScore), w.parse],
+    [safe(mustResult.score), w.must],
+    [safe(niceScore), w.nice],
+    [safe(respScore), w.resp],
+    [safe(impactScore), w.impact],
+    [safe(scopeScore), w.scope],
+    [safe(recentScore), w.recent],
+    [safe(domainScore), wDomain],
+    [safe(riskScore), w.risk],
+  ];
+  const totalWeight = components.reduce((s, [, wt]) => s + wt, 0);
+  let raw = components.reduce((s, [score, wt]) => s + score * wt, 0) / (totalWeight || 1);
 
   if (!Number.isFinite(raw)) {
     raw = 0;
@@ -836,4 +848,5 @@ export const _test = {
   evidenceStrength,
   keywordOverlapProxy,
   clip,
+  safeDate,
 } as const;

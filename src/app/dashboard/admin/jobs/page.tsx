@@ -4,8 +4,15 @@ import { createClient } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
 import { Briefcase, Plus, ExternalLink, Eye, RefreshCw, Zap, AlertCircle, Upload } from 'lucide-react';
 import { formatRelative, truncate } from '@/utils/helpers';
+import { JobBoardsPanel } from '@/components/admin/JobBoardsPanel';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function JobsPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = (searchParams.get('tab') === 'boards' ? 'boards' : 'jobs') as 'jobs' | 'boards';
+  const [tab, setTab] = useState<'jobs' | 'boards'>(initialTab);
+
   const [jobs, setJobs] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,21 +69,33 @@ export default function JobsPage() {
     }
   }, [supabase]);
 
-  useEffect(() => { load(); }, [page, load]);
+  useEffect(() => {
+    // Keep state in sync if user lands on a tab via URL.
+    const next = (searchParams.get('tab') === 'boards' ? 'boards' : 'jobs') as 'jobs' | 'boards';
+    setTab(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams?.get('tab')]);
 
   useEffect(() => {
+    if (tab !== 'jobs') return;
+    load();
+  }, [page, load, tab]);
+
+  useEffect(() => {
+    if (tab !== 'jobs') return;
     const interval = setInterval(() => load(true), 10000);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [load, tab]);
 
   // Realtime: stay in sync when jobs are ingested or updated
   useEffect(() => {
+    if (tab !== 'jobs') return;
     const channel = supabase
       .channel('admin-jobs-sync')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [supabase, load]);
+  }, [supabase, load, tab]);
 
   // ── Run Matching — reads SSE stream from /api/matches ─────────────────────
   const runMatching = async () => {
@@ -150,31 +169,53 @@ export default function JobsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Jobs</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-            {totalCount.toLocaleString()} active jobs · page {page + 1} ·{' '}
-            {lastRefreshed && (
-              <span className="text-surface-400">
-                updated {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-            )}
-          </p>
+          <div className="mt-3 inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-1">
+            <button
+              onClick={() => { setTab('jobs'); router.replace('/dashboard/admin/jobs'); }}
+              className={tab === 'jobs' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+            >
+              Jobs
+            </button>
+            <button
+              onClick={() => { setTab('boards'); router.replace('/dashboard/admin/jobs?tab=boards'); }}
+              className={tab === 'boards' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+            >
+              Job boards
+            </button>
+          </div>
+          {tab === 'jobs' && (
+            <p className="text-sm text-surface-500 dark:text-surface-400 mt-2">
+              {totalCount.toLocaleString()} jobs · page {page + 1}
+              {lastRefreshed && (
+                <span className="text-surface-400">
+                  {' '}· updated {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </span>
+              )}
+            </p>
+          )}
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <button onClick={() => load()} className="btn-ghost text-sm flex items-center gap-1.5">
-            <RefreshCw size={14} /> Refresh
-          </button>
-          <button onClick={runMatching} disabled={matching} className="btn-secondary text-sm flex items-center gap-1.5">
-            {matching ? <><Spinner size={12} /> Matching...</> : <><Zap size={14} /> Run Matching</>}
-          </button>
-          <button onClick={() => setShowUpload(true)} className="btn-secondary text-sm flex items-center gap-1.5">
-            <Upload size={14} /> Upload CSV/Excel
-          </button>
-          <button onClick={() => setShowAddJob(true)} className="btn-primary text-sm flex items-center gap-1.5">
-            <Plus size={16} /> Add Job
-          </button>
-        </div>
+        {tab === 'jobs' && (
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => load()} className="btn-ghost text-sm flex items-center gap-1.5">
+              <RefreshCw size={14} /> Refresh
+            </button>
+            <button onClick={runMatching} disabled={matching} className="btn-secondary text-sm flex items-center gap-1.5">
+              {matching ? <><Spinner size={12} /> Matching...</> : <><Zap size={14} /> Run Matching</>}
+            </button>
+            <button onClick={() => setShowUpload(true)} className="btn-secondary text-sm flex items-center gap-1.5">
+              <Upload size={14} /> Upload CSV/Excel
+            </button>
+            <button onClick={() => setShowAddJob(true)} className="btn-primary text-sm flex items-center gap-1.5">
+              <Plus size={16} /> Add Job
+            </button>
+          </div>
+        )}
       </div>
 
+      {tab === 'boards' ? (
+        <JobBoardsPanel />
+      ) : (
+        <>
       {matchMsg && (
         <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${
           matchMsg.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
@@ -309,6 +350,8 @@ export default function JobsPage() {
         <Modal open onClose={() => setShowUpload(false)} title="Upload Jobs (CSV / Excel)" size="xl">
           <UploadJobsForm onClose={() => setShowUpload(false)} onSaved={() => load()} />
         </Modal>
+      )}
+        </>
       )}
     </div>
   );

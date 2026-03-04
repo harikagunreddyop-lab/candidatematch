@@ -195,12 +195,12 @@ const DOMAIN_COMPATIBILITY: Record<Domain, Domain[]> = {
   'bi': ['bi', 'data-analytics'],
   'devops': ['devops', 'software-engineering'],
   'mobile': ['mobile', 'frontend', 'fullstack', 'software-engineering'],
-  'qa': ['qa', 'software-engineering'],
-  'security': ['security', 'devops'],
-  'management': ['management'],
+  'qa': ['qa'],
+  'security': ['security'],
+  'management': ['management', 'product'],
   'design': ['design', 'frontend'],
-  'product': ['product'],
-  'finance-analyst': ['finance-analyst'],
+  'product': ['product', 'management'],
+  'finance-analyst': ['finance-analyst', 'data-analytics'],
   'general': ['general'],
 };
 
@@ -1202,7 +1202,8 @@ function isTitleMatch(candidate: Candidate, job: Job): boolean {
   const candidateTitles = [
     candidate.primary_title || '',
     ...(candidate.target_job_titles || []),
-  ].filter(Boolean);
+    ...(candidate.secondary_titles || []),
+  ].filter(t => (t || '').trim().length > 0);
 
   if (candidateTitles.length === 0) return false;
 
@@ -1323,12 +1324,11 @@ export async function runMatching(
   const summary: any[] = [];
   const now = new Date().toISOString();
 
-  const titleGatingEnabled = await isFlagEnabled(supabase, 'matching.title_gating.enabled');
-
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.target_job_titles || []).some(t => t?.trim())
+      (candidate.target_job_titles || []).some(t => t?.trim()) ||
+      (candidate.secondary_titles || []).some(t => t?.trim())
     );
 
     if (!hasTitles) {
@@ -1339,7 +1339,7 @@ export async function runMatching(
 
     const matchedJobs = (jobs as Job[]).filter(job => {
       if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
-      if (titleGatingEnabled && !isTitleCompatible(candidate, job)) return false;
+      if (!isTitleCompatible(candidate, job)) return false;
       return isTitleMatch(candidate, job);
     });
 
@@ -1451,18 +1451,17 @@ export async function runMatchingForJobs(
   const summary: any[] = [];
   const now = new Date().toISOString();
 
-  const titleGatingEnabled = await isFlagEnabled(supabase, 'matching.title_gating.enabled');
-
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.target_job_titles || []).some(t => t?.trim())
+      (candidate.target_job_titles || []).some(t => t?.trim()) ||
+      (candidate.secondary_titles || []).some(t => t?.trim())
     );
     if (!hasTitles) continue;
 
     const matchedJobs = (jobs as Job[]).filter(job => {
       if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
-      if (titleGatingEnabled && !isTitleCompatible(candidate, job)) return false;
+      if (!isTitleCompatible(candidate, job)) return false;
       return isTitleMatch(candidate, job);
     });
     if (!matchedJobs.length) continue;
@@ -1482,7 +1481,7 @@ export async function runMatchingForJobs(
       }
     }
 
-    const rows = jobsForRows.map(job => ({
+    const rows = jobsForRows.slice(0, MAX_MATCHES_PER_CANDIDATE).map(job => ({
       candidate_id: candidate.id,
       job_id: job.id,
       fit_score: skillScores?.get(job.id) ? Math.round((skillScores!.get(job.id)! || 0) * 100) : 0,
@@ -1512,5 +1511,6 @@ export async function runMatchingForJobs(
   return { candidates_processed: (candidates as Candidate[]).length, total_matches_upserted: totalMatchesUpserted, summary };
 }
 
-// Test-only export for unit testing classifyDomain
+// Test-only exports for unit testing
 export const _testClassifyDomain = classifyDomain;
+export const _testIsTitleMatch = isTitleMatch;

@@ -301,9 +301,9 @@ export default function CandidateProfilePage() {
 
           <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Experience</h3>
-            {(candidate.experience as any[])?.length > 0 ? (
+            {(Array.isArray(candidate.experience) ? candidate.experience : [])?.length > 0 ? (
               <div className="space-y-4">
-                {(candidate.experience as any[]).map((exp: any, i: number) => (
+                {(Array.isArray(candidate.experience) ? candidate.experience : []).map((exp: any, i: number) => (
                   <div key={i} className="border-l-2 border-brand-300 dark:border-brand-500/50 pl-4">
                     <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">{exp.title}</p>
                     <p className="text-sm text-surface-600 dark:text-surface-300">{exp.company}</p>
@@ -316,9 +316,9 @@ export default function CandidateProfilePage() {
 
           <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Education</h3>
-            {(candidate.education as any[])?.length > 0 ? (
+            {(Array.isArray(candidate.education) ? candidate.education : [])?.length > 0 ? (
               <div className="space-y-3">
-                {(candidate.education as any[]).map((ed: any, i: number) => (
+                {(Array.isArray(candidate.education) ? candidate.education : []).map((ed: any, i: number) => (
                   <div key={i}>
                     <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{ed.degree} in {ed.field}</p>
                     <p className="text-sm text-surface-500 dark:text-surface-400">{ed.institution} · {ed.graduation_date}</p>

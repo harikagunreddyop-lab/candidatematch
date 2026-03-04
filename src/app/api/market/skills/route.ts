@@ -10,14 +10,14 @@ export async function GET(req: NextRequest) {
   const skill = searchParams.get('skill');
   const region = searchParams.get('region');
 
-  const q = supabase
+  let q = supabase
     .from('market_skill_trends')
     .select('skill, demand_score, salary_min, salary_max, growth_rate, region, as_of')
     .order('as_of', { ascending: false })
     .limit(50);
 
-  if (skill) q.eq('skill', skill);
-  if (region) q.eq('region', region);
+  if (skill) q = q.eq('skill', skill);
+  if (region) q = q.eq('region', region);
 
   const { data, error } = await q;
   if (error) {

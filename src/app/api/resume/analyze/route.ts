@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { analyzeResume } from '@/lib/resume-intelligence';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  if (auth instanceof Response) return auth;
   const supabase = createServiceClient();
 
   let body: any = {};
@@ -20,6 +23,9 @@ export async function POST(req: NextRequest) {
   if (!candidateId) {
     return NextResponse.json({ error: 'candidate_id is required' }, { status: 400 });
   }
+
+  const allowed = await canAccessCandidate(auth, candidateId, supabase);
+  if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   // Optional feature flag: engine.resume_intelligence
   try {

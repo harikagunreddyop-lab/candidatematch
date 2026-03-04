@@ -276,7 +276,7 @@ export function AtsBreakdownPanel({
           )}
 
           {/* Per-resume scores when available */}
-          {atsBreakdown?.per_resume_scores && atsBreakdown.per_resume_scores.length > 0 && (
+          {Array.isArray(atsBreakdown?.per_resume_scores) && atsBreakdown!.per_resume_scores.length > 0 && (
             <div className="rounded-lg bg-surface-100 dark:bg-surface-700/50 border border-surface-200 dark:border-surface-600 px-3 py-2.5">
               <p className="text-xs font-semibold text-surface-700 dark:text-surface-200 mb-2">Scores by resume</p>
               <ul className="space-y-1.5">

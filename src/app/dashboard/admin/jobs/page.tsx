@@ -608,7 +608,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
   );
 
   const matchingResult = result?.matching;
-  const matchingOk = matchingResult?.status === 'completed';
+  const matchingOk = matchingResult?.status === 'completed' || matchingResult?.status === 'done';
   const matchingStarted = matchingResult?.status === 'started';
 
   return (
@@ -672,7 +672,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             ) : matchingResult.status === 'skipped' ? (
               <p className="text-surface-500 dark:text-surface-400 text-xs">No new jobs were inserted — matching skipped</p>
             ) : (
-              <p className="text-red-600 dark:text-red-400 text-xs">⚠️ Matching failed: {matchingResult.error}</p>
+              <p className="text-red-600 dark:text-red-400 text-xs">⚠️ Matching failed: {matchingResult.error || matchingResult.message || 'Unknown error'}</p>
             )}
           </div>
         )}

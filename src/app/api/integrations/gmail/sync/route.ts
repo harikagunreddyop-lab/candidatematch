@@ -10,6 +10,54 @@ import { fetchRecentMessages, parseGmailMessage } from '@/lib/gmail-sync';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Infer application status from email subject/snippet keywords.
+ * Returns null if no clear signal is detected (to avoid false updates).
+ */
+function inferStatusFromEmail(subject: string, snippet: string): string | null {
+  const text = `${subject} ${snippet}`.toLowerCase();
+
+  const rejectionPatterns = [
+    /unfortunately.*not.*mov(e|ing) forward/,
+    /decided not to proceed/,
+    /after careful (review|consideration).*not/,
+    /position has been filled/,
+    /we('ve| have) decided to (go|move) (with|forward with) (another|other) candidate/,
+    /regret to inform/,
+    /not selected/,
+    /will not be (moving|proceeding)/,
+  ];
+  if (rejectionPatterns.some(p => p.test(text))) return 'rejected';
+
+  const offerPatterns = [
+    /pleased to (offer|extend)/,
+    /offer (letter|of employment)/,
+    /we('d| would) like to offer you/,
+    /congratulations.*offer/,
+    /formal offer/,
+  ];
+  if (offerPatterns.some(p => p.test(text))) return 'offer';
+
+  const interviewPatterns = [
+    /schedule.*(interview|call|chat)/,
+    /interview (invitation|scheduled|confirmation)/,
+    /like to (invite|schedule) you for (an |a )?(interview|call)/,
+    /next (round|step|stage).*interview/,
+    /technical (assessment|interview|screen)/,
+  ];
+  if (interviewPatterns.some(p => p.test(text))) return 'interview_scheduled';
+
+  const screenPatterns = [
+    /phone screen/,
+    /initial (call|screen|chat)/,
+    /recruiter (call|screen|chat)/,
+    /introductory call/,
+  ];
+  if (screenPatterns.some(p => p.test(text))) return 'screening';
+
+  return null;
+}
+
 async function getValidAccessToken(conn: { access_token: string; refresh_token: string | null; token_expires_at: string | null }) {
   const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : 0;
   if (Date.now() < expiresAt - 60_000) {
@@ -122,6 +170,19 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  // Auto-update application status based on email subject/snippet signals
+  let statusUpdates = 0;
+  for (const row of rows) {
+    if (!row.application_id) continue;
+    const inferred = inferStatusFromEmail(row.subject, row.snippet);
+    if (!inferred) continue;
+    const { error: upErr } = await service
+      .from('applications')
+      .update({ status: inferred, updated_at: new Date().toISOString() })
+      .eq('id', row.application_id);
+    if (!upErr) statusUpdates++;
+  }
+
   await service
     .from('gmail_connections')
     .update({ last_sync_at: new Date().toISOString() })
@@ -130,5 +191,6 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     synced: rows.length,
     matched: rows.filter(r => r.candidate_id).length,
+    status_updates: statusUpdates,
   });
 }

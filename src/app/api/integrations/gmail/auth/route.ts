@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabase } from '@/lib/supabase-server';
+import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import { getAuthUrl } from '@/lib/gmail-oauth';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +14,16 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.redirect(new URL('/auth/login', req.url));
+  }
+
+  const service = createServiceClient();
+  const { data: profile } = await service
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (!profile || !['admin', 'recruiter'].includes(profile.role)) {
+    return NextResponse.json({ error: 'Gmail integration is available for recruiters and admins only' }, { status: 403 });
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;

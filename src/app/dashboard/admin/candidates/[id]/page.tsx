@@ -56,33 +56,36 @@ export default function CandidateDetailPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [cand, mch, apps, rvs, urv, recs, asgn, savedRes, remRes] = await Promise.all([
-      supabase.from('candidates').select('*').eq('id', id).single(),
-      supabase.from('candidate_job_matches').select('*, job:jobs(*)').eq('candidate_id', id).order('fit_score', { ascending: false }),
-      supabase.from('applications').select('*, job:jobs(*), resume_version:resume_versions(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
-      supabase.from('resume_versions').select('*, job:jobs(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
-      supabase.from('candidate_resumes').select('*').eq('candidate_id', id).order('uploaded_at', { ascending: false }),
-      supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-      supabase.from('recruiter_candidate_assignments').select('*, recruiter:profiles!recruiter_id(id, name, email)').eq('candidate_id', id),
-      supabase.from('candidate_saved_jobs').select('job_id, created_at, job:jobs(id, title, company)').eq('candidate_id', id).order('created_at', { ascending: false }),
-      supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', id).order('remind_at'),
-    ]);
-    const c = cand.data;
-    let merged = c;
-    if (c?.user_id) {
-      const { data: profile } = await supabase.from('profiles').select('name, email, phone').eq('id', c.user_id).single();
-      merged = { ...c, full_name: profile?.name ?? c.full_name, email: profile?.email ?? c.email, phone: profile?.phone ?? c.phone };
+    try {
+      const [cand, mch, apps, rvs, urv, recs, asgn, savedRes, remRes] = await Promise.all([
+        supabase.from('candidates').select('*').eq('id', id).single(),
+        supabase.from('candidate_job_matches').select('*, job:jobs(*)').eq('candidate_id', id).order('fit_score', { ascending: false }),
+        supabase.from('applications').select('*, job:jobs(*), resume_version:resume_versions(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
+        supabase.from('resume_versions').select('*, job:jobs(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
+        supabase.from('candidate_resumes').select('*').eq('candidate_id', id).order('uploaded_at', { ascending: false }),
+        supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
+        supabase.from('recruiter_candidate_assignments').select('*, recruiter:profiles!recruiter_id(id, name, email)').eq('candidate_id', id),
+        supabase.from('candidate_saved_jobs').select('job_id, created_at, job:jobs(id, title, company)').eq('candidate_id', id).order('created_at', { ascending: false }),
+        supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', id).order('remind_at'),
+      ]);
+      const c = cand.data;
+      let merged = c;
+      if (c?.user_id) {
+        const { data: profile } = await supabase.from('profiles').select('name, email, phone').eq('id', c.user_id).single();
+        merged = { ...c, full_name: profile?.name ?? c.full_name, email: profile?.email ?? c.email, phone: profile?.phone ?? c.phone };
+      }
+      setCandidate(merged);
+      setMatches(mch.data || []);
+      setApplications(apps.data || []);
+      setResumes(rvs.data || []);
+      setUploadedResumes(urv.data || []);
+      setRecruiters(recs.data || []);
+      setAssignedRecruiters(asgn.data || []);
+      setSavedJobs(savedRes.data || []);
+      setReminders(remRes.data || []);
+    } finally {
+      setLoading(false);
     }
-    setCandidate(merged);
-    setMatches(mch.data || []);
-    setApplications(apps.data || []);
-    setResumes(rvs.data || []);
-    setUploadedResumes(urv.data || []);
-    setRecruiters(recs.data || []);
-    setAssignedRecruiters(asgn.data || []);
-    setSavedJobs(savedRes.data || []);
-    setReminders(remRes.data || []);
-    setLoading(false);
   }, [id]);
 
   useEffect(() => { load(); }, [load]);

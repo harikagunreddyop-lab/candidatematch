@@ -236,7 +236,6 @@ async function buildAtsDocx(candidate, bullets, job, generatedSummary) {
             children: [
               new TextRun({
                 text: line,
-                bold: true,
                 size: SZ_BODY,
                 font: 'Arial',
               }),

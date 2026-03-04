@@ -5,18 +5,18 @@ Production-ready AI-powered resume generation and job matching platform.
 ## Architecture
 
 ```
-┌──────────────────┐     ┌─────────────────┐     ┌──────────────┐
-│   Next.js App    │────▶│   Supabase      │     │  Apify       │
-│   (Vercel)       │     │   (Postgres +   │     │  (Scraping)  │
-│                  │     │    Auth +        │     └──────────────┘
-│  • Admin Panel   │     │    Storage)      │
+┌──────────────────┐     ┌─────────────────┐
+│   Next.js App    │────▶│   Supabase      │
+│   (Vercel)       │     │   (Postgres +   │
+│                  │     │    Auth +       │
+│  • Admin Panel   │     │    Storage)     │
 │  • Recruiter UX  │     └─────────────────┘
-│  • Candidate View│              ▲
-└────────┬─────────┘              │
-         │                        │
-         ▼                        │
-┌──────────────────┐              │
-│  Resume Worker   │──────────────┘
+│  • Candidate View│
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│  Resume Worker   │
 │  (Docker/VPS)    │
 │                  │
 │  • Claude API    │
@@ -31,7 +31,6 @@ Production-ready AI-powered resume generation and job matching platform.
 - Node.js 20+
 - Supabase project (free tier works)
 - Anthropic API key
-- Apify account (for job scraping)
 
 ### 2. Setup Supabase
 1. Create a new Supabase project
@@ -86,37 +85,31 @@ Or deploy to Cloud Run / Railway / Fly.io.
 
 ## Features
 
-### Phase 1: Job Scraping
-- Apify integration (LinkedIn + Indeed)
-- Automatic deduplication (hard + soft hash)
-- HTML stripping and normalization
-- Manual job entry support
-
-### Phase 2: Auto-Matching
+### Phase 1: Auto-Matching
 - Title-based filtering with fuzzy matching
 - Skill overlap scoring (0-100)
 - Top 50 matches per candidate
 - Hourly background runs
 
-### Phase 3: Recruiter UX
+### Phase 2: Recruiter UX
 - Candidate cards with skills/location
 - Tabbed detail view (Profile, Matches, Applications, Resumes)
 - One-click resume generation
 - Application tracking
 
-### Phase 4: Resume Generation
+### Phase 3: Resume Generation
 - Claude STAR-format bullet generation
 - LaTeX template injection
 - Tectonic PDF compilation
 - Version tracking per candidate/job
 
-### Phase 5: Apply Flow
+### Phase 4: Apply Flow
 - PDF download (signed URLs)
 - External job link
 - "Mark Applied" workflow
 - Status tracking
 
-### Phase 6: Candidate Dashboard
+### Phase 5: Candidate Dashboard
 - View-only applied jobs table
 - Status tracking
 - No download access

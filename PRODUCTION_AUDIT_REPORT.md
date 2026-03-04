@@ -26,7 +26,7 @@
 
 | Issue | Location | Fix |
 |-------|----------|-----|
-| **Verbose console.log in server code** | `src/lib/matching.ts`, `src/app/api/upload-jobs/route.ts`, `src/app/api/scraping/route.ts`, `src/lib/job-structure--extractor.ts` | Introduced `src/lib/logger.ts` with `log()`, `warn()`, and `error()`. Verbose logs use `log()`/`warn()` (no-op in production); operational errors use `error()`. |
+| **Verbose console.log in server code** | `src/lib/matching.ts`, `src/app/api/upload-jobs/route.ts`, `src/lib/job-structure--extractor.ts` | Introduced `src/lib/logger.ts` with `log()`, `warn()`, and `error()`. Verbose logs use `log()`/`warn()` (no-op in production); operational errors use `error()`. |
 | **Background matching console.log** | `src/app/api/candidate-resumes/route.ts` | Removed `runMatching(..., (m) => console.log(...))`; fire-and-forget now calls `runMatching(candidateId)` with no progress callback. |
 | **Resume worker logs** | `src/app/api/resumes/route.ts` | Worker start and worker-call failure logs are gated with `process.env.NODE_ENV === 'development'`. |
 | **Storage delete warn** | `src/app/api/candidate-resumes/route.ts` | Replaced `console.warn` with a short comment; delete is best-effort. |
@@ -41,7 +41,7 @@
 
 | Issue | Location | Fix |
 |-------|----------|-----|
-| **`catch (err: any)` and `err.message`** | `src/app/api/upload-jobs/route.ts`, `src/app/api/scraping/route.ts`, `src/lib/job-structure--extractor.ts` | Replaced with `catch (err: unknown)` and `err instanceof Error ? err.message : String(err)` so no unsafe `any` and no property access on `unknown`. |
+| **`catch (err: any)` and `err.message`** | `src/app/api/upload-jobs/route.ts`, `src/lib/job-structure--extractor.ts` | Replaced with `catch (err: unknown)` and `err instanceof Error ? err.message : String(err)` so no unsafe `any` and no property access on `unknown`. |
 
 ---
 
@@ -89,7 +89,7 @@
 1. **ESLint:** Run `npm run lint` and resolve any remaining rules (e.g. unused variables, consistent formatting) if you want a strict lint gate in CI.
 2. **Client-side console:** Some `console.error` calls remain in client components (e.g. admin/recruiter dashboard) for debugging. Consider removing or gating them for production if you want zero console output.
 3. **Invite / send-password-reset:** They still use `process.env.*` directly for Supabase URLs and keys. For consistency you could switch them to `getSupabasePublicEnv()` and `getSupabaseServiceKey()` so they fail fast with the same errors as the rest of the server stack.
-4. **Rate limiting:** API routes do not implement rate limiting. For production, consider adding rate limits (e.g. per IP or per user) on auth and heavy endpoints (scraping, matching, resume generation).
+4. **Rate limiting:** API routes do not implement rate limiting. For production, consider adding rate limits (e.g. per IP or per user) on auth and heavy endpoints (matching, resume generation).
 5. **Audit and reports:** As noted in `FUNCTIONALITY_FIXES_REPORT.md`, some admin pages (audit, reports, assignments) could surface load errors more clearly (e.g. "Failed to load" with retry) instead of showing an empty state.
 
 ---

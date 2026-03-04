@@ -148,9 +148,6 @@ export default function AdminDashboardClient({
           <p className="text-sm text-surface-500 mt-1">Pipeline · Candidates · Recruiters · Matches</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link href="/dashboard/admin/scraping" className="btn-secondary text-sm flex items-center gap-1.5">
-            <Briefcase size={14} /> Scrape Jobs
-          </Link>
           <button onClick={runMatching} disabled={matching} className="btn-primary text-sm flex items-center gap-1.5">
             {matching ? <><Spinner size={12} /> Matching...</> : <><Zap size={14} /> Run Matching</>}
           </button>

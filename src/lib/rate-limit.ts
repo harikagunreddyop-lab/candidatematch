@@ -29,7 +29,6 @@ export interface RateLimitConfig {
 const PRESETS: Record<string, RateLimitConfig> = {
   auth: { windowMs: 60000, max: 10, keyPrefix: 'auth' },
   api: { windowMs: 60000, max: 120, keyPrefix: 'api' },
-  scraping: { windowMs: 60000, max: 5, keyPrefix: 'scraping' },
 };
 
 export function checkRateLimit(

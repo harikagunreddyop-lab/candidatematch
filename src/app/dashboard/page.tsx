@@ -243,8 +243,8 @@ export default function AdminDashboard() {
           {recentJobs.length === 0 ? (
             <p className="p-5 text-sm text-surface-400">
               No jobs yet.{' '}
-              <Link href="/dashboard/admin/scraping" className="text-brand-600 hover:underline">
-                Run a scrape
+              <Link href="/dashboard/admin/jobs" className="text-brand-600 hover:underline">
+                Go to Jobs to add or upload
               </Link>
             </p>
           ) : (

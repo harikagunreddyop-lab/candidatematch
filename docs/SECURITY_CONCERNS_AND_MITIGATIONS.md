@@ -6,12 +6,12 @@ This document summarizes security findings and mitigations implemented for the C
 
 ### 1. Rate limiting
 
-**Concern:** No rate limiting on auth, API, or scraping endpoints allowed brute force and abuse.
+**Concern:** No rate limiting on auth or API endpoints allowed brute force and abuse.
 
 **Mitigation:**
 - Added `src/lib/rate-limit.ts` with in-memory rate limiting
-- Presets: `auth` (10/min), `api` (120/min), `scraping` (5/min)
-- Applied to: applications POST, ATS check, tailor-resume (GET/POST), invite, scraping POST, autofill-profile GET
+- Presets: `auth` (10/min), `api` (120/min)
+- Applied to: applications POST, ATS check, tailor-resume (GET/POST), invite, autofill-profile GET
 
 ### 2. CRON_SECRET timing attack
 

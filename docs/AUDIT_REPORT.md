@@ -75,7 +75,7 @@
 | **jobs/page.tsx** | Run matching, Add job, Upload jobs | Various | `POST /api/matches`, Supabase, `POST /api/upload-jobs` |
 | **assignments/page.tsx** | Assign | `handleAssign()` | Supabase |
 | **users/page.tsx** | Invite, Delete, Save, Send password reset | Various | `POST /api/invite`, `POST /api/admin/send-password-reset`, Supabase |
-| **scraping/page.tsx** | Start/Stop scrape, Clear jobs | Various | `POST /api/scraping` |
+| *(removed)* `scraping/page.tsx` | Start/Stop scrape, Clear jobs | Feature removed (use Admin Jobs + upload instead) | — |
 | **settings/page.tsx** | Save, Rebuild calibration | `save()`, `rebuild()` | Supabase, `POST /api/admin/calibration/rebuild` |
 | **compliance/page.tsx** | Approve/Reject/Delete | Various | `POST /api/compliance` |
 

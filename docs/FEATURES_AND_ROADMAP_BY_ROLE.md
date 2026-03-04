@@ -85,7 +85,7 @@
 | **Calibration Rebuild** | Rebuild calibration curves |
 | **Messages** | System-wide messaging |
 | **Settings** | App settings (saved jobs, reminders, export toggles); **Matching engine controls** |
-| **Scraping** | Job scraping configuration (GET, POST, DELETE) |
+| **Scraping** | **Removed** — jobs now come from ingest connectors, CSV/Excel upload, and manual entry |
 | **Audit** | Decision audit trail |
 | **Send Password Reset** | Admin can trigger password reset email for users |
 | **Notification Bell** | Unread messages count in nav |
@@ -234,7 +234,7 @@
 | `POST /api/invite` | Invite user |
 | `POST /api/invite/accept-invite` | Accept invite |
 | `POST /api/upload-jobs` | Bulk upload jobs |
-| `GET/POST/DELETE /api/scraping` | Job scraping |
+| *(removed)* `GET/POST/DELETE /api/scraping` | Job scraping (feature removed; use upload-jobs + ingest connectors) |
 | `GET/POST /api/hide-job` | Hide job from candidate |
 | `GET /api/feature-flags` | List feature flags |
 | `GET/PATCH /api/feature-flags/user` | User feature flags |

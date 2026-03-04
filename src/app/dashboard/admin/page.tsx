@@ -324,8 +324,8 @@ export default function AdminDashboard() {
             <button onClick={() => load()} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
               <RefreshCw size={18} className="sm:w-5 sm:h-5" />
             </button>
-            <Link href="/dashboard/admin/scraping" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
-              <Zap size={16} /> Scrape jobs
+            <Link href="/dashboard/admin/jobs" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+              <Briefcase size={16} /> Jobs
             </Link>
             <Link href="/dashboard/admin/reports" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
               Reports
@@ -399,14 +399,7 @@ export default function AdminDashboard() {
             viewAllLabel="View all"
             iconBg="bg-violet-500/10 dark:bg-violet-500/20"
             icon={<Briefcase size={18} className="text-violet-600 dark:text-violet-400" />}
-            emptyMessage={
-              <>
-                No jobs yet.{' '}
-                <Link href="/dashboard/admin/scraping" className="text-brand-600 dark:text-brand-400 hover:underline font-medium">
-                  Run a scrape
-                </Link>
-              </>
-            }
+            emptyMessage="No jobs yet. Use the Jobs page to add or upload roles."
             isEmpty={recentJobs.length === 0}
           >
             {recentJobs.map((job) => (

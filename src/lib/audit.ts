@@ -8,7 +8,6 @@ export type AuditAction =
   | 'candidate.approve'
   | 'candidate.reject'
   | 'matching.run'
-  | 'scraping.run'
   | 'settings.update';
 
 export async function logAudit(params: {

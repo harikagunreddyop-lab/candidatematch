@@ -13,7 +13,6 @@ These API routes use the **service client only** and do **not** verify the calle
 |-------|---------|------|
 | `POST/ PATCH /api/applications` | Create/update applications | Anyone can create or change applications |
 | `GET/ POST /api/matches` | Run/read matching | Anyone can trigger matching or read results |
-| `GET/ POST /api/scraping` | Run scrapes, read history | Anyone can trigger scrapes |
 | `POST /api/upload-jobs` | Upload jobs CSV | Anyone can upload jobs |
 | `POST /api/candidate-brief` | Generate brief for `candidate_id` | Anyone can request briefs for any candidate |
 | `GET /api/candidate-resumes` | Resumes for candidate | Should be restricted to candidate/recruiter/admin |
@@ -24,7 +23,7 @@ These API routes use the **service client only** and do **not** verify the calle
 
 - **applications:** Allow only authenticated user; restrict create/update by role (candidate for own apply, recruiter/admin for status/notes).
 - **matches:** Allow only admin (or recruiter for assigned candidates) for POST; GET by role.
-- **scraping, upload-jobs:** Admin only.
+| *(removed)* `GET/ POST /api/scraping` | Run scrapes, read history | Feature removed (use ingest + upload-jobs instead) |
 - **candidate-brief, candidate-resumes, resumes:** Ensure caller is the candidate, or recruiter/admin for that candidate.
 - **recruiter-ai:** Recruiter or admin only.
 
@@ -96,7 +95,7 @@ When Supabase (or a fetch) fails, these pages do not show a clear error message;
 
 | # | Fix | Priority |
 |---|-----|----------|
-| 1 | Add auth (and role where needed) to: applications, matches, scraping, upload-jobs, candidate-brief, candidate-resumes, resumes, recruiter-ai | **High** |
+| 1 | Add auth (and role where needed) to: applications, matches, upload-jobs, candidate-brief, candidate-resumes, resumes, recruiter-ai | **High** |
 | 2 | Add “Pipeline” to recruiter sidebar in `DashboardLayout.tsx` | **Medium** |
 | 3 | Add user-visible error state and message on load failure: Audit, Reports, Assignments, Recruiter Pipeline, Admin Messages | **Medium** |
 | 4 | In middleware, handle missing profile/role (redirect + optional message page) | **Medium** |
@@ -139,7 +138,7 @@ You can tackle these in the order above; start with §1 (API auth) and §2 (Pipe
   - In production, ensure the worker is started (e.g. systemd, Docker, or separate Node process). The app does not start the worker in production.
 
 - **API routes still unauthenticated (see §1)**  
-  - The report’s §1 still applies: several routes (matches, scraping, upload-jobs, etc.) should enforce auth/role if not already done.
+  - The report’s §1 still applies: several routes (matches, upload-jobs, etc.) should enforce auth/role if not already done.
 
 - **Recruiter “Generate Resume” without access**  
   - If a recruiter does not have “Resume generation allowed”, the button is disabled with tooltip “Ask an admin to grant resume generation access”. The API also returns 403 with a clear message.

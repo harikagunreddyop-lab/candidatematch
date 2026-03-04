@@ -2,7 +2,7 @@
 
 This app has two parts:
 
-1. **Next.js app** – dashboard, API routes, auth (Supabase), matching (Anthropic), scraping (Apify).
+1. **Next.js app** – dashboard, API routes, auth (Supabase), matching (Anthropic).
 2. **Resume worker** – separate Node service (port 3001) used for resume parsing/generation. It is called by the Next.js API; it must be deployed and reachable via `RESUME_WORKER_URL`.
 
 ---
@@ -23,7 +23,6 @@ Best balance of simplicity, DX, and cost for most teams.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | From Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only; keep secret |
 | `ANTHROPIC_API_KEY` | Yes | For matching |
-| `APIFY_API_TOKEN` | If using scraping | From Apify |
 | `RESUME_WORKER_URL` | Yes | Full URL of your deployed worker (e.g. `https://your-worker.railway.app`) |
 | `NEXT_PUBLIC_APP_URL` | Yes | Your app URL (e.g. `https://master.d1zctiy8vgnlrr.amplifyapp.com`) |
 

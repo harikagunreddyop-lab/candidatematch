@@ -88,5 +88,9 @@ INSERT INTO public.feature_flags (key, value, role) VALUES
   ('elite.calibration',        '"false"'::jsonb, NULL),
   ('elite.variants',           '"false"'::jsonb, NULL),
   ('elite.outreach_automation','"false"'::jsonb, NULL),
-  ('elite.enterprise_governance','"false"'::jsonb, NULL)
+  ('elite.enterprise_governance','"false"'::jsonb, NULL),
+  ('ats.v3.enabled',           '"false"'::jsonb, NULL),
+  ('matching.v3.enabled',      '"false"'::jsonb, NULL),
+  ('matching.v3.max_matches_per_candidate','500'::jsonb, NULL),
+  ('elite.rerank.topN',        '50'::jsonb, NULL)
 ON CONFLICT (key) DO NOTHING;

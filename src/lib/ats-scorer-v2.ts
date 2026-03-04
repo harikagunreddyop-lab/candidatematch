@@ -20,10 +20,17 @@ import type { EvidenceSpan } from '@/lib/ats-engine';
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 export const ATS_V2 = {
-  /** Must-skill evidence threshold: met only if Credit ≥ 0.55 */
-  theta_must: 0.55,
-  /** Allowed missing must-haves (0 = best quality) */
-  allowed_missing_must: 0,
+  /**
+   * Must-skill evidence threshold: met only if Credit ≥ 0.50.
+   * Slightly relaxed so strong-but-not-perfect evidence is still rewarded.
+   */
+  theta_must: 0.50,
+  /**
+   * Allowed missing must-haves before the gate blocks.
+   * We now tolerate 1 missing must-have so otherwise excellent candidates
+   * don't collapse to "gate blocked" for a single keyword.
+   */
+  allowed_missing_must: 1,
   /** Responsibility sim below this = unmatched */
   sim_min: 0.55,
   /** Strong responsibility match */
@@ -43,8 +50,16 @@ const TAU_BY_ROLE: Record<string, number> = {
 
 /** Universal v1 weights */
 export const W_V2 = {
-  parse: 0.08, must: 0.28, nice: 0.08, resp: 0.24, impact: 0.14,
-  scope: 0.08, recent: 0.06, domain: 0.02, risk: 0.02,
+  // Slightly emphasize must + responsibilities, and give domain more weight.
+  parse: 0.06,
+  must: 0.30,
+  nice: 0.06,
+  resp: 0.26,
+  impact: 0.14,
+  scope: 0.07,
+  recent: 0.05,
+  domain: 0.04,
+  risk: 0.02,
 } as const;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -309,7 +324,8 @@ function C_must(
   }
   const covM = sum / mustSkills.length;
   const missM = missing.length;
-  const penM = Math.min(0.6, missM * 0.18);
+  // Softer penalty curve so partially-met must-haves aren't driven to near-zero.
+  const penM = Math.min(0.4, missM * 0.12);
   const score = 100 * clip(covM - penM, 0, 1);
   return { score, matched, missing };
 }
@@ -643,13 +659,14 @@ export function computeATSScoreV2(
 
   raw = Math.round(clip(raw, 0, 100));
 
-  // Policy tweak: if we have real resume evidence but the weighted score collapses to 0,
-  // clamp to a small floor so candidates don't see a hard 0.
+  // Policy tweak: if we have real resume evidence but the weighted score collapses
+  // to a very low number, clamp to a softer floor (40) so clearly-qualified
+  // candidates don't all appear as "20" while still distinguishing strong fits.
   const hasEvidence =
     (input.resumeText && input.resumeText.trim().length > 200) ||
     input.experience.length > 0;
-  if (hasEvidence && raw === 0) {
-    raw = 20;
+  if (hasEvidence && raw < 40) {
+    raw = 40;
   }
 
   const band = raw >= 90 ? 'elite' : raw >= 80 ? 'strong' : raw >= 70 ? 'possible' : 'weak';

@@ -27,32 +27,39 @@ export default function JobsPage() {
   const sourceFilterRef = useRef(sourceFilter);
   useEffect(() => { sourceFilterRef.current = sourceFilter; setPage(0); }, [sourceFilter]);
 
+  const loadingRef = useRef(false);
   const load = useCallback(async (silent = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     const currentPage = pageRef.current;
     if (!silent) setLoading(true);
     setError(null);
 
-    const [listRes, countRes] = await Promise.all([
-      (() => {
-        let q = supabase.from('jobs').select('*').order('scraped_at', { ascending: false });
-        if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
-        return q.range(currentPage * 10, (currentPage + 1) * 10 - 1);
-      })(),
-      (() => {
-        let q = supabase.from('jobs').select('id', { count: 'exact', head: true });
-        if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
-        return q;
-      })(),
-    ]);
+    try {
+      const [listRes, countRes] = await Promise.all([
+        (() => {
+          let q = supabase.from('jobs').select('*').order('scraped_at', { ascending: false });
+          if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
+          return q.range(currentPage * 10, (currentPage + 1) * 10 - 1);
+        })(),
+        (() => {
+          let q = supabase.from('jobs').select('id', { count: 'exact', head: true });
+          if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
+          return q;
+        })(),
+      ]);
 
-    if (listRes.error) {
-      setError(listRes.error.message);
-    } else {
-      setJobs(listRes.data || []);
-      setTotalCount(countRes.count || 0);
-      setLastRefreshed(new Date());
+      if (listRes.error) {
+        setError(listRes.error.message);
+      } else {
+        setJobs(listRes.data || []);
+        setTotalCount(countRes.count || 0);
+        setLastRefreshed(new Date());
+      }
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
   }, [supabase]);
 
   useEffect(() => { load(); }, [page, load]);
@@ -61,6 +68,15 @@ export default function JobsPage() {
     const interval = setInterval(() => load(true), 10000);
     return () => clearInterval(interval);
   }, [load]);
+
+  // Realtime: stay in sync when jobs are ingested or updated
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-jobs-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [supabase, load]);
 
   // ── Run Matching — reads SSE stream from /api/matches ─────────────────────
   const runMatching = async () => {
@@ -189,6 +205,9 @@ export default function JobsPage() {
           className="input text-sm w-full sm:w-36 shrink-0"
         >
           <option value="all">All sources</option>
+          <option value="greenhouse">Greenhouse</option>
+          <option value="lever">Lever</option>
+          <option value="ashby">Ashby</option>
           <option value="linkedin">LinkedIn</option>
           <option value="indeed">Indeed</option>
           <option value="manual">Manual</option>
@@ -309,6 +328,7 @@ function AddJobForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => 
     const { error: err } = await supabase.from('jobs').insert({
       ...f,
       source: 'manual',
+      is_active: true,
       jd_raw: f.jd_clean,
       dedupe_hash: btoa(encodeURIComponent(f.title + f.company + f.location)).slice(0, 32),
     });

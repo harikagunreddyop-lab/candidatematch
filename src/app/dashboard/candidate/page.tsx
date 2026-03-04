@@ -172,7 +172,10 @@ export default function CandidateDashboard() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
+  const loadingRef = useRef(false);
   const load = async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     setLoadError(null);
     try {
@@ -225,7 +228,7 @@ export default function CandidateDashboard() {
       const lastSeen = cand.last_seen_matches_at ? new Date(cand.last_seen_matches_at).getTime() : 0;
       const newCount = mchData.filter((m: any) => new Date(m.matched_at || m.created_at).getTime() > lastSeen).length;
       setNewMatchesCount(newCount);
-      await supabase.from('candidates').update({ last_seen_matches_at: new Date().toISOString() }).eq('id', cand.id);
+      // Only update last_seen when user views matches tab (see effect below) to avoid unnecessary writes and preserve "new" badge
 
       const tzOffset = new Date().getTimezoneOffset();
       const usageRes = await fetch(`/api/applications/usage?tz_offset=${-tzOffset}`);
@@ -236,6 +239,7 @@ export default function CandidateDashboard() {
     } catch (e: any) {
       setLoadError(e.message || 'Failed to load dashboard');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   };
@@ -248,6 +252,15 @@ export default function CandidateDashboard() {
     }
     if (!saveJobsAllowed) setShowSavedOnly(false);
   }, [tab, saveJobsAllowed, remindersAllowed]);
+
+  // Update last_seen_matches_at when user views matches tab so "new" badge resets
+  useEffect(() => {
+    if (tab === 'matches' && candidate?.id) {
+      supabase.from('candidates').update({ last_seen_matches_at: new Date().toISOString() }).eq('id', candidate.id).then(() => {
+        setNewMatchesCount(0);
+      });
+    }
+  }, [tab, candidate?.id, supabase]);
 
   useEffect(() => {
     if (!candidate) return;
@@ -670,7 +683,14 @@ export default function CandidateDashboard() {
       open_to_remote: profileForm.open_to_remote ?? true,
     }).eq('id', candidate.id);
     if (error) setProfileError(error.message);
-    else { setEditingProfile(false); await load(); }
+    else {
+      // Keep profiles.name in sync with candidates.full_name
+      if (candidate.user_id && profileForm.full_name != null) {
+        await supabase.from('profiles').update({ name: String(profileForm.full_name).trim() || '', updated_at: new Date().toISOString() }).eq('id', candidate.user_id);
+      }
+      setEditingProfile(false);
+      await load();
+    }
     setSavingProfile(false);
   };
 

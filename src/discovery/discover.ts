@@ -11,7 +11,9 @@ interface CompanyRow {
 }
 
 interface DiscoveryOptions {
-  csvPath: string;
+  csvPath?: string;
+  csvUrl?: string;
+  csvContent?: string;
   limit?: number;
 }
 
@@ -22,9 +24,7 @@ export interface DiscoverySummary {
   connectors_created: number;
 }
 
-function parseCsv(csvPath: string, limit?: number): CompanyRow[] {
-  const resolved = path.isAbsolute(csvPath) ? csvPath : path.join(process.cwd(), csvPath);
-  const raw = fs.readFileSync(resolved, 'utf8');
+function parseCsvFromString(raw: string, limit?: number): CompanyRow[] {
   const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (!lines.length) return [];
 
@@ -43,6 +43,31 @@ function parseCsv(csvPath: string, limit?: number): CompanyRow[] {
     rows.push({ company_name: company, website });
   }
   return rows;
+}
+
+async function loadCsvRows(options: DiscoveryOptions): Promise<CompanyRow[]> {
+  if (options.csvContent && options.csvContent.trim()) {
+    return parseCsvFromString(options.csvContent, options.limit);
+  }
+  if (options.csvUrl && options.csvUrl.trim()) {
+    const res = await fetch(options.csvUrl, { method: 'GET', redirect: 'follow' });
+    if (!res.ok) throw new Error(`Failed to fetch CSV from URL: ${res.status} ${res.statusText}`);
+    const raw = await res.text();
+    return parseCsvFromString(raw, options.limit);
+  }
+  if (options.csvPath && options.csvPath.trim()) {
+    const resolved = path.isAbsolute(options.csvPath)
+      ? options.csvPath
+      : path.join(process.cwd(), options.csvPath);
+    if (!fs.existsSync(resolved)) {
+      throw new Error(
+        `CSV file not found: ${resolved}. Use CSV upload or a CSV URL instead when running in serverless.`
+      );
+    }
+    const raw = fs.readFileSync(resolved, 'utf8');
+    return parseCsvFromString(raw, options.limit);
+  }
+  throw new Error('Provide csvPath, csvUrl, or csvContent');
 }
 
 function normalizeWebsite(website: string): string {
@@ -135,7 +160,9 @@ async function processCompany(
         last_error: v.error ?? null,
       });
       if (discErr) {
-        logError('[DISCOVERY] Failed to insert board_discoveries', discErr.message);
+        const cause = (discErr as Error & { cause?: unknown })?.cause;
+        const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
+        logError('[DISCOVERY] Failed to insert board_discoveries', discErr.message + causeMsg, discErr);
       }
 
       if (isValid) {
@@ -151,7 +178,9 @@ async function processCompany(
             { onConflict: 'provider,source_org' }
           );
         if (connErr) {
-          logError('[DISCOVERY] Failed to upsert connector', connErr.message);
+          const cause = (connErr as Error & { cause?: unknown })?.cause;
+          const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
+          logError('[DISCOVERY] Failed to upsert connector', connErr.message + causeMsg, connErr);
         } else {
           connectors += 1;
         }
@@ -171,7 +200,9 @@ async function processCompany(
       last_error: lastError ?? 'No provider patterns found',
     });
     if (discErr) {
-      logError('[DISCOVERY] Failed to insert no-match board_discoveries', discErr.message);
+      const cause = (discErr as Error & { cause?: unknown })?.cause;
+      const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
+      logError('[DISCOVERY] Failed to insert no-match board_discoveries', discErr.message + causeMsg, discErr);
     }
   }
 
@@ -198,7 +229,7 @@ async function runWithConcurrency<T>(items: T[], limit: number, fn: (item: T, in
 }
 
 export async function runDiscovery(options: DiscoveryOptions): Promise<DiscoverySummary> {
-  const rows = parseCsv(options.csvPath, options.limit);
+  const rows = await loadCsvRows(options);
   const supabase = createServiceClient();
 
   let attempted = 0;

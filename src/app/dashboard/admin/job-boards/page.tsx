@@ -53,6 +53,8 @@ export default function JobBoardsPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const [csvPath, setCsvPath] = useState('./data/companies.csv');
+  const [csvUrl, setCsvUrl] = useState('');
+  const [csvFileContent, setCsvFileContent] = useState<string | null>(null);
   const [limit, setLimit] = useState<number | undefined>(2000);
   const [runningDiscovery, setRunningDiscovery] = useState(false);
   const [discoveryResult, setDiscoveryResult] = useState<DiscoverySummary | null>(null);
@@ -103,7 +105,7 @@ export default function JobBoardsPage() {
         throw new Error(data.error || 'Sync failed');
       }
       setSyncMsg(
-        `Synced ${data.provider}/${data.sourceOrg} – fetched ${data.fetched ?? 0}, upserted ${data.upserted ?? 0}, closed ${data.closed ?? 0}`
+        `Synced ${data.provider}/${data.sourceOrg} – fetched ${data.fetched ?? 0}, upserted ${data.upserted ?? 0}, closed ${data.closed ?? 0}, promoted ${data.promoted ?? 0} to jobs`
       );
     } catch (err: any) {
       setSyncMsg(`Sync failed: ${err?.message || String(err)}`);
@@ -113,15 +115,19 @@ export default function JobBoardsPage() {
   };
 
   const runDiscovery = async () => {
-    if (!csvPath.trim()) {
-      setDiscoveryError('csvPath is required');
+    const hasInput = (csvPath && csvPath.trim()) || (csvUrl && csvUrl.trim()) || csvFileContent;
+    if (!hasInput) {
+      setDiscoveryError('Provide a CSV path, URL, or upload a file');
       return;
     }
     setRunningDiscovery(true);
     setDiscoveryError(null);
     setDiscoveryResult(null);
     try {
-      const body: { csvPath: string; limit?: number } = { csvPath: csvPath.trim() };
+      const body: { csvPath?: string; csvUrl?: string; csvContent?: string; limit?: number } = {};
+      if (csvFileContent) body.csvContent = csvFileContent;
+      else if (csvUrl.trim()) body.csvUrl = csvUrl.trim();
+      else body.csvPath = csvPath.trim();
       if (limit && limit > 0) body.limit = limit;
       const res = await fetch('/api/discovery/run', {
         method: 'POST',
@@ -368,14 +374,46 @@ export default function JobBoardsPage() {
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="label text-xs">CSV path</label>
+                <label className="label text-xs">CSV path (local)</label>
                 <input
                   className="input text-xs"
                   value={csvPath}
-                  onChange={(e) => setCsvPath(e.target.value)}
+                  onChange={(e) => { setCsvPath(e.target.value); setCsvFileContent(null); }}
                   placeholder="./data/companies.csv"
                 />
               </div>
+              <div>
+                <label className="label text-xs">CSV URL (serverless)</label>
+                <input
+                  className="input text-xs"
+                  value={csvUrl}
+                  onChange={(e) => { setCsvUrl(e.target.value); setCsvFileContent(null); }}
+                  placeholder="https://example.com/companies.csv"
+                />
+              </div>
+              <div>
+                <label className="label text-xs">Or upload CSV</label>
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  className="block w-full text-xs text-surface-500 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-medium file:bg-primary-100 file:text-primary-700 dark:file:bg-primary-900/30 dark:file:text-primary-300"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) { setCsvFileContent(null); return; }
+                    const r = new FileReader();
+                    r.onload = () => { setCsvFileContent((r.result as string) || null); };
+                    r.readAsText(f);
+                  }}
+                />
+                {csvFileContent && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1">
+                    Loaded {Math.min(csvFileContent.split(/\r?\n/).length - 1, 9999)}+ rows
+                  </p>
+                )}
+              </div>
+              <p className="text-[10px] text-surface-400">
+                Upload or URL works in serverless. Path only works when file exists on server.
+              </p>
               <div>
                 <label className="label text-xs">Limit (optional)</label>
                 <input

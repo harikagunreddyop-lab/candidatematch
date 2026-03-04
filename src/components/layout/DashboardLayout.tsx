@@ -37,6 +37,7 @@ const adminNav: NavItem[] = [
 
 const recruiterNav: NavItem[] = [
   { label: 'Dashboard',    href: '/dashboard/recruiter',              icon: <LayoutDashboard size={18} /> },
+  { label: 'Job search',   href: '/dashboard/recruiter/jobs',         icon: <Briefcase size={18} /> },
   { label: 'Candidates',   href: '/dashboard/recruiter/candidates',   icon: <Users size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
   { label: 'Pipeline',     href: '/dashboard/recruiter/pipeline',     icon: <Cpu size={18} /> },
@@ -47,6 +48,7 @@ const recruiterNav: NavItem[] = [
 
 const candidateNav: NavItem[] = [
   { label: 'Dashboard',       href: '/dashboard/candidate',              icon: <LayoutDashboard size={18} /> },
+  { label: 'Job search',      href: '/dashboard/candidate/jobs',         icon: <Briefcase size={18} /> },
   { label: 'Skill report',    href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
   { label: 'Interviews',      href: '/dashboard/candidate/interviews',   icon: <Calendar size={18} /> },
   { label: 'My profile',      href: '/dashboard/candidate/profile',      icon: <UserCircle size={18} /> },

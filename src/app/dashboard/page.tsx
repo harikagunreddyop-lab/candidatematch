@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { Spinner, StatusBadge } from '@/components/ui';
@@ -38,9 +38,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
+  const loadingRef = useRef(false);
   const load = useCallback(async (silent = false) => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     if (!silent) setLoading(true);
 
+    try {
     const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
 
     const { data: cProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
@@ -92,7 +96,10 @@ export default function AdminDashboard() {
     setRecentJobs(jobsList.data || []);
     setRecentCandidates(candList.data || []);
     setLastRefreshed(new Date());
-    setLoading(false);
+    } finally {
+      loadingRef.current = false;
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);

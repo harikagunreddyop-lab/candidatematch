@@ -5,7 +5,9 @@
 
 import { createServiceClient } from '@/lib/supabase-server';
 import { log, error as logError } from '@/lib/logger';
+import { precomputeJobRequirements } from '@/lib/matching';
 import { adapters, type Connector } from './adapters';
+import { promoteIngestJobs, deactivateClosedJobs } from './promote';
 
 export interface SyncResult {
   connectorId: string;
@@ -14,6 +16,7 @@ export interface SyncResult {
   fetched: number;
   upserted: number;
   closed: number;
+  promoted: number;
   durationMs: number;
   error?: string;
 }
@@ -47,6 +50,7 @@ export async function syncConnector(connectorId: string): Promise<SyncResult> {
     fetched: 0,
     upserted: 0,
     closed: 0,
+    promoted: 0,
     durationMs: 0,
   };
 
@@ -102,21 +106,34 @@ export async function syncConnector(connectorId: string): Promise<SyncResult> {
 
     const { data: openJobs } = await supabase
       .from('ingest_jobs')
-      .select('source_job_id')
+      .select('id, source_job_id')
       .eq('provider', connector.provider)
       .eq('source_org', connector.source_org)
       .eq('status', 'open');
 
+    const openIngestJobIds = (openJobs ?? []).map((r: { id: string }) => r.id);
+    const { promoted: promotedCount, newJobIds } = await promoteIngestJobs(supabase, openIngestJobIds);
+    result.promoted = promotedCount;
+    if (newJobIds.length > 0) {
+      try {
+        await precomputeJobRequirements(supabase, newJobIds);
+      } catch (e) {
+        logError('[INGEST] precomputeJobRequirements failed:', e);
+      }
+    }
+
     const toClose = (openJobs ?? []).filter((r: { source_job_id: string }) => !seenIds.has(r.source_job_id));
+    const closedIngestJobIds = toClose.map((r: { id: string }) => r.id);
     if (toClose.length > 0) {
-      const ids = toClose.map((r: { source_job_id: string }) => r.source_job_id);
+      const sourceJobIds = toClose.map((r: { source_job_id: string }) => r.source_job_id);
       await supabase
         .from('ingest_jobs')
         .update({ status: 'closed' })
         .eq('provider', connector.provider)
         .eq('source_org', connector.source_org)
-        .in('source_job_id', ids);
+        .in('source_job_id', sourceJobIds);
       result.closed = toClose.length;
+      await deactivateClosedJobs(supabase, closedIngestJobIds);
     }
 
     await supabase
@@ -129,7 +146,7 @@ export async function syncConnector(connectorId: string): Promise<SyncResult> {
 
     result.durationMs = Date.now() - startedAt;
     log(
-      `[INGEST] ${connector.provider}/${connector.source_org}: fetched=${result.fetched} upserted=${result.upserted} closed=${result.closed} in ${result.durationMs}ms`
+      `[INGEST] ${connector.provider}/${connector.source_org}: fetched=${result.fetched} upserted=${result.upserted} closed=${result.closed} promoted=${result.promoted} in ${result.durationMs}ms`
     );
     return result;
   } catch (err: unknown) {

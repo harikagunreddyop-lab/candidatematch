@@ -45,7 +45,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
 
 // ─── Toast Container ─────────────────────────────────────────────────────────
 export function ToastContainer({ toasts, dismiss }: {
-  toasts: { id: string; message: string; type: 'success' | 'error' | 'info' }[];
+  toasts: { id: string; message: string; type: 'success' | 'error' | 'info'; undo?: () => void }[];
   dismiss: (id: string) => void;
 }) {
   return (
@@ -61,7 +61,12 @@ export function ToastContainer({ toasts, dismiss }: {
           {t.type === 'error' && <AlertCircle size={16} />}
           {t.type === 'info' && <Info size={16} />}
           <span className="text-sm font-medium flex-1">{t.message}</span>
-          <button onClick={() => dismiss(t.id)} className="p-0.5 hover:opacity-70"><X size={14} /></button>
+          {t.undo && (
+            <button onClick={() => { t.undo?.(); dismiss(t.id); }} className="text-xs font-semibold underline hover:no-underline shrink-0">
+              Undo
+            </button>
+          )}
+          <button onClick={() => dismiss(t.id)} className="p-0.5 hover:opacity-70 shrink-0" aria-label="Dismiss"><X size={14} /></button>
         </div>
       ))}
     </div>
@@ -179,6 +184,37 @@ export function CardSkeleton() {
         <Skeleton className="h-8 w-20" />
         <Skeleton className="h-8 w-24" />
       </div>
+    </div>
+  );
+}
+
+/** Skeleton for a match card in the matches tab */
+export function MatchCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-5 space-y-3">
+      <Skeleton className="h-5 w-4/5" />
+      <div className="flex gap-2 flex-wrap">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-4 w-16" />
+      </div>
+      <div className="flex gap-2 pt-1">
+        <Skeleton className="h-8 w-20" />
+        <Skeleton className="h-8 w-24" />
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton for an application row in the applications tab */
+export function ApplicationRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4 px-5 py-4">
+      <div className="flex-1 min-w-0 space-y-2">
+        <Skeleton className="h-4 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
+      </div>
+      <Skeleton className="h-6 w-20 rounded-md" />
     </div>
   );
 }

@@ -60,10 +60,12 @@ export default function RecruiterCandidatesPage() {
   }, [load, supabase]);
 
   const filtered = candidates.filter(c => {
+    const q = search.toLowerCase();
     const matchSearch =
-      c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.primary_title?.toLowerCase().includes(search.toLowerCase()) ||
-      c.location?.toLowerCase().includes(search.toLowerCase());
+      c.full_name?.toLowerCase().includes(q) ||
+      c.primary_title?.toLowerCase().includes(q) ||
+      c.location?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q);
     const matchFilter = filter === 'all' || (filter === 'active' && c.active);
     return matchSearch && matchFilter;
   });
@@ -76,7 +78,7 @@ export default function RecruiterCandidatesPage() {
       </div>
 
       <div className="flex gap-3 flex-wrap">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search candidates..." />
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, email, title..." />
         <select value={filter} onChange={e => setFilter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Filter">
           <option value="all">All candidates</option>
           <option value="active">Active</option>

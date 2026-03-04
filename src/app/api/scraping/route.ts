@@ -6,6 +6,7 @@ import { stripHtml } from '@/utils/helpers';
 import crypto from 'crypto';
 import { precomputeJobRequirements } from '@/lib/matching';
 import { log as devLog, error as logError, warn as devWarn } from '@/lib/logger';
+import { isValidJobUrl } from '@/lib/job-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -361,12 +362,6 @@ async function pollUntilDone(runId: string, datasetId: string): Promise<any[]> {
     }
   }
   throw new Error('Apify run timed out after 6 minutes');
-}
-
-/** Require valid http(s) URL for job apply links. Jobs without valid URL are skipped. */
-function isValidJobUrl(url: string | null | undefined): boolean {
-  const u = typeof url === 'string' ? url.trim() : '';
-  return !!(u && (u.startsWith('http://') || u.startsWith('https://')));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
+import { CardSkeleton, Skeleton, MatchCardSkeleton, ApplicationRowSkeleton, EmptyState, SearchInput, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
 import {
   ClipboardList, Briefcase, FileText, User, Upload, Download,
@@ -14,6 +14,7 @@ import {
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 import { useFeatureFlags } from '@/hooks';
+import { getApplyUrl } from '@/lib/job-url';
 
 interface CandidateResume {
   id: string;
@@ -26,19 +27,6 @@ interface CandidateResume {
 
 const MAX_RESUMES = 5;
 const CANDIDATE_DAILY_APPLY_LIMIT = 40;
-
-/** Returns a valid apply URL: job.url if valid, else LinkedIn job search fallback from title+company */
-function getApplyUrl(job: { url?: string | null; title?: string; company?: string } | null): string | null {
-  const u = typeof job?.url === 'string' ? job.url.trim() : '';
-  if (u && (u.startsWith('http://') || u.startsWith('https://'))) return u;
-  const title = (job?.title || '').trim();
-  const company = (job?.company || '').trim();
-  if (title || company) {
-    const q = [title, company].filter(Boolean).join(' ');
-    if (q) return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
-  }
-  return null;
-}
 
 function formatBytes(bytes: number): string {
   if (!bytes) return '';
@@ -104,6 +92,9 @@ export default function CandidateDashboard() {
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [matchDateFilter, setMatchDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
   const [jobDateFilter, setJobDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
+  const [matchSearch, setMatchSearch] = useState('');
+  const [atsScoreFilter, setAtsScoreFilter] = useState<'all' | '70' | '80'>('all');
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
   const [notLinked, setNotLinked] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -683,7 +674,32 @@ export default function CandidateDashboard() {
     setSavingProfile(false);
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 space-y-3">
+          <CardSkeleton />
+          <CardSkeleton />
+        </div>
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden">
+            <div className="px-4 py-3 border-b border-surface-100 dark:border-surface-700">
+              <Skeleton className="h-4 w-32" />
+            </div>
+            <div className="divide-y divide-surface-100 dark:divide-surface-700">
+              {[1, 2, 3, 4].map((i) => (
+                <ApplicationRowSkeleton key={i} />
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <MatchCardSkeleton />
+            <MatchCardSkeleton />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (
@@ -715,6 +731,8 @@ export default function CandidateDashboard() {
   const matchDateCutoff = matchDateFilter === 'all' ? 0 : Date.now() - parseInt(matchDateFilter, 10) * 24 * 60 * 60 * 1000;
   const jobDateCutoff = jobDateFilter === 'all' ? 0 : Date.now() - parseInt(jobDateFilter, 10) * 24 * 60 * 60 * 1000;
 
+  const scoreOf = (m: any) => typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
+  const candidateSkills = candidate ? (Array.isArray(candidate.skills) ? candidate.skills : (typeof candidate.skills === 'string' ? (candidate.skills === '{}' ? [] : (() => { try { return JSON.parse(candidate.skills); } catch { return []; } })()) : [])) : [];
   const filteredAvailableMatches = availableMatches.filter(m => {
     if (matchDateFilter !== 'all') {
       const t = new Date(m.matched_at || m.created_at).getTime();
@@ -724,9 +742,24 @@ export default function CandidateDashboard() {
       const jt = m.job?.created_at ? new Date(m.job.created_at).getTime() : 0;
       if (jt < jobDateCutoff) return false;
     }
+    if (matchSearch.trim()) {
+      const q = matchSearch.toLowerCase();
+      const title = (m.job?.title || '').toLowerCase();
+      const company = (m.job?.company || '').toLowerCase();
+      const skillsMatch = candidateSkills.some((s: string) => String(s).toLowerCase().includes(q));
+      if (!title.includes(q) && !company.includes(q) && !skillsMatch) return false;
+    }
+    if (atsScoreFilter !== 'all') {
+      const score = scoreOf(m);
+      const min = atsScoreFilter === '80' ? 80 : 70;
+      if (score === null || score < min) return false;
+    }
     return true;
   });
   const filteredAvailableForSaved = showSavedOnly ? filteredAvailableMatches.filter(m => savedJobIds.has(m.job_id)) : filteredAvailableMatches;
+  const filteredApplications = applicationStatusFilter === 'all'
+    ? applications
+    : applications.filter((a: any) => a.status === applicationStatusFilter);
 
   function getJobAgeBadge(createdAt?: string): { label: string; className: string } | null {
     if (!createdAt) return null;
@@ -761,7 +794,6 @@ export default function CandidateDashboard() {
   const profileCompletenessPct = Math.round((profileCompleteCount / profileCompletenessItems.length) * 100);
 
   const topUnappliedMatch = availableMatches[0] ?? null;
-  const scoreOf = (m: any) => typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
   const topApplyReadyMatch = availableMatches.find(m => !alreadyApplied.has(m.job_id) && (scoreOf(m) ?? 0) >= 80) ?? null;
   const offerCount = applications.filter((a: any) => a.status === 'offer').length;
 
@@ -820,6 +852,11 @@ export default function CandidateDashboard() {
                   <span className="text-white/50">{applicationUsage.used_today}/{applicationUsage.limit} today</span>
                 </>
               )}
+            </div>
+            <div className="mt-2 w-full max-w-[200px]">
+              <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                <div className="h-full rounded-full bg-white/80 transition-all duration-500" style={{ width: `${profileCompletenessPct}%` }} />
+              </div>
             </div>
           </div>
           <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
@@ -1154,6 +1191,15 @@ export default function CandidateDashboard() {
       {tab === 'matches' && (
         <div className="space-y-4">
           <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm space-y-3">
+            {/* Search and filters */}
+            <div className="flex flex-wrap items-center gap-3">
+              <SearchInput value={matchSearch} onChange={setMatchSearch} placeholder="Search by job title, company, or skills..." className="flex-1 min-w-[200px]" />
+              <select value={atsScoreFilter} onChange={e => setAtsScoreFilter(e.target.value as 'all' | '70' | '80')} className="input text-sm w-full sm:w-36" aria-label="ATS score filter">
+                <option value="all">Any ATS score</option>
+                <option value="70">ATS 70+</option>
+                <option value="80">ATS 80+</option>
+              </select>
+            </div>
             {/* Match date filter */}
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-24 shrink-0">Matched:</span>
@@ -1520,6 +1566,20 @@ export default function CandidateDashboard() {
       {/* ── APPLICATIONS ── */}
       {tab === 'applications' && (
         <div className="space-y-4">
+          {applications.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select value={applicationStatusFilter} onChange={e => setApplicationStatusFilter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Filter by status">
+                <option value="all">All statuses</option>
+                <option value="ready">Ready</option>
+                <option value="applied">Applied</option>
+                <option value="screening">Screening</option>
+                <option value="interview">Interview</option>
+                <option value="offer">Offer</option>
+                <option value="rejected">Rejected</option>
+                <option value="withdrawn">Withdrawn</option>
+              </select>
+            </div>
+          )}
           {applications.length === 0 ? (
             <EmptyState
               icon={<ClipboardList size={24} />}
@@ -1527,7 +1587,9 @@ export default function CandidateDashboard() {
               description="Apply to my jobs from the My Jobs tab, then confirm applied here."
               action={<button onClick={() => setTab('matches')} className="btn-primary text-sm py-2 px-4">Go to My Jobs</button>}
             />
-          ) : applications.map(a => (
+          ) : filteredApplications.length === 0 ? (
+            <EmptyState icon={<ClipboardList size={24} />} title="No matches" description="No applications match the selected status filter." action={<button onClick={() => setApplicationStatusFilter('all')} className="btn-secondary text-sm py-2 px-4">Clear filter</button>} />
+          ) : filteredApplications.map(a => (
             <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>

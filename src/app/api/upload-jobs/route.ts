@@ -4,15 +4,10 @@ import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
 import { runMatching, runMatchingForJobs } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
+import { isValidJobUrl } from '@/lib/job-url';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
-
-/** Require valid http(s) URL for job apply links. Jobs without valid URL are skipped. */
-function isValidJobUrl(url: string | null | undefined): boolean {
-  const u = typeof url === 'string' ? url.trim() : '';
-  return !!(u && (u.startsWith('http://') || u.startsWith('https://')));
-}
 
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);

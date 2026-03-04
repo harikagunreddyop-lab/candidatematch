@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
 import { Tabs, StatusBadge, Spinner, EmptyState, Modal } from '@/components/ui';
 import {
@@ -252,11 +253,16 @@ export default function CandidateDetailPage() {
   return (
     <div className="space-y-6 min-w-0 max-w-full">
       {/* Header */}
+      <nav className="flex items-center gap-1.5 text-sm text-surface-500 mb-2" aria-label="Breadcrumb">
+        <Link href="/dashboard/admin/candidates" className="hover:text-surface-900 dark:hover:text-surface-100">Candidates</Link>
+        <span>/</span>
+        <span className="text-surface-900 dark:text-surface-100 font-medium">{candidate.full_name || 'Candidate'}</span>
+      </nav>
       <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
-        <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
-        <div className="flex-1 min-w-0 overflow-hidden">
-          <div className="flex items-center gap-3 flex-wrap min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
+          <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-3 flex-wrap min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
               candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}

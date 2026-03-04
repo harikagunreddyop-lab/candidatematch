@@ -96,13 +96,20 @@ export function useFeatureFlags() {
   return { flags, loading, has, refetch };
 }
 
-export function useToast() {
-  const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'error' | 'info' }[]>([]);
+export type ToastItem = {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+  undo?: () => void;
+};
 
-  const toast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+export function useToast() {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  const toast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info', options?: { undo?: () => void }) => {
     const id = Math.random().toString(36).slice(2);
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+    setToasts(prev => [...prev, { id, message, type, undo: options?.undo }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), options?.undo ? 6000 : 4000);
   }, []);
 
   const dismiss = useCallback((id: string) => {

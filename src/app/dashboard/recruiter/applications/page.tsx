@@ -72,6 +72,8 @@ export default function RecruiterApplicationsPage() {
   }, [load, supabase]);
 
   const updateStatus = async (appId: string, status: string) => {
+    const app = applications.find((a: any) => a.id === appId);
+    const prevStatus = app?.status;
     setStatusUpdatingId(appId);
     try {
       const res = await fetch('/api/applications', {
@@ -85,6 +87,12 @@ export default function RecruiterApplicationsPage() {
         return;
       }
       await load();
+      if (prevStatus) {
+        toast('Status updated', 'success', { undo: async () => {
+          await fetch('/api/applications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: appId, status: prevStatus }) });
+          await load();
+        } });
+      }
     } catch (e: any) {
       toast(e.message || 'Failed to update status', 'error');
     } finally {

@@ -13,6 +13,7 @@ import {
   BarChart3, Settings, Calendar, FileText, Shield,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
 
@@ -283,6 +284,7 @@ export default function DashboardLayout({ children, profile }: { children: React
           </button>
           <div />
           <div className="flex items-center gap-2 sm:gap-4">
+            <ThemeToggle />
             {profile.role === 'admin' && <AdminNotificationBell adminId={profile.id} />}
             <Link
               href={messagesHref}

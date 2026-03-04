@@ -625,9 +625,21 @@ export function computeATSScoreV2(
   const w = W_V2;
   const wDomain = input.requirements.domain && input.requirements.domain !== 'general' ? w.domain : 0;
   const totalWeight = w.parse + w.must + w.nice + w.resp + w.impact + w.scope + w.recent + wDomain + w.risk;
-  let raw = (parseScore * w.parse + mustResult.score * w.must + niceScore * w.nice + respScore * w.resp +
-    impactScore * w.impact + scopeScore * w.scope + recentScore * w.recent +
-    domainScore * wDomain + riskScore * w.risk) / totalWeight;
+
+  // Guard against divide-by-zero / NaN so we always return a numeric score.
+  let raw = (parseScore * w.parse
+    + mustResult.score * w.must
+    + niceScore * w.nice
+    + respScore * w.resp
+    + impactScore * w.impact
+    + scopeScore * w.scope
+    + recentScore * w.recent
+    + domainScore * wDomain
+    + riskScore * w.risk) / (totalWeight || 1);
+
+  if (!Number.isFinite(raw)) {
+    raw = 0;
+  }
 
   raw = Math.round(clip(raw, 0, 100));
 

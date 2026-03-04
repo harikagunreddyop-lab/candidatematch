@@ -15,6 +15,7 @@ import {
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 import { useFeatureFlags } from '@/hooks';
+import { isTitleClearlyCompatibleForUi } from '@/lib/title-compat-client';
 
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
 const VISA_OPTIONS = ['US Citizen','Green Card','H1B','H4 EAD','L2 EAD','OPT','CPT','TN Visa','O1','Requires Sponsorship','Other'];
@@ -609,6 +610,9 @@ export default function RecruiterCandidateDetail() {
   const skills = safeArray(candidate.skills);
   const experience = safeArray(candidate.experience);
   const education = safeArray(candidate.education);
+  const visibleMatches = matches.filter(m =>
+    isTitleClearlyCompatibleForUi(candidate, m.job?.title || ''),
+  );
 
   return (
     <div className="space-y-6 min-w-0 max-w-full overflow-x-hidden">
@@ -695,7 +699,7 @@ export default function RecruiterCandidateDetail() {
       <Tabs
         tabs={[
           { key: 'profile', label: editingProfile ? '✏️ Editing Profile' : 'Profile' },
-          { key: 'matches', label: 'Matched Jobs', count: matches.length },
+          { key: 'matches', label: 'Matched Jobs', count: visibleMatches.length },
           { key: 'applications', label: 'Applications', count: applications.length },
           { key: 'resumes', label: 'Resumes', count: resumes.length + candidateResumes.length },
         ]}
@@ -952,9 +956,9 @@ export default function RecruiterCandidateDetail() {
             </div>
           )}
 
-          {matches.length === 0 ? (
+          {visibleMatches.length === 0 ? (
             <EmptyState icon={<Briefcase size={24} />} title="No matches yet" description="The matching engine hasn't run for this candidate yet" />
-          ) : matches.map((m) => {
+          ) : visibleMatches.map((m) => {
             const existingApp = applications.find(a => a.job_id === m.job_id);
             const isPending = pendingApply === m.job_id;
             const isConfirming = confirmingApply === m.job_id;

@@ -15,6 +15,7 @@ import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
 import { useFeatureFlags } from '@/hooks';
 import { getApplyUrl } from '@/lib/job-url';
+import { isTitleClearlyCompatibleForUi } from '@/lib/title-compat-client';
 
 interface CandidateResume {
   id: string;
@@ -756,8 +757,11 @@ export default function CandidateDashboard() {
   const firstName = candidate.full_name?.split(' ')[0] || 'there';
 
   const alreadyApplied = new Set(applications.map(a => a.job_id));
-  const availableMatches = matches.filter(m => !alreadyApplied.has(m.job_id));
-  const appliedMatches = matches.filter(m => alreadyApplied.has(m.job_id));
+  const titleCompatibleMatches = matches.filter(m =>
+    isTitleClearlyCompatibleForUi(candidate, m.job?.title || ''),
+  );
+  const availableMatches = titleCompatibleMatches.filter(m => !alreadyApplied.has(m.job_id));
+  const appliedMatches = titleCompatibleMatches.filter(m => alreadyApplied.has(m.job_id));
 
   const matchDateCutoff = matchDateFilter === 'all' ? 0 : Date.now() - parseInt(matchDateFilter, 10) * 24 * 60 * 60 * 1000;
   const jobDateCutoff = jobDateFilter === 'all' ? 0 : Date.now() - parseInt(jobDateFilter, 10) * 24 * 60 * 60 * 1000;

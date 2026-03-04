@@ -567,6 +567,12 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             <p className="text-2xl font-bold text-surface-400">{result?.skipped}</p>
             <p className="text-xs text-surface-500 mt-0.5">Invalid rows</p>
           </div>
+          {(result?.skipped_no_url ?? 0) > 0 && (
+            <div className="text-center">
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{result?.skipped_no_url}</p>
+              <p className="text-xs text-surface-500 mt-0.5">No valid URL</p>
+            </div>
+          )}
           <div className="text-center">
             <p className="text-2xl font-bold text-surface-700 dark:text-surface-300">{result?.total}</p>
             <p className="text-xs text-surface-500 mt-0.5">Total rows</p>

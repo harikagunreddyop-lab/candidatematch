@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { getPolicy, evaluateGateDecision } from '@/lib/policy-engine';
+import { hasFeature } from '@/lib/feature-flags-server';
 import { emitEvent, recordOutcome } from '@/lib/telemetry';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { isValidUuid } from '@/lib/security';
@@ -45,6 +46,8 @@ export async function POST(req: NextRequest) {
   if (profile.role === 'candidate') {
     const { data: c } = await supabase.from('candidates').select('id').eq('id', candidateId).eq('user_id', authResult.user.id).single();
     if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const canApply = await hasFeature(supabase, authResult.user.id, profile.role, 'candidate_apply_jobs', true);
+    if (!canApply) return NextResponse.json({ error: 'Apply access is restricted' }, { status: 403 });
   } else if (profile.role === 'recruiter') {
     const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', profile.id).single();
     if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });

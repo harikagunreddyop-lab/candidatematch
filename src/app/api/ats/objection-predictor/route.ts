@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { hasFeature } from '@/lib/feature-flags-server';
 import { predictObjections } from '@/lib/ai';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,15 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
+
+  const service = createServiceClient();
+  if (auth.profile.role === 'candidate') {
+    const canUse = await hasFeature(service, auth.user.id, 'candidate', 'candidate_see_ats_fix_report', false);
+    if (!canUse) return NextResponse.json({ error: 'ATS fix report access is restricted' }, { status: 403 });
+  } else if (auth.profile.role === 'recruiter') {
+    const canUse = await hasFeature(service, auth.user.id, 'recruiter', 'recruiter_run_ats_check', true);
+    if (!canUse) return NextResponse.json({ error: 'ATS check access is restricted' }, { status: 403 });
+  }
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'AI service unavailable' }, { status: 503 });
@@ -21,7 +31,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
   }
 
-  const service = createServiceClient();
   const allowed = await canAccessCandidate(auth, candidateId, service);
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

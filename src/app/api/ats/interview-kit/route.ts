@@ -20,6 +20,12 @@ export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
   if (auth instanceof Response) return auth;
 
+  const service = createServiceClient();
+  if (auth.profile.role === 'recruiter') {
+    const canUse = await hasFeature(service, auth.user.id, 'recruiter', 'recruiter_run_ats_check', true);
+    if (!canUse) return NextResponse.json({ error: 'ATS check access is restricted' }, { status: 403 });
+  }
+
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'AI service unavailable' }, { status: 503 });
   }
@@ -32,7 +38,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
   }
 
-  const service = createServiceClient();
   const allowed = await canAccessCandidate(auth, candidateId, service);
   if (!allowed) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 

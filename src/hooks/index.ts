@@ -67,21 +67,33 @@ export function useFeatureFlags() {
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/feature-flags', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : {})
-      .then(data => {
-        if (!cancelled && typeof data === 'object' && data !== null && !('error' in data))
-          setFlags(data as Record<string, boolean>);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+  const refetch = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const r = await fetch('/api/feature-flags', { credentials: 'include' });
+      const data = r.ok ? await r.json() : {};
+      if (typeof data === 'object' && data !== null && !('error' in data))
+        setFlags(data as Record<string, boolean>);
+    } catch {
+      /* noop */
+    } finally {
+      if (!silent) setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  // Refetch on window focus so admin changes propagate without full reload
+  useEffect(() => {
+    const onFocus = () => refetch(true);
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refetch]);
+
   const has = useCallback((key: string) => flags[key] === true, [flags]);
-  return { flags, loading, has };
+  return { flags, loading, has, refetch };
 }
 
 export function useToast() {

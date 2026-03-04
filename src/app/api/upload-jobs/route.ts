@@ -8,6 +8,12 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
+/** Require valid http(s) URL for job apply links. Jobs without valid URL are skipped. */
+function isValidJobUrl(url: string | null | undefined): boolean {
+  const u = typeof url === 'string' ? url.trim() : '';
+  return !!(u && (u.startsWith('http://') || u.startsWith('https://')));
+}
+
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
@@ -26,11 +32,13 @@ export async function POST(req: NextRequest) {
     let inserted = 0;
     let duplicates = 0;
     let skipped = 0;
+    let skipped_no_url = 0;
     const newJobIds: string[] = [];
 
     for (const row of rows) {
       const job = normalizeRow(row);
       if (!job) { skipped++; continue; }
+      if (!isValidJobUrl(job.url)) { skipped_no_url++; continue; }
 
       const hash = makeHash(job);
 
@@ -88,6 +96,7 @@ export async function POST(req: NextRequest) {
       inserted,
       duplicates,
       skipped,
+      skipped_no_url,
       total: rows.length,
       matching: matchingResult,
     });

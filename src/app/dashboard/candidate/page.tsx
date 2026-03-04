@@ -27,6 +27,19 @@ interface CandidateResume {
 const MAX_RESUMES = 5;
 const CANDIDATE_DAILY_APPLY_LIMIT = 40;
 
+/** Returns a valid apply URL: job.url if valid, else LinkedIn job search fallback from title+company */
+function getApplyUrl(job: { url?: string | null; title?: string; company?: string } | null): string | null {
+  const u = typeof job?.url === 'string' ? job.url.trim() : '';
+  if (u && (u.startsWith('http://') || u.startsWith('https://'))) return u;
+  const title = (job?.title || '').trim();
+  const company = (job?.company || '').trim();
+  if (title || company) {
+    const q = [title, company].filter(Boolean).join(' ');
+    if (q) return `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(q)}`;
+  }
+  return null;
+}
+
 function formatBytes(bytes: number): string {
   if (!bytes) return '';
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
@@ -116,6 +129,8 @@ export default function CandidateDashboard() {
   // Apply + confirm modal (resume picker, candidate_notes)
   const [applying, setApplying] = useState<string | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
+  const [pendingApplyJobId, setPendingApplyJobId] = useState<string | null>(null);
+  const [pendingApplyDidOpen, setPendingApplyDidOpen] = useState(false);
   const [adverseNotice, setAdverseNotice] = useState<{
     jobId: string;
     notice: { ats_score?: number; reason?: string; missing_skills?: string[]; improvement_tip?: string; right_to_request_human_review?: boolean };
@@ -145,6 +160,7 @@ export default function CandidateDashboard() {
   const { flags } = useFeatureFlags();
   const tailorResumeAllowed = flags.candidate_tailor_resume !== false;
   const atsReportAllowed = flags.candidate_see_ats_fix_report !== false;
+  const applyJobsAllowed = flags.candidate_apply_jobs !== false;
   const saveJobsAllowed = flags.candidate_save_jobs !== false;
   const remindersAllowed = flags.candidate_reminders !== false;
   const exportAllowed = flags.candidate_export_data !== false;
@@ -273,6 +289,20 @@ export default function CandidateDashboard() {
     setAdverseNotice(null);
   };
 
+  const handleApplyNow = (jobId: string, job: { url?: string | null; title?: string; company?: string } | null) => {
+    const url = getApplyUrl(job);
+    let didOpen = false;
+    if (url) {
+      const opened = window.open(url, '_blank', 'noopener,noreferrer');
+      didOpen = !!opened;
+      if (!didOpen) toast('Pop-up may be blocked. Allow pop-ups for this site and try again.', 'info');
+    } else {
+      toast('No application link. Search for the job on LinkedIn or company site, then confirm applied below.', 'info');
+    }
+    setPendingApplyJobId(jobId);
+    setPendingApplyDidOpen(didOpen);
+  };
+
   const openConfirmApplied = (jobId: string) => {
     setConfirmAppliedJobId(jobId);
     setConfirmResumeId(null);
@@ -342,10 +372,13 @@ export default function CandidateDashboard() {
       setApplyError(null);
       setAdverseNotice(null);
       setConfirmAppliedJobId(null);
+      setPendingApplyJobId(null);
+      setPendingApplyDidOpen(false);
       const jobTitle = (data as any).job?.title;
       const company = (data as any).job?.company;
       toast(jobTitle && company ? `Applied to ${jobTitle} at ${company}` : 'Application submitted', 'success');
       await load();
+      setTab('applications');
     } finally {
       setApplying(null);
     }
@@ -824,17 +857,20 @@ export default function CandidateDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {topApplyReadyMatch && (
+            {topApplyReadyMatch && applyJobsAllowed && (
               <>
                 <button onClick={() => openConfirmApplied(topApplyReadyMatch.job_id)} disabled={applying === topApplyReadyMatch.job_id} className="btn-primary text-sm py-2 px-4 flex items-center gap-1.5">
                   {applying === topApplyReadyMatch.job_id ? <Spinner size={14} /> : <><CheckCircle2 size={14} /> Confirm applied</>}
                 </button>
-                {topApplyReadyMatch.job?.url && (
-                  <a href={topApplyReadyMatch.job.url} target="_blank" rel="noreferrer" className="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5">
-                    <ExternalLink size={14} /> Apply
-                  </a>
+                {getApplyUrl(topApplyReadyMatch.job) && (
+                  <button onClick={() => handleApplyNow(topApplyReadyMatch.job_id, topApplyReadyMatch.job)} className="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5">
+                    <ExternalLink size={14} /> Apply now
+                  </button>
                 )}
               </>
+            )}
+            {topApplyReadyMatch && !applyJobsAllowed && (
+              <span className="text-xs text-surface-500 dark:text-surface-400 px-3 py-2">Apply access restricted</span>
             )}
             {!topApplyReadyMatch && topUnappliedMatch && (
               <button onClick={() => setTab('matches')} className="btn-secondary text-sm py-2 px-4 flex items-center gap-1.5">
@@ -1024,10 +1060,10 @@ export default function CandidateDashboard() {
                                     {savedJobIds.has(m.job_id) ? <BookmarkCheck size={14} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={14} />}
                                   </button>
                                 )}
-                                {m.job?.url ? (
-                                  <a href={m.job.url} target="_blank" rel="noreferrer" className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
-                                    <ExternalLink size={12} /> Apply
-                                  </a>
+                                {getApplyUrl(m.job) ? (
+                                  <button onClick={() => handleApplyNow(m.job_id, m.job)} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
+                                    <ExternalLink size={12} /> Apply now
+                                  </button>
                                 ) : <span className="text-xs text-surface-400 dark:text-surface-500 px-2">No link</span>}
                                 <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id}
                                   className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
@@ -1260,18 +1296,47 @@ export default function CandidateDashboard() {
                                   {savedJobIds.has(m.job_id) ? <BookmarkCheck size={16} className="text-brand-600 dark:text-brand-400" /> : <Bookmark size={16} />}
                                 </button>
                               )}
-                              {m.job?.url ? (
-                                <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 pointer-events-none')} title={applyDisabled ? applyBlockedReason : undefined}>
-                                  <ExternalLink size={14} /> Apply now
-                                </a>
-                              ) : (
-                                <span className="text-xs text-surface-400 dark:text-surface-500 px-2 py-2.5">No application link</span>
+                              {applyJobsAllowed && (
+                                <>
+                                  {pendingApplyJobId === m.job_id ? (
+                                    <div className="flex flex-col gap-2">
+                                      <p className="text-xs text-amber-700 dark:text-amber-300">
+                                        {pendingApplyDidOpen
+                                          ? 'Job opened in new tab. Complete the application, then confirm below.'
+                                          : 'No direct link. Search for this job on LinkedIn or the company site, apply there, then confirm below.'}
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled}
+                                          className={cn('btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 cursor-not-allowed')}
+                                          title={applyDisabled ? applyBlockedReason : undefined}>
+                                          {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={14} /> Confirm applied</>}
+                                        </button>
+                                        <button onClick={() => { setPendingApplyJobId(null); setPendingApplyDidOpen(false); }} className="btn-ghost text-xs py-2 px-3 text-surface-500">Cancel</button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      {getApplyUrl(m.job) ? (
+                                        <button onClick={() => handleApplyNow(m.job_id, m.job)} disabled={applyDisabled}
+                                          className={cn('btn-primary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 pointer-events-none')}
+                                          title={applyDisabled ? applyBlockedReason : undefined}>
+                                          <ExternalLink size={14} /> Apply now
+                                        </button>
+                                      ) : (
+                                        <span className="text-xs text-surface-400 dark:text-surface-500 px-2 py-2.5">No application link</span>
+                                      )}
+                                      <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled}
+                                        className={cn('btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 cursor-not-allowed')}
+                                        title={applyDisabled ? applyBlockedReason : undefined}>
+                                        {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={14} /> Confirm applied</>}
+                                      </button>
+                                    </>
+                                  )}
+                                </>
                               )}
-                              <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled}
-                                className={cn('btn-secondary text-xs sm:text-sm py-2.5 px-4 flex items-center gap-1.5 min-h-[44px]', applyDisabled && 'opacity-40 cursor-not-allowed')}
-                                title={applyDisabled ? applyBlockedReason : undefined}>
-                                {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={14} /> Confirm applied</>}
-                              </button>
+                              {!applyJobsAllowed && (
+                                <span className="text-xs text-surface-500 dark:text-surface-400 px-3 py-2.5">Apply access restricted</span>
+                              )}
                             </>
                           )
                         }
@@ -1416,17 +1481,33 @@ export default function CandidateDashboard() {
                       <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium px-3 py-1.5 bg-emerald-500/10 rounded-xl">
                         <CheckCircle2 size={12} /> {appStatus || 'Applied'}
                       </span>
+                    ) : applyJobsAllowed ? (
+                      pendingApplyJobId === m.job_id ? (
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                            {pendingApplyDidOpen ? 'Job opened in new tab. Complete the application, then confirm.' : 'No direct link. Search on LinkedIn or company site, apply there, then confirm below.'}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled} className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', applyDisabled && 'opacity-40 cursor-not-allowed')}>
+                              {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                            </button>
+                            <button onClick={() => { setPendingApplyJobId(null); setPendingApplyDidOpen(false); }} className="btn-ghost text-xs py-1 px-2 text-surface-500">Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {getApplyUrl(m.job) ? (
+                            <button onClick={() => handleApplyNow(m.job_id, m.job)} disabled={applyDisabled} className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', applyDisabled && 'opacity-40 pointer-events-none')} title={applyDisabled ? applyBlockedReason : undefined}>
+                              <ExternalLink size={12} /> Apply now
+                            </button>
+                          ) : null}
+                          <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled} className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', applyDisabled && 'opacity-40 cursor-not-allowed')} title={applyDisabled ? applyBlockedReason : undefined}>
+                            {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
+                          </button>
+                        </>
+                      )
                     ) : (
-                      <>
-                        {m.job?.url && (
-                          <a href={m.job.url} target="_blank" rel="noreferrer" className={cn('btn-primary text-xs py-2 px-4 flex items-center gap-1.5', applyDisabled && 'opacity-40 pointer-events-none')} title={applyDisabled ? applyBlockedReason : undefined}>
-                            <ExternalLink size={12} /> Apply now
-                          </a>
-                        )}
-                        <button onClick={() => openConfirmApplied(m.job_id)} disabled={applying === m.job_id || applyDisabled} className={cn('btn-secondary text-xs py-2 px-4 flex items-center gap-1.5', applyDisabled && 'opacity-40 cursor-not-allowed')} title={applyDisabled ? applyBlockedReason : undefined}>
-                          {applying === m.job_id ? <Spinner size={12} /> : <><CheckCircle2 size={12} /> Confirm applied</>}
-                        </button>
-                      </>
+                      <span className="text-xs text-surface-500 dark:text-surface-400 px-3 py-2">Apply access restricted</span>
                     )}
                   </div>
                 </div>

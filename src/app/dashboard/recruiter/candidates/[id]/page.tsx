@@ -470,6 +470,7 @@ export default function RecruiterCandidateDetail() {
       setConfirmingApply(null);
       setGateBlockedJob(null);
       await load(false);
+      setTab('applications');
     } finally {
       setConfirmingApply(null);
     }
@@ -498,6 +499,7 @@ export default function RecruiterCandidateDetail() {
       setResumeError(data.error || 'Could not record application');
     } else {
       setGateBlockedJob(null);
+      setTab('applications');
     }
     await load(false);
   };

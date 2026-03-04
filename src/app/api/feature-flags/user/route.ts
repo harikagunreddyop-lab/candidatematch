@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/feature-flags/user?user_id=...
- * Admin: fetch per-user feature flag overrides for a specific user.
+ * Admin: fetch effective feature flags for a user (role defaults + per-user overrides).
+ * Used by Feature Access modal to show correct current state.
  */
 export async function GET(req: NextRequest) {
   const authResult = await requireAdmin(req);
@@ -16,18 +17,15 @@ export async function GET(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: 'user_id required' }, { status: 400 });
 
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from('user_feature_flags')
-    .select('key, enabled')
-    .eq('user_id', userId);
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-
-  // Return as a flat map: { key: boolean }
-  const flags: Record<string, boolean> = {};
-  for (const row of data ?? []) {
-    flags[row.key] = row.enabled;
-  }
+  const role = (profile?.role as 'admin' | 'recruiter' | 'candidate') || 'candidate';
+  const { getFeatureFlags } = await import('@/lib/feature-flags-server');
+  const flags = await getFeatureFlags(supabase, userId, role);
   return NextResponse.json({ flags });
 }
 

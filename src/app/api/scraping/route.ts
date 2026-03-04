@@ -119,6 +119,7 @@ export async function POST(req: NextRequest) {
         for (const item of items) {
           const normalized = normalizeJob(item, source);
           if (!normalized?.title || !normalized?.company) continue;
+          if (!isValidJobUrl(normalized?.url)) continue;
 
           const hash = makeHash(normalized);
 
@@ -360,6 +361,12 @@ async function pollUntilDone(runId: string, datasetId: string): Promise<any[]> {
     }
   }
   throw new Error('Apify run timed out after 6 minutes');
+}
+
+/** Require valid http(s) URL for job apply links. Jobs without valid URL are skipped. */
+function isValidJobUrl(url: string | null | undefined): boolean {
+  const u = typeof url === 'string' ? url.trim() : '';
+  return !!(u && (u.startsWith('http://') || u.startsWith('https://')));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

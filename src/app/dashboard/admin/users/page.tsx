@@ -322,8 +322,9 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
       });
       const data = await res.json().catch(() => ({}));
       const merged: Record<string, boolean> = {};
-      for (const f of featureList) merged[f.key] = f.defaultEnabled;
-      for (const [k, v] of Object.entries(data?.flags ?? {})) merged[k] = v as boolean;
+      for (const f of featureList) {
+        merged[f.key] = data?.flags?.[f.key] ?? f.defaultEnabled;
+      }
       setFlags(merged);
       if (!res.ok) setError((data as any)?.error || 'Failed to load feature flags');
     } catch {

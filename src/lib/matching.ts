@@ -16,7 +16,7 @@ import { buildFixReport } from '@/lib/fix-report';
 import { computeSemanticSimilarity } from '@/lib/semantic-similarity';
 import { lookupCalibration } from '@/lib/calibration/isotonic';
 
-const MAX_MATCHES_PER_CANDIDATE = 500;
+const DEFAULT_MAX_MATCHES_PER_CANDIDATE = 500;
 const MAX_RESUME_TEXT_LEN = 4000;
 
 // ── Engine version ────────────────────────────────────────────────────────────
@@ -41,6 +41,30 @@ async function isFlagEnabled(supabase: any, key: string): Promise<boolean> {
     return false;
   } catch {
     return false; // If flag table missing, default OFF
+  }
+}
+
+async function getIntFlagOrDefault(supabase: any, key: string, defaultValue: number): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('feature_flags')
+      .select('value')
+      .eq('key', key)
+      .maybeSingle();
+    if (!data) return defaultValue;
+    const v = data.value;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string') {
+      const cleaned = v.replace(/"/g, '');
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : defaultValue;
+    }
+    if (v && typeof v === 'object' && 'value' in v && typeof (v as any).value === 'number') {
+      return (v as any).value;
+    }
+    return defaultValue;
+  } catch {
+    return defaultValue;
   }
 }
 
@@ -563,6 +587,14 @@ export async function runAtsCheck(
   };
 
   // ── Persist to candidate_job_matches (skip when persist: false for batch mode) ──
+  const atsV3Enabled = await isFlagEnabled(supabase, 'ats.v3.enabled');
+
+  // v3 match tier (metadata only; does not auto-apply)
+  let matchTier: 'match' | 'shortlist' | 'autoapply' = 'match';
+  if (gateDecision.passes) {
+    matchTier = 'shortlist';
+  }
+
   const atsRow = {
     ats_score: result.total_score,
     ats_reason: result.reason,
@@ -577,6 +609,20 @@ export async function runAtsCheck(
     ats_evidence_count: matchedCount,
     ats_last_scored_at: now,
     scoring_profile: scoringProfile,
+    // v3 additive columns (only populated when flag is ON)
+    match_tier: atsV3Enabled ? matchTier : 'match',
+    p_interview: atsV3Enabled ? calibration?.p_interview ?? null : null,
+    ats_version: atsV3Enabled ? 3 : 2,
+    weights_version: atsV3Enabled ? 2 : 1,
+    calibration_version: atsV3Enabled && calibration ? 1 : 0,
+    ats_breakdown_v3: atsV3Enabled ? enrichedBreakdown : null,
+    evidence_spans: atsV3Enabled ? (result.dimensions?.must?.evidence_spans ?? null) : null,
+    negative_signals: atsV3Enabled ? (result.negative_signals ?? null) : null,
+    gate_core_passed: atsV3Enabled ? result.gate_passed : null,
+    gate_core_reason: atsV3Enabled ? result.gate_reason : null,
+    gate_policy_passed: atsV3Enabled ? gateDecision.passes : null,
+    gate_policy_reason: atsV3Enabled ? gateDecision.reason : null,
+    score_computed_at: atsV3Enabled ? now : null,
   };
 
   if (options?.persist !== false) {
@@ -1034,6 +1080,12 @@ export async function runMatching(
   const supabase = createServiceClient();
   const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
 
+  const MAX_MATCHES_PER_CANDIDATE = await getIntFlagOrDefault(
+    supabase,
+    'matching.v3.max_matches_per_candidate',
+    DEFAULT_MAX_MATCHES_PER_CANDIDATE,
+  );
+
   let q = supabase.from('candidates').select('*').eq('active', true).not('invite_accepted_at', 'is', null);
   if (candidateId) q = q.eq('id', candidateId);
   const { data: candidates, error: cErr } = await q;
@@ -1151,6 +1203,12 @@ export async function runMatchingForJobs(
 
   const supabase = createServiceClient();
   const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
+
+  const MAX_MATCHES_PER_CANDIDATE = await getIntFlagOrDefault(
+    supabase,
+    'matching.v3.max_matches_per_candidate',
+    DEFAULT_MAX_MATCHES_PER_CANDIDATE,
+  );
 
   const { data: candidates, error: cErr } = await supabase
     .from('candidates')

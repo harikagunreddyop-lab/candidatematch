@@ -66,6 +66,8 @@ export function useSupabaseQuery<T>(
 export function useFeatureFlags() {
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [client, setClient] = useState<ReturnType<typeof createClient> | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const refetch = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -84,6 +86,27 @@ export function useFeatureFlags() {
   useEffect(() => {
     refetch();
   }, [refetch]);
+
+  // Setup supabase client + user id for realtime subscriptions
+  useEffect(() => {
+    const c = createClient();
+    setClient(c);
+    c.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+    }).catch(() => setUserId(null));
+  }, []);
+
+  // Realtime: immediately reflect admin changes to feature flags
+  useEffect(() => {
+    if (!client || !userId) return;
+    const c = client;
+    const channel = c
+      .channel('feature-flags-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_flags' }, () => refetch(true))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_feature_flags', filter: `user_id=eq.${userId}` }, () => refetch(true))
+      .subscribe();
+    return () => { c.removeChannel(channel); };
+  }, [client, userId, refetch]);
 
   // Refetch on window focus so admin changes propagate without full reload
   useEffect(() => {

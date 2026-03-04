@@ -43,6 +43,7 @@ export default function CandidateSkillReportPage() {
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
   const [tailoredByJob, setTailoredByJob] = useState<Record<string, { id: string }>>({});
+  const autoAtsRef = useState<{ ran: boolean }>({ ran: false })[0];
 
   const runAtsForJob = async (jobId: string) => {
     if (!candidate) return;
@@ -96,6 +97,32 @@ export default function CandidateSkillReportPage() {
     }
     load();
   }, [supabase]);
+
+  // Auto-run ATS on a few top matches missing ATS score so breakdown appears
+  useEffect(() => {
+    if (!atsReportAllowed) return;
+    if (!candidate || !matches?.length) return;
+    if (autoAtsRef.ran) return;
+
+    const missing = matches
+      .filter((m: any) => typeof m.ats_score !== 'number')
+      .slice(0, 3);
+    if (missing.length === 0) {
+      autoAtsRef.ran = true;
+      return;
+    }
+    autoAtsRef.ran = true;
+
+    (async () => {
+      for (const m of missing) {
+        // eslint-disable-next-line no-await-in-loop
+        await runAtsForJob(m.job_id);
+        // tiny spacing to avoid bursty calls
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(r => setTimeout(r, 250));
+      }
+    })();
+  }, [atsReportAllowed, candidate, matches, autoAtsRef]);
 
   const matchedFreq: Record<string, number> = {};
   const missingFreq: Record<string, number> = {};

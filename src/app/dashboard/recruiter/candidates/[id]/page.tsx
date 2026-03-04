@@ -124,6 +124,7 @@ export default function RecruiterCandidateDetail() {
   // On-demand ATS check — runs all resumes, picks best
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
   const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+  const autoAtsRef = useRef(false);
 
   // Paste JD → ATS check (ephemeral)
   const [pasteJdOpen, setPasteJdOpen] = useState(false);
@@ -411,6 +412,31 @@ export default function RecruiterCandidateDetail() {
       setAtsRunningByJob(p => ({ ...p, [jobId]: false }));
     }
   };
+
+  // Auto-run ATS for top matches missing ATS score so breakdown is available without manual click
+  useEffect(() => {
+    if (!atsCheckAllowed) return;
+    if (!matches?.length) return;
+    if (autoAtsRef.current) return;
+
+    const missing = matches
+      .filter((m: any) => typeof (m as any).ats_score !== 'number')
+      .slice(0, 3);
+    if (missing.length === 0) {
+      autoAtsRef.current = true;
+      return;
+    }
+    autoAtsRef.current = true;
+
+    (async () => {
+      for (const m of missing) {
+        // eslint-disable-next-line no-await-in-loop
+        await runAtsForJob(m.job_id);
+        // eslint-disable-next-line no-await-in-loop
+        await new Promise(r => setTimeout(r, 250));
+      }
+    })();
+  }, [atsCheckAllowed, matches]);
 
   const runPasteJdAts = async () => {
     if (!id || !pasteJdText.trim()) {

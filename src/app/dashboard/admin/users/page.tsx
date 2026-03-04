@@ -8,7 +8,7 @@ import {
   X, Mail, Phone, Briefcase, Users, ChevronDown, ChevronUp,
   Send, CheckCircle2, Sliders, Shield, Eye, EyeOff, Info,
   Zap, FileText, Target, Bookmark, Bell, Download, BarChart2,
-  MessageSquare, Brain, Cpu,
+  MessageSquare, Brain, Cpu, LayoutDashboard, Plug,
 } from 'lucide-react';
 import { cn, formatRelative } from '@/utils/helpers';
 
@@ -36,6 +36,42 @@ interface FeatureDef {
 }
 
 const CANDIDATE_FEATURES: FeatureDef[] = [
+  {
+    key: 'candidate_dashboard',
+    label: 'Candidate dashboard',
+    description: 'Candidate can access their main dashboard overview.',
+    icon: <LayoutDashboard size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Navigation',
+  },
+  {
+    key: 'candidate_job_search',
+    label: 'Job search page',
+    description: 'Candidate can use the dedicated job search page (like LinkedIn / Indeed style).',
+    icon: <Briefcase size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Navigation',
+  },
+  {
+    key: 'candidate_profile_edit',
+    label: 'Edit profile',
+    description: 'Candidate can view and edit their profile (title, summary, preferences, links).',
+    icon: <UserCheck size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Navigation',
+  },
+  {
+    key: 'candidate_skill_report',
+    label: 'Skill / ATS report page',
+    description: 'Candidate can access the skill & ATS report section from their sidebar.',
+    icon: <BarChart2 size={15} />,
+    defaultEnabled: true,
+    roles: ['candidate'],
+    group: 'Navigation',
+  },
   {
     key: 'candidate_see_matches',
     label: 'View job matches',
@@ -147,6 +183,42 @@ const CANDIDATE_FEATURES: FeatureDef[] = [
 ];
 
 const RECRUITER_FEATURES: FeatureDef[] = [
+  {
+    key: 'recruiter_dashboard',
+    label: 'Recruiter dashboard',
+    description: 'Recruiter can access their main pipeline & health overview dashboard.',
+    icon: <LayoutDashboard size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Navigation',
+  },
+  {
+    key: 'recruiter_job_search',
+    label: 'Job search page',
+    description: 'Recruiter can browse jobs via the job search experience.',
+    icon: <Briefcase size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Navigation',
+  },
+  {
+    key: 'recruiter_talent_report',
+    label: 'Talent report page',
+    description: 'Recruiter can access the talent / reports page from the sidebar.',
+    icon: <BarChart2 size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Navigation',
+  },
+  {
+    key: 'recruiter_integrations',
+    label: 'Integrations page',
+    description: 'Recruiter can access the integrations page (e.g. Gmail, other tools).',
+    icon: <Plug size={15} />,
+    defaultEnabled: true,
+    roles: ['recruiter'],
+    group: 'Navigation',
+  },
   {
     key: 'recruiter_view_candidates',
     label: 'View assigned candidates',

@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
 import { formatDate, formatRelative, cn } from '@/utils/helpers';
-import { isTitleClearlyCompatibleForUi } from '@/lib/title-compat-client';
 
 // Safe array helper — handles null, undefined, postgres text arrays
 function safeArray(val: any): any[] {
@@ -260,9 +259,6 @@ export default function CandidateDetailPage() {
   const tags         = safeArray(candidate.tags);
   const targetRoles  = safeArray(candidate.target_roles);
   const targetLocs   = safeArray(candidate.target_locations);
-  const visibleMatches = matches.filter(m =>
-    isTitleClearlyCompatibleForUi(candidate, m.job?.title || ''),
-  );
 
   return (
     <div className="space-y-6 min-w-0 max-w-full">
@@ -317,7 +313,7 @@ export default function CandidateDetailPage() {
         tabs={[
           { key: 'profile', label: 'Profile' },
           { key: 'activity', label: 'Activity', count: savedJobs.length + reminders.length },
-          { key: 'matches', label: 'Matched Jobs', count: visibleMatches.length },
+          { key: 'matches', label: 'Matched Jobs', count: matches.length },
           { key: 'applications', label: 'Applications', count: applications.length },
           { key: 'resumes', label: 'Generated Resumes', count: resumes.length },
           { key: 'uploads', label: 'Uploaded Resumes', count: uploadedResumes.length },
@@ -619,10 +615,10 @@ export default function CandidateDetailPage() {
               <button type="button" onClick={() => setResumeError(null)} className="ml-auto text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 p-1" aria-label="Dismiss">✕</button>
             </div>
           )}
-          {visibleMatches.length === 0 ? (
+          {matches.length === 0 ? (
             <EmptyState icon={<Briefcase size={24} />} title="No matches yet"
               description="Run the matching engine or upload more jobs" />
-          ) : visibleMatches.map(m => (
+          ) : matches.map(m => (
             <div key={m.id} className="card p-4">
               <div className="flex items-start gap-4">
                 {typeof (m as any).ats_score === 'number' && (

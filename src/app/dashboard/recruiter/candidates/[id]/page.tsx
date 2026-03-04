@@ -401,11 +401,7 @@ export default function RecruiterCandidateDetail() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'ATS check failed');
 
-      setMatches(prev => prev.map(m =>
-        m.job_id === jobId
-          ? { ...m, ats_score: data.ats_score, ats_reason: data.ats_reason, ats_breakdown: data.ats_breakdown, ats_resume_id: data.ats_resume_id, ats_checked_at: data.ats_checked_at, matched_keywords: data.matched_keywords ?? [], missing_keywords: data.missing_keywords ?? [] }
-          : m
-      ));
+      await load(false);
     } catch (e: any) {
       setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
     } finally {

@@ -57,11 +57,14 @@ export default function CandidateSkillReportPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'ATS check failed');
-      setMatches(prev => prev.map((m: any) =>
-        m.job_id === jobId
-          ? { ...m, ats_score: data.ats_score, ats_reason: data.ats_reason, ats_breakdown: data.ats_breakdown, ats_resume_id: data.ats_resume_id, ats_checked_at: data.ats_checked_at, matched_keywords: data.matched_keywords ?? [], missing_keywords: data.missing_keywords ?? [] }
-          : m
-      ));
+
+      // Re-load matches from Supabase so the UI always reflects the persisted ATS score/breakdown
+      const { data: mchRes } = await supabase
+        .from('candidate_job_matches')
+        .select('*, job:jobs(id, title, company, location)')
+        .eq('candidate_id', candidate.id)
+        .order('fit_score', { ascending: false });
+      setMatches(mchRes || []);
     } catch (e: any) {
       setAtsErrorByJob(p => ({ ...p, [jobId]: e?.message || 'ATS check failed' }));
     } finally {

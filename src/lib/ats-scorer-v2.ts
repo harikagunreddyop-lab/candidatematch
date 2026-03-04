@@ -643,6 +643,15 @@ export function computeATSScoreV2(
 
   raw = Math.round(clip(raw, 0, 100));
 
+  // Policy tweak: if we have real resume evidence but the weighted score collapses to 0,
+  // clamp to a small floor so candidates don't see a hard 0.
+  const hasEvidence =
+    (input.resumeText && input.resumeText.trim().length > 200) ||
+    input.experience.length > 0;
+  if (hasEvidence && raw === 0) {
+    raw = 20;
+  }
+
   const band = raw >= 90 ? 'elite' : raw >= 80 ? 'strong' : raw >= 70 ? 'possible' : 'weak';
 
   const gate_passed = mustResult.missing.length <= ATS_V2.allowed_missing_must;

@@ -39,35 +39,28 @@ export default function JobsPage() {
     if (loadingRef.current) return;
     loadingRef.current = true;
     const currentPage = pageRef.current;
+    const currentSource = sourceFilterRef.current;
     if (!silent) setLoading(true);
     setError(null);
 
     try {
-      const [listRes, countRes] = await Promise.all([
-        (() => {
-          let q = supabase.from('jobs').select('*').order('scraped_at', { ascending: false });
-          if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
-          return q.range(currentPage * 10, (currentPage + 1) * 10 - 1);
-        })(),
-        (() => {
-          let q = supabase.from('jobs').select('id', { count: 'exact', head: true });
-          if (sourceFilterRef.current !== 'all') q = q.eq('source', sourceFilterRef.current);
-          return q;
-        })(),
-      ]);
+      const params = new URLSearchParams({ page: String(currentPage) });
+      if (currentSource !== 'all') params.set('source', currentSource);
+      const res = await fetch(`/api/admin/jobs?${params}`, { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
 
-      if (listRes.error) {
-        setError(listRes.error.message);
+      if (!res.ok) {
+        setError(data.error || 'Failed to load jobs');
       } else {
-        setJobs(listRes.data || []);
-        setTotalCount(countRes.count || 0);
+        setJobs(data.jobs || []);
+        setTotalCount(data.totalCount || 0);
         setLastRefreshed(new Date());
       }
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     // Keep state in sync if user lands on a tab via URL.

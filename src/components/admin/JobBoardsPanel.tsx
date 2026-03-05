@@ -51,7 +51,9 @@ export function JobBoardsPanel() {
   const [discoveries, setDiscoveries] = useState<DiscoveryRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncingAll, setSyncingAll] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
+  const [autoSyncAfterDiscovery, setAutoSyncAfterDiscovery] = useState(true);
   const [csvPath, setCsvPath] = useState('./data/companies.csv');
   const [csvUrl, setCsvUrl] = useState('');
   const [csvFileContent, setCsvFileContent] = useState<string | null>(null);
@@ -116,6 +118,29 @@ export function JobBoardsPanel() {
     }
   };
 
+  const runSyncAll = async () => {
+    setSyncingAll(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch('/api/connectors/sync-all', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || 'Sync all failed');
+      }
+      const totalPromoted = data.totalPromoted ?? 0;
+      const successCount = data.synced ?? 0;
+      const failedCount = data.failed ?? 0;
+      setSyncMsg(
+        `Synced ${successCount} connector(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''} – ${totalPromoted} jobs promoted to listings`
+      );
+      await load();
+    } catch (err: any) {
+      setSyncMsg(`Sync all failed: ${err?.message || String(err)}`);
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
   const runDiscovery = async () => {
     const hasInput = (csvPath && csvPath.trim()) || (csvUrl && csvUrl.trim()) || csvFileContent;
     if (!hasInput) {
@@ -140,6 +165,11 @@ export function JobBoardsPanel() {
       if (!res.ok) throw new Error(data.error || 'Discovery failed');
       setDiscoveryResult(data || null);
       await load();
+
+      if (autoSyncAfterDiscovery && (data?.connectors_created ?? 0) > 0) {
+        setSyncMsg('Discovery complete. Syncing new connectors…');
+        await runSyncAll();
+      }
     } catch (e: any) {
       setDiscoveryError(e.message || 'Discovery failed');
     } finally {
@@ -210,6 +240,17 @@ export function JobBoardsPanel() {
             className="input text-sm w-full pl-9"
           />
         </div>
+        {filteredConnectors.length > 0 && (
+          <button
+            onClick={runSyncAll}
+            disabled={syncingAll || !!syncingId}
+            className="btn-primary text-sm flex items-center gap-2"
+            title="Sync all connectors and fetch jobs"
+          >
+            {syncingAll ? <Spinner size={14} /> : <RefreshCw size={14} />}
+            Sync all
+          </button>
+        )}
       </div>
 
       {filteredConnectors.length === 0 ? (
@@ -304,6 +345,15 @@ export function JobBoardsPanel() {
               className="block text-xs text-surface-500"
             />
           </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoSyncAfterDiscovery}
+              onChange={(e) => setAutoSyncAfterDiscovery(e.target.checked)}
+              className="rounded border-surface-300"
+            />
+            <span className="text-xs text-surface-600 dark:text-surface-400">Auto-sync after discovery</span>
+          </label>
           <button onClick={runDiscovery} disabled={runningDiscovery} className="btn-primary text-sm flex items-center gap-2">
             {runningDiscovery ? <Spinner size={14} /> : <Plug size={14} />}
             Run discovery

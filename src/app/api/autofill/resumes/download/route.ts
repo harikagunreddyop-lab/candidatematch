@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authedClient } from '../_auth';
+import { authedClient } from '../../_auth';
 
 const BUCKET = 'resumes';
 const SIGNED_URL_EXPIRY_SECONDS = 60; // short-lived — user must explicitly request

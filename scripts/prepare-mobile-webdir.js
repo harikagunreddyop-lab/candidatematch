@@ -33,7 +33,7 @@ const indexHtml = `<!DOCTYPE html>
   </div>
   <script>
     if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-      var url = '${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}';
+      var url = '${process.env.NEXT_PUBLIC_APP_URL || 'https://main.d1abc2xyz.amplifyapp.com'}';
       if (url && !url.includes('your-app')) window.location.href = url;
     }
   </script>

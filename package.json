@@ -12,7 +12,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "worker:dev": "node worker/index.js",
-    "ingest:run": "npx tsx src/ingest/runner.ts",
+    "ingest:run": "npx tsx scripts/dev/ingest-runner.ts",
     "worker:build": "docker build -t candidatematch-worker ./worker",
     "discovery:run": "npx tsx src/discovery/discover.ts",
     "generate:companies": "npx tsx scripts/generateCompaniesCsv.ts",

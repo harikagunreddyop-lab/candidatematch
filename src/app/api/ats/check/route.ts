@@ -5,6 +5,7 @@ import { hasFeature } from '@/lib/feature-flags-server';
 import { runAtsCheck } from '@/lib/matching';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { isValidUuid } from '@/lib/security';
+import { checkDailyLimit } from '@/lib/usage-limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +13,20 @@ export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
-  const rl = rateLimitResponse(req, 'api', auth.user.id);
+  const rl = rateLimitResponse(req, 'ats', auth.user.id);
   if (rl) return rl;
+
+  // Daily ATS check limit — applies to candidates only (admins/recruiters unrestricted)
+  if (auth.profile.role === 'candidate') {
+    const service = createServiceClient();
+    const usage = await checkDailyLimit(service, auth.user.id, 'ats_checked', 'daily_ats_check_limit');
+    if (!usage.allowed) {
+      return NextResponse.json(
+        { error: usage.errorMessage, limit: usage.limit, used: usage.used, reset_at: usage.reset_at },
+        { status: 429 },
+      );
+    }
+  }
 
   const body = await req.json().catch(() => ({}));
   const candidateId = String(body.candidate_id || '');

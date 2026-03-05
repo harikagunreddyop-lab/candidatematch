@@ -1,0 +1,104 @@
+/**
+ * Daily usage limit enforcement.
+ *
+ * Reads per-user daily limits from app_settings and counts today's
+ * usage from the events table. Intended for cost protection:
+ *   - ATS checks (expensive Claude API calls)
+ *   - Resume generation (expensive worker calls)
+ *
+ * Usage:
+ *   const check = await checkDailyLimit(supabase, userId, 'ats_checked', 'daily_ats_check_limit');
+ *   if (!check.allowed) return NextResponse.json({ error: check.errorMessage }, { status: 429 });
+ */
+
+/** Default limits if not configured in app_settings */
+const DEFAULTS: Record<string, number> = {
+    daily_ats_check_limit: 10,
+    daily_resume_gen_limit: 3,
+};
+
+export interface UsageLimitResult {
+    allowed: boolean;
+    used: number;
+    limit: number;
+    /** ISO timestamp when the limit resets (midnight UTC) */
+    reset_at: string;
+    /** Pre-formatted error message suitable for API response */
+    errorMessage: string;
+}
+
+/**
+ * Check whether a user has exceeded their daily usage limit.
+ *
+ * @param supabase      Service-role Supabase client
+ * @param userId        User's UUID (from profiles.id)
+ * @param eventType     The event_type counted in the events table
+ * @param settingsKey   The app_settings key holding the numeric limit
+ */
+export async function checkDailyLimit(
+    supabase: { from: (table: string) => any },
+    userId: string,
+    eventType: string,
+    settingsKey: string,
+): Promise<UsageLimitResult> {
+    // Midnight UTC — start of the current day
+    const now = new Date();
+    const todayUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    ).toISOString();
+
+    // Midnight UTC — start of tomorrow (reset point)
+    const tomorrowUtc = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1),
+    ).toISOString();
+
+    // 1. Read limit from app_settings (fallback to hard-coded default)
+    let limit = DEFAULTS[settingsKey] ?? 10;
+    try {
+        const { data: setting } = await supabase
+            .from('app_settings')
+            .select('value')
+            .eq('key', settingsKey)
+            .maybeSingle();
+        if (setting?.value != null) {
+            const parsed = typeof setting.value === 'number'
+                ? setting.value
+                : Number(String(setting.value).replace(/"/g, ''));
+            if (Number.isFinite(parsed) && parsed > 0) limit = parsed;
+        }
+    } catch {
+        // Fallback to default — never fail hard
+    }
+
+    // 2. Count today's usage from events table
+    let used = 0;
+    try {
+        const { count } = await supabase
+            .from('events')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('event_type', eventType)
+            .gte('created_at', todayUtc);
+        used = count ?? 0;
+    } catch {
+        // If events table isn't populated yet (new deploy), allow the call
+        return {
+            allowed: true,
+            used: 0,
+            limit,
+            reset_at: tomorrowUtc,
+            errorMessage: '',
+        };
+    }
+
+    const allowed = used < limit;
+    return {
+        allowed,
+        used,
+        limit,
+        reset_at: tomorrowUtc,
+        errorMessage: allowed
+            ? ''
+            : `Daily limit reached: ${used}/${limit} ${eventType.replace(/_/g, ' ')} today. Resets at midnight UTC.`,
+    };
+}

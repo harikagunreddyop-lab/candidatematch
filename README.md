@@ -7,7 +7,7 @@ Production-ready AI-powered resume generation and job matching platform.
 ```
 ┌──────────────────┐     ┌─────────────────┐
 │   Next.js App    │────▶│   Supabase      │
-│   (Vercel)       │     │   (Postgres +   │
+│   (AWS Amplify)  │     │   (Postgres +   │
 │                  │     │    Auth +       │
 │  • Admin Panel   │     │    Storage)     │
 │  • Recruiter UX  │     └─────────────────┘
@@ -71,11 +71,11 @@ npm run dev
 
 ## Deployment
 
-### Frontend → Vercel
+### Frontend → AWS Amplify
 ```bash
-vercel --prod
+git push  # Amplify auto-deploys from Git
 ```
-Set all environment variables in Vercel dashboard.
+Set all environment variables in Amplify console. See `amplify.yml` for build config.
 
 ### Worker → Docker
 ```bash
@@ -136,7 +136,7 @@ Or deploy to Cloud Run / Railway / Fly.io.
 
 ## Scaling
 
-- Frontend: Vercel auto-scales
+- Frontend: AWS Amplify auto-scales
 - Worker: Horizontal scaling via Docker replicas
 - Database: Supabase handles connection pooling
 - Queue: Add Bull/Redis for worker queue at scale
@@ -152,4 +152,4 @@ Or deploy to Cloud Run / Railway / Fly.io.
 | Scraping | Apify (LinkedIn + Indeed) |
 | PDF | LaTeX + Tectonic |
 | Worker | Node.js + Fastify |
-| Deploy | Vercel + Docker |
+| Deploy | AWS Amplify + Docker |

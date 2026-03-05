@@ -5,6 +5,7 @@ import { stripHtml } from '@/utils/helpers';
 import { runMatching, runMatchingForJobs } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import { isValidJobUrl } from '@/lib/job-url';
+import { rateLimitResponse } from '@/lib/rate-limit';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
+
+  const rl = rateLimitResponse(req, 'admin_heavy', authResult.user.id);
+  if (rl) return rl;
 
   const supabase = createServiceClient();
 
@@ -143,7 +147,7 @@ function normalizeRow(row: any): Record<string, any> | null {
   const salaryMax = parseNum(pick('salary/max', 'salaryMax', 'salary_max', 'Salary Max'));
 
   const employmentType = pick('employmentType', 'employment_type', 'employment_type', 'job_type', 'jobType', 'Job Type', 'employment_type');
-  const workplaceType  = pick('workplaceType', 'remote_type', 'workRemoteAllowed', 'Remote');
+  const workplaceType = pick('workplaceType', 'remote_type', 'workRemoteAllowed', 'Remote');
 
   if (!title || !company) return null;
 

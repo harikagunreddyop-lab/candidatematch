@@ -25,6 +25,80 @@ const MAX_RESUME_TEXT_LEN = 4000;
 // Stored in candidate_job_matches.ats_model_version for reproducibility.
 const ATS_MODEL_VERSION = 'v2';
 
+// ── ATS result cache ─────────────────────────────────────────────────────────
+// Before re-running expensive PDF extraction + LLM scoring, look up the
+// scoring_runs table for a row matching the same inputs hash.
+// Cache key: (candidate_id, job_id, model_version, inputs_hash)
+// inputs_hash is computed from: resume_id|resume_version_id + jd_length + model_version.
+// If found, return the cached result immediately — no LLM calls needed.
+async function checkAtsCache(
+  supabase: any,
+  candidateId: string,
+  jobId: string,
+  modelVersion: string,
+  inputs: {
+    resumeId: string | null;
+    resumeVersionId: string | null;
+    jdLength: number;
+  },
+): Promise<{
+  hit: boolean;
+  result?: { ats_score: number; ats_reason: string; ats_breakdown: any; ats_resume_id: string | null; ats_checked_at: string; matched_keywords: string[]; missing_keywords: string[] };
+}> {
+  try {
+    // Build the same input summary used during scoring_runs insert
+    const inputsSummary = {
+      candidate_id: candidateId,
+      job_id: jobId,
+      ats_resume_id: inputs.resumeId,
+      resume_version_id: inputs.resumeVersionId,
+      model_version: modelVersion,
+      jd_length: inputs.jdLength,
+    };
+    const canonical = JSON.stringify(inputsSummary, Object.keys(inputsSummary).sort());
+    const inputsHash = createHash('sha256').update(canonical).digest('hex');
+
+    const { data: cached, error } = await supabase
+      .from('scoring_runs')
+      .select('total_score, dimensions_json, confidence, candidate_id')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .eq('model_version', modelVersion)
+      .eq('inputs_hash', inputsHash)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !cached) return { hit: false };
+
+    // Fetch the full persisted match row for the enriched breakdown
+    const { data: matchRow } = await supabase
+      .from('candidate_job_matches')
+      .select('ats_score, ats_reason, ats_breakdown, ats_resume_id, ats_checked_at, matched_keywords, missing_keywords')
+      .eq('candidate_id', candidateId)
+      .eq('job_id', jobId)
+      .maybeSingle();
+
+    if (!matchRow || matchRow.ats_score == null) return { hit: false };
+
+    return {
+      hit: true,
+      result: {
+        ats_score: matchRow.ats_score,
+        ats_reason: matchRow.ats_reason ?? '',
+        ats_breakdown: matchRow.ats_breakdown ?? {},
+        ats_resume_id: matchRow.ats_resume_id ?? null,
+        ats_checked_at: matchRow.ats_checked_at ?? new Date().toISOString(),
+        matched_keywords: matchRow.matched_keywords ?? [],
+        missing_keywords: matchRow.missing_keywords ?? [],
+      },
+    };
+  } catch {
+    // Cache miss on any error — proceed with full computation
+    return { hit: false };
+  }
+}
+
 // ── Feature flag helpers ─────────────────────────────────────────────────────
 // We inline a lightweight synchronous check here to avoid circular deps.
 // For flags not in the DB yet (older deploys), defaults to false (safe).
@@ -436,6 +510,29 @@ export async function runAtsCheck(
   const startMs = Date.now();
   const now = new Date().toISOString();
 
+  // ── Cache check: skip expensive PDF + LLM work if inputs haven't changed ────
+  // Only check cache when persist !== false (batch sub-calls skip this; the batch
+  // level persists the best result after comparing all resumes).
+  if (options?.persist !== false) {
+    const jd = '';
+    // Get jd_length cheaply without fetching the full job record yet
+    const { data: jobMeta } = await supabase
+      .from('jobs')
+      .select('jd_clean, jd_raw')
+      .eq('id', jobId)
+      .single();
+    const jdLength = ((jobMeta?.jd_clean || jobMeta?.jd_raw) ?? '').length;
+
+    const cacheCheck = await checkAtsCache(supabase, candidateId, jobId, ATS_MODEL_VERSION, {
+      resumeId: resumeId ?? null,
+      resumeVersionId: options?.resumeVersionId ?? null,
+      jdLength,
+    });
+    if (cacheCheck.hit && cacheCheck.result) {
+      return cacheCheck.result;
+    }
+  }
+
   // ── Resolve profile and policy ──────────────────────────────────────────────
   const scoringProfile: ScoringProfile = options?.scoringProfile ?? 'A';
   const policy = getPolicy(scoringProfile);
@@ -748,24 +845,24 @@ export async function runAtsCheck(
 
   // ── Telemetry: emit ats_score_computed event (skip when persist: false) ──
   if (options?.persist !== false) {
-  void emitEvent(supabase, {
-    event_type: 'ats_score_computed',
-    candidate_id: candidateId,
-    job_id: jobId,
-    actor_user_id: options?.actorUserId ?? null,
-    event_source: source,
-    payload: {
-      ats_score: result.total_score,
-      ats_confidence: atsConfidence,
-      ats_confidence_bucket: confidenceBucket,
-      ats_evidence_count: matchedCount,
-      model_version: ATS_MODEL_VERSION,
-      scoring_profile: scoringProfile,
-      job_family: jobFamily,
-      computation_ms: computationMs,
-      ai_tokens_used: null,
-    },
-  });
+    void emitEvent(supabase, {
+      event_type: 'ats_score_computed',
+      candidate_id: candidateId,
+      job_id: jobId,
+      actor_user_id: options?.actorUserId ?? null,
+      event_source: source,
+      payload: {
+        ats_score: result.total_score,
+        ats_confidence: atsConfidence,
+        ats_confidence_bucket: confidenceBucket,
+        ats_evidence_count: matchedCount,
+        model_version: ATS_MODEL_VERSION,
+        scoring_profile: scoringProfile,
+        job_family: jobFamily,
+        computation_ms: computationMs,
+        ai_tokens_used: null,
+      },
+    });
   }
 
   return {

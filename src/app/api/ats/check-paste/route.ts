@@ -3,6 +3,7 @@ import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { hasFeature } from '@/lib/feature-flags-server';
 import { runAtsCheckPasted } from '@/lib/matching';
+import { rateLimitResponse } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,9 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
+
+  const rl = rateLimitResponse(req, 'ats', auth.user.id);
+  if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
   const candidateId = String(body.candidate_id || '').trim();

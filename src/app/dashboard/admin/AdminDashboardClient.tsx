@@ -14,7 +14,7 @@ type Stats = {
   candidates: number; jobs: number; resumes: number;
   applications: number; matches: number; recruiters: number;
 };
-type Pipeline = Record<'ready'|'applied'|'screening'|'interview'|'offer'|'rejected', number>;
+type Pipeline = Record<'ready' | 'applied' | 'screening' | 'interview' | 'offer' | 'rejected', number>;
 type Candidate = {
   id: string; full_name: string; primary_title: string; location?: string;
   active: boolean; skills: string[]; created_at: string;
@@ -27,12 +27,12 @@ type Recruiter = {
 };
 
 const STAGES = [
-  { key: 'ready',     label: 'Ready',     color: 'bg-surface-200', text: 'text-surface-600' },
-  { key: 'applied',   label: 'Applied',   color: 'bg-blue-100',    text: 'text-blue-700'   },
-  { key: 'screening', label: 'Screening', color: 'bg-yellow-100',  text: 'text-yellow-700' },
-  { key: 'interview', label: 'Interview', color: 'bg-purple-100',  text: 'text-purple-700' },
-  { key: 'offer',     label: 'Offer',     color: 'bg-green-100',   text: 'text-green-700'  },
-  { key: 'rejected',  label: 'Rejected',  color: 'bg-red-50',      text: 'text-red-500'    },
+  { key: 'ready', label: 'Ready', color: 'bg-surface-200', text: 'text-surface-600' },
+  { key: 'applied', label: 'Applied', color: 'bg-blue-100', text: 'text-blue-700' },
+  { key: 'screening', label: 'Screening', color: 'bg-yellow-100', text: 'text-yellow-700' },
+  { key: 'interview', label: 'Interview', color: 'bg-purple-100', text: 'text-purple-700' },
+  { key: 'offer', label: 'Offer', color: 'bg-green-100', text: 'text-green-700' },
+  { key: 'rejected', label: 'Rejected', color: 'bg-red-50', text: 'text-red-500' },
 ] as const;
 
 function MiniBar({ data }: { data: { date: string; count: number }[] }) {
@@ -100,6 +100,8 @@ export default function AdminDashboardClient({
   const [recruiterSearch, setRecruiterSearch] = useState('');
   const [matching, setMatching] = useState(false);
   const [matchMsg, setMatchMsg] = useState<string | null>(null);
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanMsg, setCleanMsg] = useState<string | null>(null);
   const [cronRuns, setCronRuns] = useState<Array<{ id: string; started_at: string; ended_at?: string; status: string; mode?: string; candidates_processed?: number; total_matches_upserted?: number; error_message?: string }>>([]);
   const router = useRouter();
 
@@ -122,6 +124,21 @@ export default function AdminDashboardClient({
       setMatchMsg(`❌ ${err.message ?? 'Matching failed'}`);
     }
     setMatching(false);
+    router.refresh();
+  };
+
+  const runCleanup = async () => {
+    setCleaning(true);
+    setCleanMsg(null);
+    try {
+      const res = await fetch('/api/admin/maintenance/cleanup', { method: 'POST' });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'Cleanup failed');
+      setCleanMsg(`🧹 Deleted ${d.deleted} stale rows. Scanned ${d.checked}, kept ${d.kept} (${d.duration_ms}ms)`);
+    } catch (err: any) {
+      setCleanMsg(`❌ ${err.message ?? 'Cleanup failed'}`);
+    }
+    setCleaning(false);
     router.refresh();
   };
 
@@ -151,12 +168,21 @@ export default function AdminDashboardClient({
           <button onClick={runMatching} disabled={matching} className="btn-primary text-sm flex items-center gap-1.5">
             {matching ? <><Spinner size={12} /> Matching...</> : <><Zap size={14} /> Run Matching</>}
           </button>
+          <button onClick={runCleanup} disabled={cleaning} className="btn-secondary text-sm flex items-center gap-1.5" title="Delete stale applied/screening/ready applications (21+ days, no activity)">
+            {cleaning ? <><Spinner size={12} /> Cleaning...</> : <>🧹 Run Cleanup</>}
+          </button>
         </div>
       </div>
 
       {matchMsg && (
         <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">
           {matchMsg}
+        </div>
+      )}
+
+      {cleanMsg && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+          {cleanMsg}
         </div>
       )}
 
@@ -188,12 +214,12 @@ export default function AdminDashboardClient({
 
       {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        <KpiCard label="Candidates"   value={stats.candidates}   icon={<Users size={18} />}         href="/dashboard/admin/candidates" />
-        <KpiCard label="Jobs"         value={stats.jobs}         icon={<Briefcase size={18} />}      href="/dashboard/admin/jobs"       />
-        <KpiCard label="Matches"      value={stats.matches}      icon={<TrendingUp size={18} />}                                        />
-        <KpiCard label="Applications" value={stats.applications} icon={<ClipboardList size={18} />}                                    />
-        <KpiCard label="Resumes"      value={stats.resumes}      icon={<FileText size={18} />}                                         />
-        <KpiCard label="Recruiters"   value={stats.recruiters}   icon={<UserCheck size={18} />}      href="/dashboard/admin/users"      />
+        <KpiCard label="Candidates" value={stats.candidates} icon={<Users size={18} />} href="/dashboard/admin/candidates" />
+        <KpiCard label="Jobs" value={stats.jobs} icon={<Briefcase size={18} />} href="/dashboard/admin/jobs" />
+        <KpiCard label="Matches" value={stats.matches} icon={<TrendingUp size={18} />} />
+        <KpiCard label="Applications" value={stats.applications} icon={<ClipboardList size={18} />} />
+        <KpiCard label="Resumes" value={stats.resumes} icon={<FileText size={18} />} />
+        <KpiCard label="Recruiters" value={stats.recruiters} icon={<UserCheck size={18} />} href="/dashboard/admin/users" />
       </div>
 
       {/* Pipeline + Activity */}
@@ -255,7 +281,7 @@ export default function AdminDashboardClient({
         <div className="flex border-b border-surface-200">
           {([
             { key: 'candidates', label: 'Candidates', count: stats.candidates, icon: <Users size={14} /> },
-            { key: 'recruiters', label: 'Recruiters',  count: stats.recruiters,  icon: <UserCheck size={14} /> },
+            { key: 'recruiters', label: 'Recruiters', count: stats.recruiters, icon: <UserCheck size={14} /> },
           ] as const).map(t => (
             <button
               key={t.key}
@@ -387,10 +413,10 @@ export default function AdminDashboardClient({
                       </div>
                       <div className="hidden sm:grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
                         {[
-                          { label: 'Candidates', val: r.candidates_count,   color: 'text-surface-900' },
-                          { label: 'Apps',       val: r.applications_count, color: 'text-blue-700'    },
-                          { label: 'Interviews', val: r.interviews_count,   color: 'text-purple-700'  },
-                          { label: 'Offers',     val: r.offers_count,       color: 'text-green-700'   },
+                          { label: 'Candidates', val: r.candidates_count, color: 'text-surface-900' },
+                          { label: 'Apps', val: r.applications_count, color: 'text-blue-700' },
+                          { label: 'Interviews', val: r.interviews_count, color: 'text-purple-700' },
+                          { label: 'Offers', val: r.offers_count, color: 'text-green-700' },
                         ].map(m => (
                           <div key={m.label}>
                             <p className={cn('text-lg font-bold tabular-nums', m.color)}>{m.val}</p>

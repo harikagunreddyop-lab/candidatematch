@@ -14,6 +14,11 @@ function getCorsOrigin(req: Request): string {
     if (origin && origins.includes(origin)) return origin;
     if (origins.length > 0) return origins[0];
   }
+  // Warn loudly when falling back to wildcard — should be set in production.
+  console.warn(
+    '[WARN] AUTOFILL_ALLOWED_ORIGINS not set — autofill-profile CORS responding with wildcard (*). ' +
+    'Set this env var to a comma-separated list of allowed extension origins in production.'
+  );
   return '*';
 }
 

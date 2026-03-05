@@ -6,7 +6,6 @@ node_modules
 .env.*.local
 *.log
 worker/tmp
-.vercel
 .turbo
 dist
 out

@@ -13,6 +13,9 @@ frontend:
         - env | grep -e APIFY_API_TOKEN >> .env.production || true
         - env | grep -e CRON_SECRET >> .env.production || true
         - env | grep -e RESUME_WORKER_URL >> .env.production || true
+        - env | grep -e AUTOFILL_ALLOWED_ORIGINS >> .env.production || true
+        - env | grep -e NEXT_PUBLIC_APP_URL >> .env.production || true
+        - env | grep -e GMAIL_ >> .env.production || true
         - cat .env.production 2>/dev/null; echo "---"
         - npm run build
   artifacts:

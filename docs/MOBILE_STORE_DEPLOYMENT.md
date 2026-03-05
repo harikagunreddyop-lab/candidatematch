@@ -4,7 +4,7 @@ This guide covers preparing the app for **Google Play Store** (Android) and **Ap
 
 ## Architecture
 
-The native apps use **Capacitor** to wrap the web app in a native shell. The app loads your **deployed production URL** (e.g. Vercel) in a WebView. This approach:
+The native apps use **Capacitor** to wrap the web app in a native shell. The app loads your **deployed production URL** (e.g. AWS Amplify) in a WebView. This approach:
 
 - Requires no changes to your Next.js app
 - Keeps all API routes and server features working
@@ -12,8 +12,8 @@ The native apps use **Capacitor** to wrap the web app in a native shell. The app
 
 ## Prerequisites
 
-1. **Deploy the web app** to production (Vercel, Amplify, etc.) over HTTPS.
-2. **Set `NEXT_PUBLIC_APP_URL`** in your deployment (e.g. `https://your-app.vercel.app`).
+1. **Deploy the web app** to production (AWS Amplify) over HTTPS.
+2. **Set `NEXT_PUBLIC_APP_URL`** in your deployment (e.g. `https://main.d1abc2xyz.amplifyapp.com`).
 3. **Development environment:**
    - **iOS:** macOS with Xcode (latest stable)
    - **Android:** Android Studio (latest stable)
@@ -31,13 +31,13 @@ For production builds, the Capacitor app loads from your deployed URL:
 
 ```bash
 # .env or .env.production
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
+NEXT_PUBLIC_APP_URL=https://main.d1abc2xyz.amplifyapp.com
 ```
 
 Or when running sync/open:
 
 ```bash
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app npm run mobile:sync
+NEXT_PUBLIC_APP_URL=https://main.d1abc2xyz.amplifyapp.com npm run mobile:sync
 ```
 
 ## 3. Prepare and Add Platforms

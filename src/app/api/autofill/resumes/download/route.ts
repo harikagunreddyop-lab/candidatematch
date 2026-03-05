@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { authedClient } from '../_auth';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const BUCKET = 'resumes';
 const SIGNED_URL_EXPIRY_SECONDS = 60; // short-lived — user must explicitly request
 
@@ -16,17 +14,6 @@ const CORS = {
 
 export async function OPTIONS() {
     return new NextResponse(null, { status: 204, headers: CORS });
-}
-
-async function authedClient(req: NextRequest) {
-    const token = req.headers.get('authorization')?.replace('Bearer ', '').trim();
-    if (!token) return null;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    return { supabase, user };
 }
 
 /**

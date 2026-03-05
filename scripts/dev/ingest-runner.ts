@@ -1,11 +1,14 @@
 /**
- * Scheduled job board ingest runner.
- * Runs every minute; syncs connectors where is_enabled AND (last_run_at is null OR last_run_at < now - sync_interval_min).
+ * Dev-only scheduled job board ingest runner.
+ *
+ * This script is NOT deployed to AWS Amplify. It is intended for local
+ * development only (e.g. `npm run ingest:run`) and mirrors the logic used
+ * by `/api/cron/ingest` and `/api/admin/maintenance/ingest`.
  */
 
 import 'dotenv/config';
 import { createServiceClient } from '@/lib/supabase-server';
-import { syncConnector } from './sync';
+import { syncConnector } from '@/ingest/sync';
 import { log, error as logError } from '@/lib/logger';
 
 const CONCURRENCY = 4;
@@ -66,7 +69,7 @@ async function tick() {
 }
 
 async function main() {
-  log('[INGEST-RUNNER] Starting (poll interval: 60s, concurrency: ' + CONCURRENCY + ')');
+  log('[INGEST-RUNNER] Starting (DEV ONLY; poll interval: 60s, concurrency: ' + CONCURRENCY + ')');
   await tick();
   setInterval(tick, POLL_INTERVAL_MS);
 }
@@ -75,3 +78,4 @@ main().catch((err) => {
   logError('[INGEST-RUNNER] Fatal:', err);
   process.exit(1);
 });
+

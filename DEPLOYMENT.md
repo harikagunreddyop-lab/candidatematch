@@ -1,117 +1,132 @@
-# CandidateMatch – Deployment Guide
+# CandidateMatch — Deployment Guide (AWS Amplify)
 
 This app has two parts:
 
-1. **Next.js app** – dashboard, API routes, auth (Supabase), matching (Anthropic).
-2. **Resume worker** – separate Node service (port 3001) used for resume parsing/generation. It is called by the Next.js API; it must be deployed and reachable via `RESUME_WORKER_URL`.
+1. **Next.js app** — dashboard, API routes, auth (Supabase), matching (Anthropic). Deployed on **AWS Amplify**.
+2. **Resume worker** — separate Node service (port 3001) for resume parsing/generation. Called by Next.js API via `RESUME_WORKER_URL`. Deploy separately (Railway, Render, or EC2).
 
 ---
 
-## Recommended setup: Vercel + Railway (or Render)
+## Deploy the Next.js App to AWS Amplify
 
-Best balance of simplicity, DX, and cost for most teams.
+### 1. Connect the repo
 
-### 1. Deploy Next.js to Vercel
+1. **Amplify Console** → **New app** → **Host web app** → connect your GitHub repo.
+2. Amplify auto-detects `amplify.yml` — no manual build config needed.
+3. Default build settings from `amplify.yml`:
+   - Pre-build: `nvm use 20 && npm ci`
+   - Build: exports env vars to `.env.production`, then `npm run build`
+   - Artifacts: `.next/**/*`
+   - Cache: `node_modules`, `.next/cache`
 
-- Push the repo to GitHub and import the project in [Vercel](https://vercel.com).
-- Framework is auto-detected (you already have `vercel.json`).
-- Set **Environment Variables** in Vercel (Project → Settings → Environment Variables):
+### 2. Set Environment Variables
+
+In **Amplify Console** → your app → **Environment variables**:
 
 | Variable | Required | Notes |
-|----------|----------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | From Supabase project |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | From Supabase |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only; keep secret |
-| `ANTHROPIC_API_KEY` | Yes | For matching |
-| `RESUME_WORKER_URL` | Yes | Full URL of your deployed worker (e.g. `https://your-worker.railway.app`) |
-| `NEXT_PUBLIC_APP_URL` | Yes | Your app URL (e.g. `https://master.d1zctiy8vgnlrr.amplifyapp.com`) |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | From Supabase project settings |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | From Supabase project settings |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Server-only; keep secret |
+| `ANTHROPIC_API_KEY` | ✅ | For matching and AI features |
+| `RESUME_WORKER_URL` | ✅ | Full URL of your deployed worker (no trailing slash) |
+| `NEXT_PUBLIC_APP_URL` | ✅ | Your Amplify app URL (e.g. `https://master.d1zctiy8vgnlrr.amplifyapp.com`) |
+| `CRON_SECRET` | ✅ | Secret for cron endpoint auth; generate a 32+ char random string |
+| `AUTOFILL_ALLOWED_ORIGINS` | ✅ prod | Comma-separated CORS origins for `/api/autofill-profile` (e.g. `chrome-extension://xxx`) |
+| `APIFY_API_TOKEN` | Optional | Only needed for Apify-based job scraping |
+| `USE_ELITE_ATS` | Optional | Set `1` to enable Elite ATS engine (Claude Sonnet) |
 
-- Deploy. The build runs `npm run build`; the app runs as serverless/edge.
+> After adding or changing variables, redeploy via Amplify Console or a new git push.
 
-**Matching and timeouts**
+### 3. Supabase Auth Configuration
 
-- Matching runs inside Vercel serverless functions.
-- **Hobby:** function timeout 60s.
-- **Pro:** function timeout 300s (5 min).
-- If you run matching for many candidates/jobs and expect it to exceed 5 minutes, use **Vercel Pro** or move long-running matching to a separate worker (see “Alternative” below).
+In **Supabase** → Authentication → URL Configuration:
+- **Site URL:** your `NEXT_PUBLIC_APP_URL`
+- **Redirect URLs:** add `https://<your-amplify-domain>/**`
 
-### 2. Deploy the resume worker to Railway (or Render)
+### 4. Run Database Migrations
 
-The worker is a separate Node app with a Dockerfile.
+Run all migrations in `supabase/migrations/` against your production Supabase instance:
 
-**Railway**
+```bash
+# From project root (requires Supabase CLI)
+supabase db push
+# OR run each .sql file manually in the Supabase SQL editor in order.
+```
 
-1. Sign up at [railway.app](https://railway.app).
-2. New Project → Deploy from GitHub repo (or “Empty project” and connect repo).
-3. Add a **Service** and set **Root Directory** to `worker` (so only the worker folder is built).
-4. Build: use **Dockerfile** (path `worker/Dockerfile`). Railway will detect it if the service root is `worker`.
-5. Set **Start Command** if needed (Dockerfile already has `CMD ["node", "index.js"]`).
-6. Add a **Public Domain** for the service so you get a URL like `https://your-worker.railway.app`.
-7. Copy that URL and set it in Vercel as `RESUME_WORKER_URL` (no trailing slash).
+### 5. Cron Scheduling (AWS EventBridge)
 
-**Render**
+Amplify does not run cron jobs natively. Use **AWS EventBridge Scheduler** to call the cron endpoints.
 
-1. New → Web Service; connect repo.
-2. **Root Directory:** `worker`.
-3. **Environment:** Docker.
-4. Render will use `worker/Dockerfile`. Assign a public URL.
-5. Set `RESUME_WORKER_URL` in Vercel to that URL.
+See **[docs/CRON_AMPLIFY.md](docs/CRON_AMPLIFY.md)** for full setup instructions.
 
-**Worker env (if needed)**
+Summary of three schedules:
 
-- If the worker needs any env (e.g. Supabase or API keys), add them in Railway/Render. Your current setup uses the Next.js API to call the worker, so the worker may only need to be reachable; check `worker/index.js` for any `process.env` usage.
+| Endpoint | Schedule | Purpose |
+|---|---|---|
+| `GET /api/cron/ingest` | Every 1 hour | Sync job connectors |
+| `GET /api/cron/match` | Every 6 hours | Run matching |
+| `GET /api/cron/cleanup` | Daily 03:00 UTC | Delete stale applications |
 
-### 3. Supabase
-
-- Use your existing Supabase project (production).
-- In Supabase → Authentication → URL Configuration, set **Site URL** to `NEXT_PUBLIC_APP_URL` and add your Vercel domain to **Redirect URLs** (e.g. `https://your-app.vercel.app/**`).
-
-### 4. Post-deploy checks
-
-- Open the app; log in (Supabase auth).
-- As admin: upload a job, run matching (Jobs page). If matching hits time limits, consider Pro or offloading to a worker.
-- As admin/recruiter: trigger an action that uses the resume worker (e.g. generate resume). Confirm `RESUME_WORKER_URL` is correct and the worker returns 200 on `/health`.
+All require `Authorization: Bearer $CRON_SECRET`.
 
 ---
 
-## Alternative: All-in-one on Railway or Render
+## Deploy the Resume Worker
 
-If you prefer one platform and want to avoid serverless time limits for matching:
+The worker is a separate Node app at `worker/` with a `Dockerfile`.
 
-- **Railway / Render:** create two services from the same repo:
-  1. **Web (Next.js)**  
-     - Root: project root (or leave empty).  
-     - Build: `npm install && npm run build`.  
-     - Start: `npm run start`.  
-     - Add a public domain and set **all** env vars (including `RESUME_WORKER_URL` pointing at the worker service URL).
-  2. **Worker**  
-     - Root: `worker`.  
-     - Build/run: Docker using `worker/Dockerfile`.  
-     - Add a public domain; use that URL as `RESUME_WORKER_URL` in the Next.js service.
+### Railway (recommended)
 
-This way both run as long-lived processes (no 5‑minute function limit).
+1. **New project** → **Deploy from GitHub** → select this repo.
+2. Add a **Service**, set **Root Directory** to `worker`.
+3. Build: Docker (auto-detected from `worker/Dockerfile`).
+4. Set env vars the worker needs (check `worker/index.js` for `process.env` usage).
+5. Add a **Public Domain** → copy the URL → set it as `RESUME_WORKER_URL` in Amplify.
+
+### Render
+
+1. **New** → **Web Service** → connect repo.
+2. **Root Directory:** `worker`, **Environment:** Docker.
+3. Copy the public URL → set as `RESUME_WORKER_URL` in Amplify.
 
 ---
 
-## Mobile (Play Store / App Store)
+## Post-Deploy Checklist
 
-The app is set up for **Capacitor** to ship as native iOS and Android apps. The native apps load your deployed web app (e.g. Vercel URL) in a WebView.
+```bash
+# 1. Health check
+curl https://<your-app>/api/cron/history \
+  -H "Authorization: Bearer <CRON_SECRET>"
+# Expected: 401 (needs admin session) — confirms route is up
 
-See **[docs/MOBILE_STORE_DEPLOYMENT.md](docs/MOBILE_STORE_DEPLOYMENT.md)** for:
+# 2. Resume worker health
+curl https://<your-worker-url>/health
+# Expected: 200
 
-- Adding Android and iOS platforms
-- Building release bundles for Play Store and App Store
-- App icons, splash screens, and store listing requirements
+# 3. Manual cron test
+curl -s -H "Authorization: Bearer <CRON_SECRET>" \
+  https://<your-app>/api/cron/match | jq .ok
+# Expected: true
+```
+
+In the app:
+- Log in as admin → Upload a job → Run matching → Confirm matches appear.
+- Log in as candidate → Check matches → Run ATS check → Confirm result.
+
+---
+
+## Mobile (iOS / Android — optional)
+
+The app is Capacitor-enabled. See **[docs/MOBILE_STORE_DEPLOYMENT.md](docs/MOBILE_STORE_DEPLOYMENT.md)** for native build instructions.
 
 ---
 
 ## Summary
 
-| Component      | Recommended        | Env / notes |
-|----------------|--------------------|-------------|
-| Next.js        | Vercel             | All env vars above; `NEXT_PUBLIC_APP_URL` = Vercel URL |
-| Resume worker  | Railway or Render  | Public URL → `RESUME_WORKER_URL` in Vercel |
-| DB + Auth      | Supabase (existing)| Redirect URLs for Vercel domain |
-| Matching       | Runs in Next.js API| Vercel Pro if runs > 5 min; else consider worker offload |
-
-Using **Vercel for the app** and **Railway (or Render) for the worker** is the best default setup for deploying this project.
+| Component | Platform | Notes |
+|---|---|---|
+| Next.js app | AWS Amplify | `amplify.yml` handles build |
+| Resume worker | Railway / Render | URL → `RESUME_WORKER_URL` |
+| DB + Auth | Supabase | Set site URL + redirect URLs |
+| Cron jobs | AWS EventBridge Scheduler | See `docs/CRON_AMPLIFY.md` |

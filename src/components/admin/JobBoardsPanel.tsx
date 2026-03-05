@@ -141,10 +141,10 @@ export function JobBoardsPanel() {
     }
   };
 
-  const runDiscovery = async () => {
-    const hasInput = (csvPath && csvPath.trim()) || (csvUrl && csvUrl.trim()) || csvFileContent;
-    if (!hasInput) {
-      setDiscoveryError('Provide a CSV path, URL, or upload a file');
+  const runDiscovery = async (useDb = false) => {
+    const hasCsv = (csvPath && csvPath.trim()) || (csvUrl && csvUrl.trim()) || csvFileContent;
+    if (!useDb && !hasCsv) {
+      setDiscoveryError('Use "Discover from database" or provide a CSV path, URL, or upload.');
       return;
     }
     setDiscoveryError(null);
@@ -154,12 +154,16 @@ export function JobBoardsPanel() {
       const res = await fetch('/api/discovery/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          csvPath: csvFileContent ? null : (csvPath || null),
-          csvUrl: csvFileContent ? null : (csvUrl || null),
-          csvContent: csvFileContent,
-          limit,
-        }),
+        body: JSON.stringify(
+          useDb
+            ? { useCompaniesTable: true, limit }
+            : {
+                csvPath: csvFileContent ? null : (csvPath || null),
+                csvUrl: csvFileContent ? null : (csvUrl || null),
+                csvContent: csvFileContent,
+                limit,
+              }
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Discovery failed');
@@ -310,19 +314,7 @@ export function JobBoardsPanel() {
         <div>
           <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100">Discover connectors</h3>
           <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">
-            Provide a companies CSV (path/URL/upload). We’ll detect providers and create connectors.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div className="lg:col-span-1">
-            <label className="label text-xs">CSV path (server)</label>
-            <input value={csvPath} onChange={(e) => setCsvPath(e.target.value)} className="input text-sm w-full" placeholder="./data/companies.csv" />
-          </div>
-          <div className="lg:col-span-2">
-            <label className="label text-xs">CSV URL</label>
-            <input value={csvUrl} onChange={(e) => setCsvUrl(e.target.value)} className="input text-sm w-full" placeholder="https://…" />
-          </div>
+            Uses companies from the database. No CSV needed.</p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -334,15 +326,7 @@ export function JobBoardsPanel() {
               onChange={(e) => setLimit(e.target.value ? Number(e.target.value) : undefined)}
               className="input text-sm w-28"
               min={1}
-            />
-          </div>
-          <div className="flex-1">
-            <label className="label text-xs">Or upload CSV</label>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadCsv(f); }}
-              className="block text-xs text-surface-500"
+              placeholder="all"
             />
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -354,11 +338,37 @@ export function JobBoardsPanel() {
             />
             <span className="text-xs text-surface-600 dark:text-surface-400">Auto-sync after discovery</span>
           </label>
-          <button onClick={runDiscovery} disabled={runningDiscovery} className="btn-primary text-sm flex items-center gap-2">
+          <button onClick={() => runDiscovery(true)} disabled={runningDiscovery} className="btn-primary text-sm flex items-center gap-2">
             {runningDiscovery ? <Spinner size={14} /> : <Plug size={14} />}
-            Run discovery
+            Discover from database
           </button>
         </div>
+
+        <details className="text-xs">
+          <summary className="cursor-pointer text-surface-500 hover:text-surface-700 dark:hover:text-surface-300">Or use CSV</summary>
+          <div className="mt-3 grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div className="lg:col-span-1">
+              <label className="label text-xs">CSV path (server)</label>
+              <input value={csvPath} onChange={(e) => setCsvPath(e.target.value)} className="input text-sm w-full" placeholder="./data/companies.csv" />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="label text-xs">CSV URL</label>
+              <input value={csvUrl} onChange={(e) => setCsvUrl(e.target.value)} className="input text-sm w-full" placeholder="https://…" />
+            </div>
+          </div>
+          <div className="mt-2 flex items-center gap-3">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onUploadCsv(f); }}
+              className="block text-xs text-surface-500"
+            />
+            <button onClick={() => runDiscovery(false)} disabled={runningDiscovery} className="btn-secondary text-sm flex items-center gap-2">
+              {runningDiscovery ? <Spinner size={14} /> : <Plug size={14} />}
+              Run discovery from CSV
+            </button>
+          </div>
+        </details>
 
         {discoveryError && (
           <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-xs text-red-700 dark:text-red-200 flex items-start gap-2">

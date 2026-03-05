@@ -14,6 +14,8 @@ interface DiscoveryOptions {
   csvPath?: string;
   csvUrl?: string;
   csvContent?: string;
+  /** Use companies from the `companies` table (name, website). No CSV needed. */
+  useCompaniesTable?: boolean;
   limit?: number;
 }
 
@@ -45,7 +47,24 @@ function parseCsvFromString(raw: string, limit?: number): CompanyRow[] {
   return rows;
 }
 
-async function loadCsvRows(options: DiscoveryOptions): Promise<CompanyRow[]> {
+async function loadCompaniesFromDb(supabase: ReturnType<typeof createServiceClient>, limit?: number): Promise<CompanyRow[]> {
+  let q = supabase.from('companies').select('name, website').not('website', 'is', null).not('website', 'eq', '');
+  if (limit && limit > 0) {
+    q = q.limit(limit);
+  }
+  const { data, error } = await q;
+  if (error) throw new Error(`Failed to load companies: ${error.message}`);
+  return (data ?? []).map((r: { name?: string; website?: string }) => ({
+    company_name: (r.name ?? '').trim(),
+    website: (r.website ?? '').trim(),
+  })).filter((row: CompanyRow) => row.company_name && row.website);
+}
+
+async function loadCompanyRows(options: DiscoveryOptions): Promise<CompanyRow[]> {
+  if (options.useCompaniesTable) {
+    const supabase = createServiceClient();
+    return loadCompaniesFromDb(supabase, options.limit);
+  }
   if (options.csvContent && options.csvContent.trim()) {
     return parseCsvFromString(options.csvContent, options.limit);
   }
@@ -67,7 +86,7 @@ async function loadCsvRows(options: DiscoveryOptions): Promise<CompanyRow[]> {
     const raw = fs.readFileSync(resolved, 'utf8');
     return parseCsvFromString(raw, options.limit);
   }
-  throw new Error('Provide csvPath, csvUrl, or csvContent');
+  throw new Error('Provide useCompaniesTable: true, csvPath, csvUrl, or csvContent');
 }
 
 function normalizeWebsite(website: string): string {
@@ -229,7 +248,7 @@ async function runWithConcurrency<T>(items: T[], limit: number, fn: (item: T, in
 }
 
 export async function runDiscovery(options: DiscoveryOptions): Promise<DiscoverySummary> {
-  const rows = await loadCsvRows(options);
+  const rows = await loadCompanyRows(options);
   const supabase = createServiceClient();
 
   let attempted = 0;

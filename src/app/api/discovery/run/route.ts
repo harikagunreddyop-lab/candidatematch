@@ -8,19 +8,20 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
-  let body: { csvPath?: string; csvUrl?: string; csvContent?: string; limit?: number };
+  let body: { csvPath?: string; csvUrl?: string; csvContent?: string; useCompaniesTable?: boolean; limit?: number };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const hasInput = (body.csvPath && typeof body.csvPath === 'string') ||
+  const useCompaniesTable = body.useCompaniesTable === true;
+  const hasCsv = (body.csvPath && typeof body.csvPath === 'string') ||
     (body.csvUrl && typeof body.csvUrl === 'string') ||
     (body.csvContent && typeof body.csvContent === 'string');
-  if (!hasInput) {
+  if (!useCompaniesTable && !hasCsv) {
     return NextResponse.json(
-      { error: 'Provide one of: csvPath, csvUrl, or csvContent' },
+      { error: 'Provide useCompaniesTable: true, or one of: csvPath, csvUrl, csvContent' },
       { status: 400 }
     );
   }
@@ -29,6 +30,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const summary = await runDiscovery({
+      useCompaniesTable: useCompaniesTable || undefined,
       csvPath: body.csvPath,
       csvUrl: body.csvUrl,
       csvContent: body.csvContent,

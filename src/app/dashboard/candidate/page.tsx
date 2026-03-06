@@ -90,8 +90,8 @@ export default function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'overview' | 'matches' | 'applications' | 'resumes' | 'saved' | 'reminders'>('overview');
   const [showSavedOnly, setShowSavedOnly] = useState(false);
-  const [matchDateFilter, setMatchDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
-  const [jobDateFilter, setJobDateFilter] = useState<'all' | '7' | '30' | '90'>('all');
+  const [matchDateFilter, setMatchDateFilter] = useState<'all' | 'today' | 'yesterday' | '7' | '30' | '90'>('all');
+  const [jobDateFilter, setJobDateFilter] = useState<'all' | 'today' | 'yesterday' | '7' | '30' | '90'>('all');
   const [matchSearch, setMatchSearch] = useState('');
   const [atsScoreFilter, setAtsScoreFilter] = useState<'all' | '70' | '80'>('all');
   const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
@@ -759,19 +759,51 @@ export default function CandidateDashboard() {
   const availableMatches = matches.filter(m => !alreadyApplied.has(m.job_id));
   const appliedMatches = matches.filter(m => alreadyApplied.has(m.job_id));
 
-  const matchDateCutoff = matchDateFilter === 'all' ? 0 : Date.now() - parseInt(matchDateFilter, 10) * 24 * 60 * 60 * 1000;
-  const jobDateCutoff = jobDateFilter === 'all' ? 0 : Date.now() - parseInt(jobDateFilter, 10) * 24 * 60 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const matchDateRange = (() => {
+    switch (matchDateFilter) {
+      case 'today':
+        return { start: todayStart.getTime(), end: Number.POSITIVE_INFINITY };
+      case 'yesterday':
+        return { start: todayStart.getTime() - dayMs, end: todayStart.getTime() };
+      case '7':
+      case '30':
+      case '90': {
+        const days = parseInt(matchDateFilter, 10);
+        return { start: Date.now() - days * dayMs, end: Number.POSITIVE_INFINITY };
+      }
+      default:
+        return { start: 0, end: Number.POSITIVE_INFINITY };
+    }
+  })();
+  const jobDateRange = (() => {
+    switch (jobDateFilter) {
+      case 'today':
+        return { start: todayStart.getTime(), end: Number.POSITIVE_INFINITY };
+      case 'yesterday':
+        return { start: todayStart.getTime() - dayMs, end: todayStart.getTime() };
+      case '7':
+      case '30':
+      case '90': {
+        const days = parseInt(jobDateFilter, 10);
+        return { start: Date.now() - days * dayMs, end: Number.POSITIVE_INFINITY };
+      }
+      default:
+        return { start: 0, end: Number.POSITIVE_INFINITY };
+    }
+  })();
 
   const scoreOf = (m: any) => typeof (m as any).ats_score === 'number' ? (m as any).ats_score : (typeof m.fit_score === 'number' ? m.fit_score : null);
   const candidateSkills = candidate ? (Array.isArray(candidate.skills) ? candidate.skills : (typeof candidate.skills === 'string' ? (candidate.skills === '{}' ? [] : (() => { try { return JSON.parse(candidate.skills); } catch { return []; } })()) : [])) : [];
   const filteredAvailableMatches = availableMatches.filter(m => {
     if (matchDateFilter !== 'all') {
       const t = new Date(m.matched_at || m.created_at).getTime();
-      if (t < matchDateCutoff) return false;
+      if (t < matchDateRange.start || t >= matchDateRange.end) return false;
     }
     if (jobDateFilter !== 'all') {
       const jt = m.job?.created_at ? new Date(m.job.created_at).getTime() : 0;
-      if (jt < jobDateCutoff) return false;
+      if (jt < jobDateRange.start || jt >= jobDateRange.end) return false;
     }
     if (matchSearch.trim()) {
       const q = matchSearch.toLowerCase();
@@ -1235,10 +1267,10 @@ export default function CandidateDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-24 shrink-0">Matched:</span>
               <div className="flex flex-wrap gap-1.5">
-                {(['all', '7', '30', '90'] as const).map(f => (
+                {(['all', 'today', 'yesterday', '7', '30', '90'] as const).map(f => (
                   <button key={f} onClick={() => setMatchDateFilter(f)}
                     className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', matchDateFilter === f ? 'bg-brand-600 text-white shadow-sm' : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600')}>
-                    {f === 'all' ? 'All time' : `Last ${f}d`}
+                    {f === 'all' ? 'All time' : f === 'today' ? 'Today' : f === 'yesterday' ? 'Yesterday' : `Last ${f}d`}
                   </button>
                 ))}
               </div>
@@ -1247,19 +1279,23 @@ export default function CandidateDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-surface-500 dark:text-surface-400 w-24 shrink-0">Job posted:</span>
               <div className="flex flex-wrap gap-1.5">
-                {(['all', '7', '30', '90'] as const).map(f => (
+                {(['all', 'today', 'yesterday', '7', '30', '90'] as const).map(f => (
                   <button key={f} onClick={() => setJobDateFilter(f)}
                     className={cn('text-xs font-semibold py-1.5 px-3 rounded-lg transition-all', jobDateFilter === f
                       ? 'bg-emerald-600 text-white shadow-sm'
                       : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-600'
                     )}>
-                    {f === 'all' ? 'All time' : `Last ${f}d`}
+                    {f === 'all' ? 'All time' : f === 'today' ? 'Today' : f === 'yesterday' ? 'Yesterday' : `Last ${f}d`}
                   </button>
                 ))}
               </div>
               {jobDateFilter !== 'all' && (
                 <span className="inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-1 rounded-lg font-medium">
-                  <Calendar size={11} /> Showing jobs posted in the last {jobDateFilter} days
+                  <Calendar size={11} />{jobDateFilter === 'today'
+                    ? ' Showing jobs posted today'
+                    : jobDateFilter === 'yesterday'
+                      ? ' Showing jobs posted yesterday'
+                      : ` Showing jobs posted in the last ${jobDateFilter} days`}
                 </span>
               )}
             </div>

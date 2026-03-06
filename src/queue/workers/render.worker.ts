@@ -21,6 +21,10 @@ const RESUME_WORKER_URL = (() => {
 })();
 
 function createRenderWorker() {
+    const queueConn = getQueueConnection();
+    if (!queueConn) {
+        throw new Error('Queue pipeline is not configured (REDIS_URL not set)');
+    }
     const worker = new Worker<RenderJobData>(
         'render',
         async (job) => {
@@ -78,7 +82,7 @@ function createRenderWorker() {
             }
         },
         {
-            ...getQueueConnection(),
+            ...queueConn,
             concurrency: 3, // Rendering is fast (no LLM)
         },
     );

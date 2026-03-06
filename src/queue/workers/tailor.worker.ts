@@ -10,6 +10,10 @@ import { type TailorJobData } from '../queues';
 import { createServiceClient } from '@/lib/supabase-server';
 
 function createTailorWorker() {
+    const queueConn = getQueueConnection();
+    if (!queueConn) {
+        throw new Error('Queue pipeline is not configured (REDIS_URL not set)');
+    }
     const worker = new Worker<TailorJobData>(
         'tailor',
         async (job) => {
@@ -110,7 +114,7 @@ function createTailorWorker() {
             }
         },
         {
-            ...getQueueConnection(),
+            ...queueConn,
             concurrency: 1,
         },
     );

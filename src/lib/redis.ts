@@ -18,7 +18,12 @@ export function getRedis(): Redis | null {
     if (_connectionFailed) return null;
     if (_redis) return _redis;
 
-    const url = process.env.REDIS_URL || 'redis://localhost:6379';
+    const url = process.env.REDIS_URL;
+    if (!url) {
+        // Redis not configured; disable Redis-backed features gracefully.
+        _connectionFailed = true;
+        return null;
+    }
     try {
         _redis = new Redis(url, {
             maxRetriesPerRequest: 3,

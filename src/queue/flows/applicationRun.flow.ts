@@ -70,7 +70,9 @@ export async function startApplicationRun(
         candidateId,
         intent: intent as Record<string, unknown>,
     };
-
+    if (!matchQueue) {
+        throw new Error('Queue pipeline is not configured (Redis/queues disabled)');
+    }
     await matchQueue.add('match-job', jobData, {
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },

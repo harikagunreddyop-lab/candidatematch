@@ -194,6 +194,12 @@ export async function POST(req: NextRequest) {
 
     // ── Enqueue render job ──
     const { renderQueue } = await import('@/queue/queues');
+    if (!renderQueue) {
+      return NextResponse.json(
+        { error: 'Rendering pipeline is not configured (Redis/queues disabled)' },
+        { status: 503 },
+      );
+    }
     await renderQueue.add('render-job', {
       artifactId: artifact.id,
       candidateId: candidate_id,

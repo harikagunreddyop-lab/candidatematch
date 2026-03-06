@@ -7,10 +7,14 @@
 
 /**
  * Returns connection options for BullMQ queues and workers.
- * Uses REDIS_URL env var or defaults to localhost:6379.
+ * Uses REDIS_URL env var. When unset, queues are disabled and this returns null.
  */
 export function getQueueConnection() {
-    const url = process.env.REDIS_URL || 'redis://localhost:6379';
+    const url = process.env.REDIS_URL;
+    if (!url) {
+        console.warn('[queue] REDIS_URL not set — BullMQ queues are disabled.');
+        return null;
+    }
     return {
         connection: {
             url,

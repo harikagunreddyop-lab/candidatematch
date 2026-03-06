@@ -12,6 +12,10 @@ import { createServiceClient } from '@/lib/supabase-server';
 const SCORE_THRESHOLD = 65; // Minimum ATS score to proceed to tailoring
 
 function createScoreWorker() {
+    const queueConn = getQueueConnection();
+    if (!queueConn) {
+        throw new Error('Queue pipeline is not configured (REDIS_URL not set)');
+    }
     const worker = new Worker<ScoreJobData>(
         'score',
         async (job) => {
@@ -110,7 +114,7 @@ function createScoreWorker() {
                 }).eq('id', stepId);
 
                 // Enqueue tailor step if matches above threshold
-                if (aboveThreshold.length > 0) {
+                if (aboveThreshold.length > 0 && tailorQueue) {
                     const { data: tailorStep } = await supabase
                         .from('run_steps')
                         .select('id')
@@ -161,7 +165,7 @@ function createScoreWorker() {
             }
         },
         {
-            ...getQueueConnection(),
+            ...queueConn,
             concurrency: 1, // LLM scoring is expensive — low concurrency
         },
     );

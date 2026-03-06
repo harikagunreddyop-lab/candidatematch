@@ -11,6 +11,10 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { runMatching } from '@/lib/matching';
 
 function createMatchWorker() {
+    const queueConn = getQueueConnection();
+    if (!queueConn) {
+        throw new Error('Queue pipeline is not configured (REDIS_URL not set)');
+    }
     const worker = new Worker<MatchJobData>(
         'match',
         async (job) => {
@@ -66,7 +70,7 @@ function createMatchWorker() {
                 }).eq('id', stepId);
 
                 // Enqueue score step if we have matches
-                if (matchIds.length > 0) {
+                if (matchIds.length > 0 && scoreQueue) {
                     const { data: scoreStep } = await supabase
                         .from('run_steps')
                         .select('id')
@@ -120,7 +124,7 @@ function createMatchWorker() {
             }
         },
         {
-            ...getQueueConnection(),
+            ...queueConn,
             concurrency: 2,
         },
     );

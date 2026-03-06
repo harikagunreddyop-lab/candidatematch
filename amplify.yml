@@ -7,6 +7,7 @@ frontend:
         - npm ci
     build:
       commands:
+        # Optional: write selected env vars into .env.production for Next.js
         - env | grep -e NEXT_PUBLIC_ >> .env.production || true
         - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production || true
         - env | grep -e ANTHROPIC_API_KEY >> .env.production || true
@@ -16,11 +17,15 @@ frontend:
         - env | grep -e AUTOFILL_ALLOWED_ORIGINS >> .env.production || true
         - env | grep -e NEXT_PUBLIC_APP_URL >> .env.production || true
         - env | grep -e GMAIL_ >> .env.production || true
+        # Validate required env vars are present in the Amplify environment
         - |
           echo "Validating required env vars..."
           missing=0
           for var in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY ANTHROPIC_API_KEY CRON_SECRET; do
-            grep -q "^${var}=" .env.production || { echo "FATAL: $var is missing from env"; missing=1; }
+            if [ -z "${!var}" ]; then
+              echo "FATAL: $var is missing from Amplify environment"
+              missing=1
+            fi
           done
           [ "$missing" -eq 0 ] || exit 1
           echo "All required env vars present."

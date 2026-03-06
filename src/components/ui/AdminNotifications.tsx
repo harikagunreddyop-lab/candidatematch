@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Bell } from 'lucide-react';
 import { cn, formatRelative } from '@/utils/helpers';
 
@@ -64,8 +64,8 @@ export function AdminNotificationBell({ adminId }: { adminId: string }) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'admin_notifications' },
         () => load()
-      )
-      .subscribe();
+      );
+    subscribeWithLog(channel, 'admin-notifications');
 
     return () => {
       supabase.removeChannel(channel);

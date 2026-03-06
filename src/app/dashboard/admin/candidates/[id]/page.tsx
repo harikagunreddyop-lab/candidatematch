@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Tabs, StatusBadge, Spinner, EmptyState, Modal } from '@/components/ui';
 import {
   ArrowLeft, FileText, Briefcase, Download, ExternalLink,
@@ -97,8 +97,8 @@ export default function CandidateDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments', filter: `candidate_id=eq.${id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications', filter: `candidate_id=eq.${id}` }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resume_versions', filter: `candidate_id=eq.${id}` }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` }, () => load());
+    subscribeWithLog(channel, `candidate-detail-${id}`);
     return () => { supabase.removeChannel(channel); };
   }, [id, load]);
 
@@ -140,15 +140,15 @@ export default function CandidateDetailPage() {
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
           ? {
-              ...m,
-              ats_score: data.ats_score,
-              ats_reason: data.ats_reason,
-              ats_breakdown: data.ats_breakdown,
-              ats_resume_id: data.ats_resume_id,
-              ats_checked_at: data.ats_checked_at,
-              matched_keywords: data.matched_keywords ?? [],
-              missing_keywords: data.missing_keywords ?? [],
-            }
+            ...m,
+            ats_score: data.ats_score,
+            ats_reason: data.ats_reason,
+            ats_breakdown: data.ats_breakdown,
+            ats_resume_id: data.ats_resume_id,
+            ats_checked_at: data.ats_checked_at,
+            matched_keywords: data.matched_keywords ?? [],
+            missing_keywords: data.missing_keywords ?? [],
+          }
           : m
       ));
     } catch (e: any) {
@@ -252,16 +252,16 @@ export default function CandidateDetailPage() {
   );
 
   // Safe arrays — handles null/undefined/bad data for candidates who haven't onboarded yet
-  const skills       = safeArray(candidate.skills);
-  const softSkills   = safeArray(candidate.soft_skills);
-  const tools        = safeArray(candidate.tools);
-  const experience   = safeArray(candidate.experience);
-  const education    = safeArray(candidate.education);
+  const skills = safeArray(candidate.skills);
+  const softSkills = safeArray(candidate.soft_skills);
+  const tools = safeArray(candidate.tools);
+  const experience = safeArray(candidate.experience);
+  const education = safeArray(candidate.education);
   const certifications = safeArray(candidate.certifications);
-  const languages    = safeArray(candidate.languages);
-  const tags         = safeArray(candidate.tags);
-  const targetRoles  = safeArray(candidate.target_roles);
-  const targetLocs   = safeArray(candidate.target_locations);
+  const languages = safeArray(candidate.languages);
+  const tags = safeArray(candidate.tags);
+  const targetRoles = safeArray(candidate.target_roles);
+  const targetLocs = safeArray(candidate.target_locations);
 
   return (
     <div className="space-y-6 min-w-0 max-w-full">
@@ -272,10 +272,10 @@ export default function CandidateDetailPage() {
         <span className="text-surface-900 dark:text-surface-100 font-medium">{candidate.full_name || 'Candidate'}</span>
       </nav>
       <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
-          <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
+        <button onClick={() => router.back()} className="btn-ghost p-2"><ArrowLeft size={18} /></button>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
               candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}
@@ -409,7 +409,7 @@ export default function CandidateDetailPage() {
               <div className="card p-5">
                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Skills</h3>
                 <div className="flex flex-wrap gap-1.5">
-                    {skills.map((s: string, i: number) => (
+                  {skills.map((s: string, i: number) => (
                     <span key={i} className="px-2.5 py-1 bg-brand-50 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 rounded-lg text-xs font-medium">{s}</span>
                   ))}
                 </div>
@@ -628,8 +628,8 @@ export default function CandidateDetailPage() {
                   <div className="shrink-0 flex flex-col items-center gap-0.5">
                     <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
                       (m as any).ats_score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                      (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
-                      'bg-red-500/15 text-red-600 dark:text-red-400'
+                        (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                          'bg-red-500/15 text-red-600 dark:text-red-400'
                     )}>
                       {(m as any).ats_score}
                     </span>
@@ -740,30 +740,30 @@ export default function CandidateDetailPage() {
           ) : (
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-600">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Job</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Company</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Applied</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Candidate note</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Interview notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
-                  {applications.map(a => (
-                    <tr key={a.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/40">
-                      <td className="px-4 py-3 font-medium text-surface-900 dark:text-surface-100">{a.job?.title}</td>
-                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400">{a.job?.company}</td>
-                      <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
-                      <td className="px-4 py-3 text-surface-400 dark:text-surface-500 text-xs">{a.applied_at ? formatDate(a.applied_at) : '—'}</td>
-                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.candidate_notes || ''}>{a.candidate_notes || '—'}</td>
-                      <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.interview_notes || ''}>{a.interview_notes || '—'}</td>
+                <table className="w-full text-sm">
+                  <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-600">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Job</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Company</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Applied</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Candidate note</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Interview notes</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
+                    {applications.map(a => (
+                      <tr key={a.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/40">
+                        <td className="px-4 py-3 font-medium text-surface-900 dark:text-surface-100">{a.job?.title}</td>
+                        <td className="px-4 py-3 text-surface-500 dark:text-surface-400">{a.job?.company}</td>
+                        <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
+                        <td className="px-4 py-3 text-surface-400 dark:text-surface-500 text-xs">{a.applied_at ? formatDate(a.applied_at) : '—'}</td>
+                        <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.candidate_notes || ''}>{a.candidate_notes || '—'}</td>
+                        <td className="px-4 py-3 text-surface-500 dark:text-surface-400 text-xs max-w-[160px] truncate" title={a.interview_notes || ''}>{a.interview_notes || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

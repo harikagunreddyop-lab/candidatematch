@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { CardSkeleton, Skeleton, MatchCardSkeleton, ApplicationRowSkeleton, EmptyState, SearchInput, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
 import {
@@ -280,8 +280,8 @@ export default function CandidateDashboard() {
         } else if (next?.generation_status === 'failed') {
           loadTailoredResumes(cid);
         }
-      })
-      .subscribe();
+      });
+    subscribeWithLog(channel, 'candidate-dashboard-sync');
     return () => { supabase.removeChannel(channel); };
   }, [candidate?.id]);
 
@@ -584,15 +584,15 @@ export default function CandidateDashboard() {
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
           ? {
-              ...m,
-              ats_score: data.ats_score,
-              ats_reason: data.ats_reason,
-              ats_breakdown: data.ats_breakdown,
-              ats_resume_id: data.ats_resume_id,
-              ats_checked_at: data.ats_checked_at,
-              matched_keywords: data.matched_keywords ?? [],
-              missing_keywords: data.missing_keywords ?? [],
-            }
+            ...m,
+            ats_score: data.ats_score,
+            ats_reason: data.ats_reason,
+            ats_breakdown: data.ats_breakdown,
+            ats_resume_id: data.ats_resume_id,
+            ats_checked_at: data.ats_checked_at,
+            matched_keywords: data.matched_keywords ?? [],
+            missing_keywords: data.missing_keywords ?? [],
+          }
           : m
       ));
     } catch (e: any) {

@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
 
-  // ── MODE 1: Resume Generation ────────────────────────────────────────────
+  // ── MODE 1: Resume Generation (v3: content-first + cache) ──────────────────
   if (contentType.includes('application/json')) {
     let body: { candidate_id?: string; job_id?: string };
     try {
@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
     if (resumeAllowed) return resumeAllowed;
 
     const supabase = createServiceClient();
+
     // Enforce: resume generation only for matches with score 61-79
     const { data: match } = await supabase
       .from('candidate_job_matches')
@@ -103,123 +104,130 @@ export async function POST(req: NextRequest) {
       if (score < RESUME_GENERATION_MIN_SCORE) {
         return NextResponse.json(
           { error: `Resume generation is only available for matches with ATS score 61-79. This match has score ${score}.` },
-          { status: 400 }
+          { status: 400 },
         );
       }
       if (score > RESUME_GENERATION_MAX_SCORE) {
         return NextResponse.json(
           { error: `Resume generation is only for scores 61-79. This match scores ${score} — apply directly.` },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
 
-    // Fetch candidate + job for the worker
+    // Fetch candidate + job
     const [{ data: candidate, error: cErr }, { data: job, error: jErr }] = await Promise.all([
       supabase.from('candidates').select('*').eq('id', candidate_id).single(),
       supabase.from('jobs').select('*').eq('id', job_id).single(),
     ]);
-
     if (cErr || !candidate) return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
     if (jErr || !job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
-    // Count existing versions for this candidate+job
+    // ── v3: Compute content hash for caching ──
+    const { computeContentHash } = await import('@/lib/resume-hash');
+    const templateId = 'ats-classic';
+    const contentHash = computeContentHash({
+      candidateId: candidate_id,
+      skills: candidate.skills,
+      experience: candidate.experience,
+      education: candidate.education,
+      certifications: candidate.certifications,
+      jdClean: job.jd_clean || job.jd_raw || job.description || '',
+      templateId,
+    });
+
+    // ── Cache check: return instantly if already rendered ──
+    const { data: existing } = await supabase
+      .from('resume_artifacts')
+      .select('id, status, docx_url, pdf_url')
+      .eq('content_hash', contentHash)
+      .eq('template_id', templateId)
+      .single();
+
+    if (existing) {
+      if (existing.status === 'ready') {
+        return NextResponse.json({
+          artifact_id: existing.id,
+          status: 'ready',
+          docx_url: existing.docx_url,
+          pdf_url: existing.pdf_url,
+          cached: true,
+        });
+      }
+      // Still in progress — return current status
+      return NextResponse.json({
+        artifact_id: existing.id,
+        status: existing.status,
+        cached: true,
+      });
+    }
+
+    // ── Generate content via coverage gate + LLM rewrite ──
+    const { generateContent } = await import('@/lib/resume-content');
+    const { content, coverage } = await generateContent(candidate, job);
+
+    // Enrich content with candidate name + contact for the renderer
+    const enrichedContent = {
+      ...content,
+      candidateName: candidate.full_name,
+      contactLine: [candidate.email, candidate.phone, candidate.location].filter(Boolean).join(' | '),
+    };
+
+    // ── Store artifact row ──
+    const { data: artifact, error: artErr } = await supabase
+      .from('resume_artifacts')
+      .insert({
+        candidate_id,
+        job_id,
+        template_id: templateId,
+        content_hash: contentHash,
+        content_json: enrichedContent,
+        coverage_json: coverage,
+        status: 'queued',
+      })
+      .select('id')
+      .single();
+
+    if (artErr || !artifact) {
+      return NextResponse.json({ error: 'Failed to create artifact: ' + artErr?.message }, { status: 500 });
+    }
+
+    // ── Enqueue render job ──
+    const { renderQueue } = await import('@/queue/queues');
+    await renderQueue.add('render-job', {
+      artifactId: artifact.id,
+      candidateId: candidate_id,
+      contentJson: enrichedContent,
+      templateId,
+    }, {
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 3000 },
+    });
+
+    // Also create a resume_versions record for backward compat
     const { count: versionCount } = await supabase
       .from('resume_versions')
       .select('id', { count: 'exact', head: true })
       .eq('candidate_id', candidate_id)
       .eq('job_id', job_id);
-
     const versionNumber = (versionCount || 0) + 1;
-    const filePath = `generated/${candidate_id}/${job_id}/v${versionNumber}.docx`;
 
-    // Create the resume_version record in pending state
-    const { data: resumeVersion, error: rvErr } = await supabase
-      .from('resume_versions')
-      .insert({
-        candidate_id,
-        job_id,
-        pdf_path: filePath,
-        generation_status: 'pending',
-        version_number: versionNumber,
-        bullets: [],
-      })
-      .select()
-      .single();
-
-    if (rvErr || !resumeVersion) {
-      return NextResponse.json({ error: 'Failed to create resume version: ' + rvErr?.message }, { status: 500 });
-    }
-
-    // Check worker is reachable; in development optionally try to start it once
-    let workerReachable = false;
-    const healthController = new AbortController();
-    const healthTimeout = setTimeout(() => healthController.abort(), 5000);
-    try {
-      const healthRes = await fetch(`${RESUME_WORKER_URL}/health`, { signal: healthController.signal });
-      clearTimeout(healthTimeout);
-      workerReachable = healthRes.ok;
-    } catch (healthErr: any) {
-      clearTimeout(healthTimeout);
-      if (process.env.NODE_ENV === 'development' && typeof process !== 'undefined') {
-        try {
-          const { spawn } = require('child_process');
-          const path = require('path');
-          const workerPath = path.join(process.cwd(), 'worker', 'index.js');
-          spawn(process.execPath, [workerPath], { cwd: process.cwd(), detached: true, stdio: 'ignore' }).unref();
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('[api/resumes] Started resume worker in background. Retrying health check in 3s.');
-          }
-          await new Promise(r => setTimeout(r, 3000));
-          const retry = await fetch(`${RESUME_WORKER_URL}/health`);
-          workerReachable = retry.ok;
-        } catch (_) {
-          // ignore
-        }
-      }
-    }
-    if (!workerReachable) {
-      await supabase.from('resume_versions').update({
-        generation_status: 'failed',
-        error_message: 'Resume worker unreachable.',
-      }).eq('id', resumeVersion.id);
-      return NextResponse.json(
-        {
-          error: 'Resume worker is not running. Start it with: npm run worker:dev',
-          hint: process.env.NODE_ENV === 'development'
-            ? 'In dev we tried to start it automatically; if it still fails, run npm run worker:dev in a separate terminal.'
-            : 'Add RESUME_WORKER_URL to .env and run the worker as a separate process.',
-        },
-        { status: 503 }
-      );
-    }
-
-    // Fire-and-forget to the worker — don't await (it's long-running)
-    fetch(`${RESUME_WORKER_URL}/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        resume_version_id: resumeVersion.id,
-        candidate,
-        job,
-        file_path: filePath,
-      }),
-    }).catch(err => {
-      if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.error('[api/resumes] Worker call failed:', err.message);
-      }
-      supabase.from('resume_versions').update({
-        generation_status: 'failed',
-        error_message: 'Worker unreachable: ' + err.message,
-      }).eq('id', resumeVersion.id);
+    await supabase.from('resume_versions').insert({
+      candidate_id,
+      job_id,
+      pdf_path: `generated/${candidate_id}/${artifact.id}.docx`,
+      generation_status: 'pending',
+      version_number: versionNumber,
+      bullets: content.experience.flatMap((e) => e.bullets),
     });
 
     return NextResponse.json({
-      resume_version_id: resumeVersion.id,
-      status: 'pending',
-      message: 'Resume generation started. Refresh in a few seconds.',
-    });
+      artifact_id: artifact.id,
+      status: 'queued',
+      coverage_score: coverage.score,
+      gaps_fixed: content.gapsFixed.length,
+      message: 'Resume content generated. Rendering queued. Poll /api/resumes/artifacts/' + artifact.id,
+    }, { status: 202 });
   }
 
   // ── MODE 2: Direct PDF Upload ────────────────────────────────────────────

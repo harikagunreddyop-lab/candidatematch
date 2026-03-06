@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
 import { MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
@@ -71,8 +71,8 @@ export default function CandidateMessagesPage() {
     const channel = supabase.channel('candidate-messages-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants' }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants' }, scheduleReload);
+    subscribeWithLog(channel, 'candidate-messages-page');
     return () => {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
@@ -268,7 +268,7 @@ export default function CandidateMessagesPage() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
-                <div className="w-16 h-16 rounded-2xl bg-brand-600/10 flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-brand-600/10 flex items-center justify-center">
                 <MessageCircle size={28} className="text-brand-400" />
               </div>
               <p className="text-surface-200 font-medium">Select a conversation</p>

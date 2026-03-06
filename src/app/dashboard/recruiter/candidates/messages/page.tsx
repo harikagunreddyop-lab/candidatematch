@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
 import { MessageCircle, Plus, X } from 'lucide-react';
@@ -69,8 +69,8 @@ export default function CandidateMessagesPage() {
     };
     const channel = supabase.channel('recruiter-candidates-messages')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload);
+    subscribeWithLog(channel, 'recruiter-candidates-messages');
     return () => {
       clearTimeout(timeout);
       supabase.removeChannel(channel);

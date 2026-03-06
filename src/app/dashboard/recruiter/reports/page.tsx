@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import {
   BarChart3, Users, Briefcase, Target, Star, AlertCircle,
@@ -39,100 +39,100 @@ export default function RecruiterReportsPage() {
   const [stats, setStats] = useState({ totalCandidates: 0, totalMatches: 0, avgScore: 0, strongMatchCount: 0 });
 
   const load = useCallback(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setLoading(false); return; }
-      const rid = session.user.id;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setLoading(false); return; }
+    const rid = session.user.id;
 
-      const { data: profileRow } = await supabase.from('profiles').select('name').eq('id', rid).single();
-      setProfile(profileRow);
+    const { data: profileRow } = await supabase.from('profiles').select('name').eq('id', rid).single();
+    setProfile(profileRow);
 
-      const { data: assignments } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('candidate_id')
-        .eq('recruiter_id', rid);
-      const candidateIds = (assignments || []).map((a: any) => a.candidate_id);
-      if (candidateIds.length === 0) {
-        setPipeline({});
-        setBestFitCandidates([]);
-        setRolesNeedingAttention([]);
-        setTopMatches([]);
-        setStats({ totalCandidates: 0, totalMatches: 0, avgScore: 0, strongMatchCount: 0 });
-        setLoading(false);
-        return;
-      }
-
-      const [candsRes, matchesRes, appsRes, jobsRes] = await Promise.all([
-        supabase.from('candidates').select('id, full_name, primary_title').in('id', candidateIds),
-        supabase.from('candidate_job_matches')
-          .select('id, candidate_id, job_id, fit_score, matched_at, job:jobs(id, title, company), candidate:candidates(full_name, primary_title)')
-          .in('candidate_id', candidateIds)
-          .order('fit_score', { ascending: false }),
-        supabase.from('applications').select('status').in('candidate_id', candidateIds),
-        supabase.from('jobs').select('id, title, company').eq('is_active', true),
-      ]);
-
-      const cands = candsRes.data || [];
-
-      const allMatches = matchesRes.data || [];
-      const allApps = appsRes.data || [];
-      const allJobs = jobsRes.data || [];
-
-      const pipelineCount: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
-      for (const a of allApps) {
-        pipelineCount[a.status] = (pipelineCount[a.status] || 0) + 1;
-      }
-      setPipeline(pipelineCount);
-
-      const strongMatches = allMatches.filter((m: any) => m.fit_score >= SCORE_STRONG);
-      const candidateTopScore: Record<string, number> = {};
-      for (const m of allMatches) {
-        const cid = m.candidate_id;
-        if (candidateTopScore[cid] == null || m.fit_score > candidateTopScore[cid]) {
-          candidateTopScore[cid] = m.fit_score;
-        }
-      }
-      const bestFit = cands
-        .map((c: any) => ({ ...c, topScore: candidateTopScore[c.id] ?? 0, strongCount: allMatches.filter((m: any) => m.candidate_id === c.id && m.fit_score >= SCORE_STRONG).length }))
-        .filter((c: any) => c.topScore >= 75)
-        .sort((a: any, b: any) => (b.topScore || 0) - (a.topScore || 0))
-        .slice(0, 10);
-      setBestFitCandidates(bestFit);
-
-      const jobMatchCount: Record<string, { count: number; strong: number; topScore: number }> = {};
-      for (const j of allJobs) {
-        jobMatchCount[j.id] = { count: 0, strong: 0, topScore: 0 };
-      }
-      for (const m of allMatches) {
-        const jid = m.job_id;
-        if (jobMatchCount[jid]) {
-          jobMatchCount[jid].count++;
-          if (m.fit_score >= SCORE_STRONG) jobMatchCount[jid].strong++;
-          if (m.fit_score > (jobMatchCount[jid].topScore || 0)) jobMatchCount[jid].topScore = m.fit_score;
-        }
-      }
-      const rolesAttention = allJobs
-        .map((j: any) => ({
-          ...j,
-          ...jobMatchCount[j.id],
-          hasStrong: (jobMatchCount[j.id]?.strong ?? 0) > 0,
-        }))
-        .filter((j: any) => j.count === 0 || !j.hasStrong)
-        .sort((a: any, b: any) => a.count - b.count)
-        .slice(0, 10);
-      setRolesNeedingAttention(rolesAttention);
-
-      setTopMatches(allMatches.slice(0, 15));
-
-      const totalMatches = allMatches.length;
-      const avgScore = totalMatches > 0 ? Math.round(allMatches.reduce((s: number, m: any) => s + m.fit_score, 0) / totalMatches) : 0;
-      setStats({
-        totalCandidates: cands.length,
-        totalMatches,
-        avgScore,
-        strongMatchCount: strongMatches.length,
-      });
+    const { data: assignments } = await supabase
+      .from('recruiter_candidate_assignments')
+      .select('candidate_id')
+      .eq('recruiter_id', rid);
+    const candidateIds = (assignments || []).map((a: any) => a.candidate_id);
+    if (candidateIds.length === 0) {
+      setPipeline({});
+      setBestFitCandidates([]);
+      setRolesNeedingAttention([]);
+      setTopMatches([]);
+      setStats({ totalCandidates: 0, totalMatches: 0, avgScore: 0, strongMatchCount: 0 });
       setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      return;
+    }
+
+    const [candsRes, matchesRes, appsRes, jobsRes] = await Promise.all([
+      supabase.from('candidates').select('id, full_name, primary_title').in('id', candidateIds),
+      supabase.from('candidate_job_matches')
+        .select('id, candidate_id, job_id, fit_score, matched_at, job:jobs(id, title, company), candidate:candidates(full_name, primary_title)')
+        .in('candidate_id', candidateIds)
+        .order('fit_score', { ascending: false }),
+      supabase.from('applications').select('status').in('candidate_id', candidateIds),
+      supabase.from('jobs').select('id, title, company').eq('is_active', true),
+    ]);
+
+    const cands = candsRes.data || [];
+
+    const allMatches = matchesRes.data || [];
+    const allApps = appsRes.data || [];
+    const allJobs = jobsRes.data || [];
+
+    const pipelineCount: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
+    for (const a of allApps) {
+      pipelineCount[a.status] = (pipelineCount[a.status] || 0) + 1;
+    }
+    setPipeline(pipelineCount);
+
+    const strongMatches = allMatches.filter((m: any) => m.fit_score >= SCORE_STRONG);
+    const candidateTopScore: Record<string, number> = {};
+    for (const m of allMatches) {
+      const cid = m.candidate_id;
+      if (candidateTopScore[cid] == null || m.fit_score > candidateTopScore[cid]) {
+        candidateTopScore[cid] = m.fit_score;
+      }
+    }
+    const bestFit = cands
+      .map((c: any) => ({ ...c, topScore: candidateTopScore[c.id] ?? 0, strongCount: allMatches.filter((m: any) => m.candidate_id === c.id && m.fit_score >= SCORE_STRONG).length }))
+      .filter((c: any) => c.topScore >= 75)
+      .sort((a: any, b: any) => (b.topScore || 0) - (a.topScore || 0))
+      .slice(0, 10);
+    setBestFitCandidates(bestFit);
+
+    const jobMatchCount: Record<string, { count: number; strong: number; topScore: number }> = {};
+    for (const j of allJobs) {
+      jobMatchCount[j.id] = { count: 0, strong: 0, topScore: 0 };
+    }
+    for (const m of allMatches) {
+      const jid = m.job_id;
+      if (jobMatchCount[jid]) {
+        jobMatchCount[jid].count++;
+        if (m.fit_score >= SCORE_STRONG) jobMatchCount[jid].strong++;
+        if (m.fit_score > (jobMatchCount[jid].topScore || 0)) jobMatchCount[jid].topScore = m.fit_score;
+      }
+    }
+    const rolesAttention = allJobs
+      .map((j: any) => ({
+        ...j,
+        ...jobMatchCount[j.id],
+        hasStrong: (jobMatchCount[j.id]?.strong ?? 0) > 0,
+      }))
+      .filter((j: any) => j.count === 0 || !j.hasStrong)
+      .sort((a: any, b: any) => a.count - b.count)
+      .slice(0, 10);
+    setRolesNeedingAttention(rolesAttention);
+
+    setTopMatches(allMatches.slice(0, 15));
+
+    const totalMatches = allMatches.length;
+    const avgScore = totalMatches > 0 ? Math.round(allMatches.reduce((s: number, m: any) => s + m.fit_score, 0) / totalMatches) : 0;
+    setStats({
+      totalCandidates: cands.length,
+      totalMatches,
+      avgScore,
+      strongMatchCount: strongMatches.length,
+    });
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -142,8 +142,8 @@ export default function RecruiterReportsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'recruiter-talent-report');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
 

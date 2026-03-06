@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Tabs, StatusBadge, Spinner, EmptyState } from '@/components/ui';
 import Link from 'next/link';
 import {
@@ -17,10 +17,10 @@ import { formatDate, formatRelative, cn } from '@/utils/helpers';
 import { useFeatureFlags } from '@/hooks';
 
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
-const VISA_OPTIONS = ['US Citizen','Green Card','H1B','H4 EAD','L2 EAD','OPT','CPT','TN Visa','O1','Requires Sponsorship','Other'];
-const AVAILABILITY_OPTIONS = ['Immediately','2 Weeks','1 Month','3 Months','Not Looking'];
-const EDUCATION_LEVELS = ["High School","Associate's","Bachelor's","Master's","MBA","PhD","MD","JD","Bootcamp","Self-Taught","Other"];
-const LANGUAGE_LEVELS = ['Basic','Conversational','Proficient','Fluent','Native'];
+const VISA_OPTIONS = ['US Citizen', 'Green Card', 'H1B', 'H4 EAD', 'L2 EAD', 'OPT', 'CPT', 'TN Visa', 'O1', 'Requires Sponsorship', 'Other'];
+const AVAILABILITY_OPTIONS = ['Immediately', '2 Weeks', '1 Month', '3 Months', 'Not Looking'];
+const EDUCATION_LEVELS = ["High School", "Associate's", "Bachelor's", "Master's", "MBA", "PhD", "MD", "JD", "Bootcamp", "Self-Taught", "Other"];
+const LANGUAGE_LEVELS = ['Basic', 'Conversational', 'Proficient', 'Fluent', 'Native'];
 const MAX_RESUMES_PER_CANDIDATE = 5;
 
 function safeArray(val: any): any[] {
@@ -247,8 +247,8 @@ export default function RecruiterCandidateDetail() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'resume_versions', filter: `candidate_id=eq.${id}` },
         () => load(false))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` },
-        () => load(false))
-      .subscribe();
+        () => load(false));
+    subscribeWithLog(channel, `recruiter-candidate-${id}`);
     return () => { supabase.removeChannel(channel); };
   }, [id, supabase, editingProfile]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -405,15 +405,15 @@ export default function RecruiterCandidateDetail() {
       setMatches(prev => prev.map(m =>
         m.job_id === jobId
           ? {
-              ...m,
-              ats_score: data.ats_score,
-              ats_reason: data.ats_reason,
-              ats_breakdown: data.ats_breakdown,
-              ats_resume_id: data.ats_resume_id,
-              ats_checked_at: data.ats_checked_at,
-              matched_keywords: data.matched_keywords ?? [],
-              missing_keywords: data.missing_keywords ?? [],
-            }
+            ...m,
+            ats_score: data.ats_score,
+            ats_reason: data.ats_reason,
+            ats_breakdown: data.ats_breakdown,
+            ats_resume_id: data.ats_resume_id,
+            ats_checked_at: data.ats_checked_at,
+            matched_keywords: data.matched_keywords ?? [],
+            missing_keywords: data.missing_keywords ?? [],
+          }
           : m
       ));
     } catch (e: any) {
@@ -620,10 +620,10 @@ export default function RecruiterCandidateDetail() {
         <span className="text-surface-900 dark:text-surface-100 font-medium">{candidate.full_name || 'Candidate'}</span>
       </nav>
       <div className="flex items-center gap-2 sm:gap-4 flex-wrap min-w-0">
-          <button onClick={() => router.back()} className="btn-ghost p-2 shrink-0"><ArrowLeft size={18} /></button>
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
+        <button onClick={() => router.back()} className="btn-ghost p-2 shrink-0"><ArrowLeft size={18} /></button>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex items-center gap-3 flex-wrap min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium', candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200' : 'bg-surface-100 dark:bg-surface-600 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}
             </span>
@@ -968,8 +968,8 @@ export default function RecruiterCandidateDetail() {
                     <div className="shrink-0 flex flex-col items-center gap-0.5">
                       <span className={cn('w-12 h-12 rounded-xl flex items-center justify-center text-sm font-bold',
                         (m as any).ats_score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
-                        (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
-                        'bg-red-500/15 text-red-600 dark:text-red-400'
+                          (m as any).ats_score >= 61 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                            'bg-red-500/15 text-red-600 dark:text-red-400'
                       )}>
                         {(m as any).ats_score}
                       </span>

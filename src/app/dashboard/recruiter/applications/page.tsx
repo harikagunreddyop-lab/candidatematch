@@ -1,7 +1,7 @@
 'use client';
 // src/app/dashboard/recruiter/applications/page.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
 import { ClipboardList, Calendar, UserCheck, Check, X, Brain } from 'lucide-react';
@@ -10,13 +10,13 @@ import { formatDate, cn } from '@/utils/helpers';
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];
 
 const STATUS_PILL: Record<string, string> = {
-  ready:      'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
-  applied:    'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-200',
-  screening:  'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200',
-  interview:  'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200',
-  offer:      'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200',
-  rejected:   'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
-  withdrawn:  'bg-surface-100 dark:bg-surface-600 text-surface-500 dark:text-surface-400',
+  ready: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
+  applied: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-200',
+  screening: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200',
+  interview: 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200',
+  offer: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200',
+  rejected: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
+  withdrawn: 'bg-surface-100 dark:bg-surface-600 text-surface-500 dark:text-surface-400',
 };
 
 export default function RecruiterApplicationsPage() {
@@ -66,8 +66,8 @@ export default function RecruiterApplicationsPage() {
   useEffect(() => {
     const channel = supabase.channel('recruiter-applications')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'recruiter-applications');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
 
@@ -88,10 +88,12 @@ export default function RecruiterApplicationsPage() {
       }
       await load();
       if (prevStatus) {
-        toast('Status updated', 'success', { undo: async () => {
-          await fetch('/api/applications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: appId, status: prevStatus }) });
-          await load();
-        } });
+        toast('Status updated', 'success', {
+          undo: async () => {
+            await fetch('/api/applications', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: appId, status: prevStatus }) });
+            await load();
+          }
+        });
       }
     } catch (e: any) {
       toast(e.message || 'Failed to update status', 'error');

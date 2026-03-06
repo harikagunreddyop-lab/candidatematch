@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
 import { Briefcase, Plus, ExternalLink, Eye, RefreshCw, Zap, AlertCircle, Upload } from 'lucide-react';
 import { formatRelative, truncate } from '@/utils/helpers';
@@ -85,8 +85,8 @@ export default function JobsPage() {
     if (tab !== 'jobs') return;
     const channel = supabase
       .channel('admin-jobs-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true));
+    subscribeWithLog(channel, 'admin-jobs-sync');
     return () => { supabase.removeChannel(channel); };
   }, [supabase, load, tab]);
 
@@ -209,141 +209,140 @@ export default function JobsPage() {
         <JobBoardsPanel />
       ) : (
         <>
-      {matchMsg && (
-        <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${
-          matchMsg.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
-          : matchMsg.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-          : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
-        }`}>
-          {matchMsg}
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-start gap-2">
-          <AlertCircle size={16} className="mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium">Failed to load jobs</p>
-            <p className="text-xs mt-0.5">{error}</p>
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-3 items-center">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search by title or company..." />
-        <select
-          value={sourceFilter}
-          onChange={e => setSourceFilter(e.target.value)}
-          aria-label="Filter by source"
-          title="Filter by source"
-          className="input text-sm w-full sm:w-36 shrink-0"
-        >
-          <option value="all">All sources</option>
-          <option value="greenhouse">Greenhouse</option>
-          <option value="lever">Lever</option>
-          <option value="ashby">Ashby</option>
-          <option value="linkedin">LinkedIn</option>
-          <option value="indeed">Indeed</option>
-          <option value="manual">Manual</option>
-          <option value="import">Imported</option>
-          <option value="seed">Seed</option>
-        </select>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-12"><Spinner size={28} /></div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Briefcase size={24} />}
-          title="No jobs yet"
-          description='Go to the Scraping page to pull jobs, or click "Add Job" to add manually'
-        />
-      ) : (
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Company</th>
-                <th>Location</th>
-                <th>Source</th>
-                <th>Added</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(j => (
-                <tr key={j.id}>
-                  <td className="font-medium text-surface-900 max-w-[250px] truncate">{j.title}</td>
-                  <td>{j.company}</td>
-                  <td className="text-surface-500">{truncate(j.location || '—', 25)}</td>
-                  <td><span className="badge-neutral text-xs capitalize">{j.source}</span></td>
-                  <td className="text-surface-500 text-xs">{formatRelative(j.scraped_at)}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button onClick={() => setViewing(j)} className="btn-ghost p-1.5" title="View JD">
-                        <Eye size={14} />
-                      </button>
-                      {j.url && (
-                        <a href={j.url} target="_blank" rel="noreferrer" className="btn-ghost p-1.5" title="Open original">
-                          <ExternalLink size={14} />
-                        </a>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200 dark:border-surface-700">
-            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="btn-ghost text-xs">← Prev</button>
-            <span className="text-xs text-surface-500">
-              Showing {page * 10 + 1}–{Math.min((page + 1) * 10, totalCount)} of {totalCount.toLocaleString()}
-            </span>
-            <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * 10 >= totalCount} className="btn-ghost text-xs">Next →</button>
-          </div>
-        </div>
-      )}
-
-      {viewing && (
-        <Modal open onClose={() => setViewing(null)} title={viewing.title} size="lg">
-          <div className="space-y-3">
-            <p className="text-sm"><strong>Company:</strong> {viewing.company}</p>
-            <p className="text-sm"><strong>Location:</strong> {viewing.location || 'N/A'}</p>
-            {viewing.salary_min && (
-              <p className="text-sm">
-                <strong>Salary:</strong> ${viewing.salary_min.toLocaleString()}
-                {viewing.salary_max ? ` – $${viewing.salary_max.toLocaleString()}` : '+'}
-              </p>
-            )}
-            {viewing.job_type && <p className="text-sm"><strong>Type:</strong> {viewing.job_type}</p>}
-            {viewing.remote_type && <p className="text-sm"><strong>Remote:</strong> {viewing.remote_type}</p>}
-            {viewing.url && (
-              <a href={viewing.url} target="_blank" rel="noreferrer"
-                className="text-sm text-brand-600 hover:underline flex items-center gap-1">
-                <ExternalLink size={12} /> View original posting
-              </a>
-            )}
-            <div className="mt-4 p-4 bg-surface-50 dark:bg-surface-800 rounded-xl max-h-[400px] overflow-y-auto">
-              <p className="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
-                {viewing.jd_clean || 'No description available'}
-              </p>
+          {matchMsg && (
+            <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${matchMsg.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
+                : matchMsg.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
+                  : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
+              }`}>
+              {matchMsg}
             </div>
+          )}
+
+          {error && (
+            <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-medium">Failed to load jobs</p>
+                <p className="text-xs mt-0.5">{error}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 items-center">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search by title or company..." />
+            <select
+              value={sourceFilter}
+              onChange={e => setSourceFilter(e.target.value)}
+              aria-label="Filter by source"
+              title="Filter by source"
+              className="input text-sm w-full sm:w-36 shrink-0"
+            >
+              <option value="all">All sources</option>
+              <option value="greenhouse">Greenhouse</option>
+              <option value="lever">Lever</option>
+              <option value="ashby">Ashby</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="indeed">Indeed</option>
+              <option value="manual">Manual</option>
+              <option value="import">Imported</option>
+              <option value="seed">Seed</option>
+            </select>
           </div>
-        </Modal>
-      )}
 
-      {showAddJob && (
-        <Modal open onClose={() => setShowAddJob(false)} title="Add Job Manually" size="lg">
-          <AddJobForm onClose={() => setShowAddJob(false)} onSaved={() => load()} />
-        </Modal>
-      )}
+          {loading ? (
+            <div className="flex justify-center py-12"><Spinner size={28} /></div>
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<Briefcase size={24} />}
+              title="No jobs yet"
+              description='Go to the Scraping page to pull jobs, or click "Add Job" to add manually'
+            />
+          ) : (
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Company</th>
+                    <th>Location</th>
+                    <th>Source</th>
+                    <th>Added</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(j => (
+                    <tr key={j.id}>
+                      <td className="font-medium text-surface-900 max-w-[250px] truncate">{j.title}</td>
+                      <td>{j.company}</td>
+                      <td className="text-surface-500">{truncate(j.location || '—', 25)}</td>
+                      <td><span className="badge-neutral text-xs capitalize">{j.source}</span></td>
+                      <td className="text-surface-500 text-xs">{formatRelative(j.scraped_at)}</td>
+                      <td>
+                        <div className="flex gap-1">
+                          <button onClick={() => setViewing(j)} className="btn-ghost p-1.5" title="View JD">
+                            <Eye size={14} />
+                          </button>
+                          {j.url && (
+                            <a href={j.url} target="_blank" rel="noreferrer" className="btn-ghost p-1.5" title="Open original">
+                              <ExternalLink size={14} />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200 dark:border-surface-700">
+                <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="btn-ghost text-xs">← Prev</button>
+                <span className="text-xs text-surface-500">
+                  Showing {page * 10 + 1}–{Math.min((page + 1) * 10, totalCount)} of {totalCount.toLocaleString()}
+                </span>
+                <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * 10 >= totalCount} className="btn-ghost text-xs">Next →</button>
+              </div>
+            </div>
+          )}
 
-      {showUpload && (
-        <Modal open onClose={() => setShowUpload(false)} title="Upload Jobs (CSV / Excel)" size="xl">
-          <UploadJobsForm onClose={() => setShowUpload(false)} onSaved={() => load()} />
-        </Modal>
-      )}
+          {viewing && (
+            <Modal open onClose={() => setViewing(null)} title={viewing.title} size="lg">
+              <div className="space-y-3">
+                <p className="text-sm"><strong>Company:</strong> {viewing.company}</p>
+                <p className="text-sm"><strong>Location:</strong> {viewing.location || 'N/A'}</p>
+                {viewing.salary_min && (
+                  <p className="text-sm">
+                    <strong>Salary:</strong> ${viewing.salary_min.toLocaleString()}
+                    {viewing.salary_max ? ` – $${viewing.salary_max.toLocaleString()}` : '+'}
+                  </p>
+                )}
+                {viewing.job_type && <p className="text-sm"><strong>Type:</strong> {viewing.job_type}</p>}
+                {viewing.remote_type && <p className="text-sm"><strong>Remote:</strong> {viewing.remote_type}</p>}
+                {viewing.url && (
+                  <a href={viewing.url} target="_blank" rel="noreferrer"
+                    className="text-sm text-brand-600 hover:underline flex items-center gap-1">
+                    <ExternalLink size={12} /> View original posting
+                  </a>
+                )}
+                <div className="mt-4 p-4 bg-surface-50 dark:bg-surface-800 rounded-xl max-h-[400px] overflow-y-auto">
+                  <p className="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
+                    {viewing.jd_clean || 'No description available'}
+                  </p>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {showAddJob && (
+            <Modal open onClose={() => setShowAddJob(false)} title="Add Job Manually" size="lg">
+              <AddJobForm onClose={() => setShowAddJob(false)} onSaved={() => load()} />
+            </Modal>
+          )}
+
+          {showUpload && (
+            <Modal open onClose={() => setShowUpload(false)} title="Upload Jobs (CSV / Excel)" size="xl">
+              <UploadJobsForm onClose={() => setShowUpload(false)} onSaved={() => load()} />
+            </Modal>
+          )}
         </>
       )}
     </div>
@@ -636,15 +635,14 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
         </div>
 
         {matchingResult && (
-          <div className={`w-full rounded-xl border px-5 py-4 text-sm mt-2 ${
-            matchingOk
+          <div className={`w-full rounded-xl border px-5 py-4 text-sm mt-2 ${matchingOk
               ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
               : matchingStarted
-              ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
-              : matchingResult.status === 'skipped'
-              ? 'border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800'
-              : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20'
-          }`}>
+                ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
+                : matchingResult.status === 'skipped'
+                  ? 'border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800'
+                  : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20'
+            }`}>
             {matchingOk ? (
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="text-left">

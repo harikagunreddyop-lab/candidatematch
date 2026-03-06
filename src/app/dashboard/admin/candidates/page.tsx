@@ -2,7 +2,7 @@
 // src/app/dashboard/admin/candidates/page.tsx
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
 import {
@@ -123,8 +123,8 @@ function CandidatesPageContent() {
       .channel('admin-candidates-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'admin-candidates-realtime');
 
     return () => {
       supabase.removeChannel(channel);

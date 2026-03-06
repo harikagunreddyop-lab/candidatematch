@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
 
-  const rl = rateLimitResponse(req, 'api', authResult.user.id);
+  const rl = await rateLimitResponse(req, 'api', authResult.user.id);
   if (rl) return rl;
 
   const candidateId = req.nextUrl.searchParams.get('candidate_id');
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
-    const rl = rateLimitResponse(req, 'api', authResult.user.id);
+    const rl = await rateLimitResponse(req, 'api', authResult.user.id);
     if (rl) return rl;
 
     // Daily resume generation limit — candidates only

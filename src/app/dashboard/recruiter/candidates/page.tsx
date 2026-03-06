@@ -2,7 +2,7 @@
 // src/app/dashboard/recruiter/candidates/page.tsx
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner } from '@/components/ui';
 import { Users, MapPin, Star, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/helpers';
@@ -54,8 +54,8 @@ export default function RecruiterCandidatesPage() {
     const channel = supabase.channel('recruiter-candidates-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load());
+    subscribeWithLog(channel, 'recruiter-candidates-list');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
 

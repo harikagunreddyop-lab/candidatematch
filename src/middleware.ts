@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Which roles are allowed on which route prefixes
 // Added 'admin' to candidate routes for oversight capabilities
 const ROLE_ROUTES: Record<string, string[]> = {
-  '/dashboard/admin':     ['admin'],
+  '/dashboard/admin': ['admin'],
   '/dashboard/recruiter': ['recruiter', 'admin'],
   '/dashboard/candidate': ['candidate', 'admin'],
 };
@@ -51,12 +51,12 @@ export async function middleware(request: NextRequest) {
     console.warn('Middleware Auth Warning:', error.message);
   }
 
-  // ── Not logged in → send to login page ──────────────────────────────────
+  // ── Not logged in → send to auth page ──────────────────────────────────
   if (pathname.startsWith('/dashboard') && !user) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/auth', request.url));
   }
   if (pathname === '/pending-approval' && !user) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/auth', request.url));
   }
 
   // ── Logged in Logic ──────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ export async function middleware(request: NextRequest) {
     const role = profile?.role as string | undefined;
 
     // ── No profile or role (e.g. not yet approved) → pending approval page ──
-    if (!role && (pathname === '/' || pathname.startsWith('/dashboard'))) {
+    if (!role && (pathname === '/auth' || pathname.startsWith('/dashboard'))) {
       if (pathname !== '/pending-approval') {
         return NextResponse.redirect(new URL('/pending-approval', request.url));
       }
@@ -86,16 +86,16 @@ export async function middleware(request: NextRequest) {
     // ── Already approved user on pending-approval page → send to dashboard ──
     if (pathname === '/pending-approval' && role) {
       const dest = role === 'admin' ? '/dashboard/admin'
-                 : role === 'recruiter' ? '/dashboard/recruiter'
-                 : '/dashboard/candidate';
+        : role === 'recruiter' ? '/dashboard/recruiter'
+          : '/dashboard/candidate';
       return NextResponse.redirect(new URL(dest, request.url));
     }
 
-    // ── On login page (root) → redirect to correct dashboard ──────────────
-    if (pathname === '/') {
+    // ── On auth page → redirect to correct dashboard ──────────────
+    if (pathname === '/auth') {
       const dest = role === 'admin' ? '/dashboard/admin'
-                 : role === 'recruiter' ? '/dashboard/recruiter'
-                 : '/dashboard/candidate';
+        : role === 'recruiter' ? '/dashboard/recruiter'
+          : '/dashboard/candidate';
       return NextResponse.redirect(new URL(dest, request.url));
     }
 
@@ -109,8 +109,8 @@ export async function middleware(request: NextRequest) {
         if (!allowedRoles.includes(role)) {
           // User tried to access a route they don't belong to
           const dest = role === 'admin' ? '/dashboard/admin'
-                     : role === 'recruiter' ? '/dashboard/recruiter'
-                     : '/dashboard/candidate';
+            : role === 'recruiter' ? '/dashboard/recruiter'
+              : '/dashboard/candidate';
           return NextResponse.redirect(new URL(dest, request.url));
         }
       }
@@ -118,27 +118,26 @@ export async function middleware(request: NextRequest) {
       // /dashboard root → redirect to role-specific dashboard
       if (pathname === '/dashboard' && role) {
         const dest = role === 'admin' ? '/dashboard/admin'
-                   : role === 'recruiter' ? '/dashboard/recruiter'
-                   : '/dashboard/candidate';
+          : role === 'recruiter' ? '/dashboard/recruiter'
+            : '/dashboard/candidate';
         return NextResponse.redirect(new URL(dest, request.url));
       }
 
-      // ── Candidate Access Gates (invite-only: no onboarding, only assignment) ──
+      // ── Candidate Access Gates (self-service: onboarding allowed, no recruiter required) ──
       const isCandidate = role === 'candidate';
       const isCandidateDashboard = pathname.startsWith('/dashboard/candidate');
       const isOnboardingPage = pathname === '/dashboard/candidate/onboarding';
       const isWaitingPage = pathname === '/dashboard/candidate/waiting';
 
-      // Redirect old onboarding URL to waiting
-      if (isCandidate && isOnboardingPage) {
-        return NextResponse.redirect(new URL('/dashboard/candidate/waiting', request.url));
-      }
+      if (isCandidate && isCandidateDashboard) {
+        // Always allow onboarding page
+        if (isOnboardingPage) {
+          return response;
+        }
 
-      // Candidates: full dashboard only when a recruiter is assigned; otherwise only waiting page
-      if (isCandidate && isCandidateDashboard && !isWaitingPage) {
         let { data: candidate } = await supabase
           .from('candidates')
-          .select('id')
+          .select('id, onboarding_completed')
           .eq('user_id', user.id)
           .single();
 
@@ -146,7 +145,7 @@ export async function middleware(request: NextRequest) {
         if (!candidate && user.email) {
           const { data: orphan } = await supabase
             .from('candidates')
-            .select('id')
+            .select('id, onboarding_completed')
             .eq('email', user.email)
             .is('user_id', null)
             .order('updated_at', { ascending: false })
@@ -162,17 +161,17 @@ export async function middleware(request: NextRequest) {
           }
         }
 
+        // No candidate record at all → send to onboarding to create one
         if (!candidate) {
-          return NextResponse.redirect(new URL('/dashboard/candidate/waiting', request.url));
+          if (!isOnboardingPage) {
+            return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
+          }
+          return response;
         }
 
-        const { count } = await supabase
-          .from('recruiter_candidate_assignments')
-          .select('recruiter_id', { count: 'exact', head: true })
-          .eq('candidate_id', candidate.id);
-
-        if (!count || count === 0) {
-          return NextResponse.redirect(new URL('/dashboard/candidate/waiting', request.url));
+        // Candidate exists but hasn't completed onboarding → send to onboarding
+        if (!candidate.onboarding_completed && !isOnboardingPage && !isWaitingPage) {
+          return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
         }
       }
 
@@ -218,5 +217,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/pending-approval'],
+  matcher: ['/auth', '/dashboard/:path*', '/pending-approval'],
 };

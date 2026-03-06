@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import type { Profile } from '@/types';
 
 export function useProfile() {
@@ -45,16 +45,18 @@ export function useSupabaseQuery<T>(
     setClient(createClient());
   }, []);
 
+  const memoizedQueryFn = useCallback(queryFn, [queryFn, ...deps]);
+
   const refetch = useCallback(async () => {
     if (!client) return;
     const c = client;
     setLoading(true);
     setError(null);
-    const result = await queryFn(c);
+    const result = await memoizedQueryFn(c);
     if (result.error) setError(result.error.message);
     else setData(result.data);
     setLoading(false);
-  }, [client, ...deps]);
+  }, [client, memoizedQueryFn]);
 
   useEffect(() => {
     if (client) refetch();
@@ -103,8 +105,8 @@ export function useFeatureFlags() {
     const channel = c
       .channel('feature-flags-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'feature_flags' }, () => refetch(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_feature_flags', filter: `user_id=eq.${userId}` }, () => refetch(true))
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_feature_flags', filter: `user_id=eq.${userId}` }, () => refetch(true));
+    subscribeWithLog(channel, 'feature-flags');
     return () => { c.removeChannel(channel); };
   }, [client, userId, refetch]);
 

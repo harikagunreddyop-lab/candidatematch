@@ -2,7 +2,7 @@
 // src/app/dashboard/recruiter/page.tsx — Elite recruiter dashboard
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import { Users, Briefcase, ChevronRight, Star, Calendar, Sparkles, Bell, TrendingUp, Zap } from 'lucide-react';
 import { cn } from '@/utils/helpers';
@@ -26,79 +26,79 @@ export default function RecruiterDashboard() {
   }, []);
 
   const load = useCallback(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setLoading(false); return; }
-      const rid = session.user.id;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setLoading(false); return; }
+    const rid = session.user.id;
 
-      const { data: profile } = await supabase
-        .from('profiles').select('name').eq('id', rid).single();
+    const { data: profile } = await supabase
+      .from('profiles').select('name').eq('id', rid).single();
 
-      const { data: assignments } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('candidate_id')
-        .eq('recruiter_id', rid);
+    const { data: assignments } = await supabase
+      .from('recruiter_candidate_assignments')
+      .select('candidate_id')
+      .eq('recruiter_id', rid);
 
-      const allIds = (assignments || []).map((a: any) => a.candidate_id as string);
+    const allIds = (assignments || []).map((a: any) => a.candidate_id as string);
 
-      if (allIds.length === 0) {
-        setPageData({ profile, candList: [], newMatches: [], newMatchesTotal: 0, todayInterviews: [], pipeline: {}, totalAssigned: 0 });
-        setLoading(false);
-        return;
-      }
-
-      const { data: allCands } = await supabase
-        .from('candidates')
-        .select('id, full_name, primary_title, rating')
-        .in('id', allIds)
-        .order('full_name');
-      const cands = (allCands || []).slice(0, 6);
-
-      const yesterday = new Date(Date.now() - 86400000).toISOString();
-
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(todayStart);
-      todayEnd.setDate(todayEnd.getDate() + 1);
-
-      const [newMatchCountRes, newMatchListRes, interviewRes, appRes] = await Promise.all([
-        supabase.from('candidate_job_matches')
-          .select('id', { count: 'exact', head: true })
-          .in('candidate_id', allIds)
-          .gte('matched_at', yesterday),
-        supabase.from('candidate_job_matches')
-          .select('id, fit_score, candidate_id, matched_at, job:jobs(title, company), candidate:candidates(full_name)')
-          .in('candidate_id', allIds)
-          .gte('matched_at', yesterday)
-          .order('fit_score', { ascending: false })
-          .limit(5),
-        supabase.from('applications')
-          .select('id, candidate_id, interview_date, candidate:candidates(full_name), job:jobs(title, company)')
-          .in('candidate_id', allIds)
-          .eq('status', 'interview')
-          .gte('interview_date', todayStart.toISOString())
-          .lt('interview_date', todayEnd.toISOString()),
-        supabase.from('applications')
-          .select('status')
-          .in('candidate_id', allIds),
-      ]);
-
-      const pipeline: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
-      for (const app of appRes.data || []) {
-        pipeline[app.status] = (pipeline[app.status] || 0) + 1;
-      }
-
-      const newMatchesTotal = newMatchCountRes.count ?? 0;
-      setPageData({
-        profile,
-        candList: cands || [],
-        newMatches: newMatchListRes.data || [],
-        newMatchesTotal,
-        todayInterviews: interviewRes.data || [],
-        pipeline,
-        totalAssigned: allIds.length,
-      });
+    if (allIds.length === 0) {
+      setPageData({ profile, candList: [], newMatches: [], newMatchesTotal: 0, todayInterviews: [], pipeline: {}, totalAssigned: 0 });
       setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      return;
+    }
+
+    const { data: allCands } = await supabase
+      .from('candidates')
+      .select('id, full_name, primary_title, rating')
+      .in('id', allIds)
+      .order('full_name');
+    const cands = (allCands || []).slice(0, 6);
+
+    const yesterday = new Date(Date.now() - 86400000).toISOString();
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const [newMatchCountRes, newMatchListRes, interviewRes, appRes] = await Promise.all([
+      supabase.from('candidate_job_matches')
+        .select('id', { count: 'exact', head: true })
+        .in('candidate_id', allIds)
+        .gte('matched_at', yesterday),
+      supabase.from('candidate_job_matches')
+        .select('id, fit_score, candidate_id, matched_at, job:jobs(title, company), candidate:candidates(full_name)')
+        .in('candidate_id', allIds)
+        .gte('matched_at', yesterday)
+        .order('fit_score', { ascending: false })
+        .limit(5),
+      supabase.from('applications')
+        .select('id, candidate_id, interview_date, candidate:candidates(full_name), job:jobs(title, company)')
+        .in('candidate_id', allIds)
+        .eq('status', 'interview')
+        .gte('interview_date', todayStart.toISOString())
+        .lt('interview_date', todayEnd.toISOString()),
+      supabase.from('applications')
+        .select('status')
+        .in('candidate_id', allIds),
+    ]);
+
+    const pipeline: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
+    for (const app of appRes.data || []) {
+      pipeline[app.status] = (pipeline[app.status] || 0) + 1;
+    }
+
+    const newMatchesTotal = newMatchCountRes.count ?? 0;
+    setPageData({
+      profile,
+      candList: cands || [],
+      newMatches: newMatchListRes.data || [],
+      newMatchesTotal,
+      todayInterviews: interviewRes.data || [],
+      pipeline,
+      totalAssigned: allIds.length,
+    });
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -108,8 +108,8 @@ export default function RecruiterDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'recruiter-dashboard');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
 

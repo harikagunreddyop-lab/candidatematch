@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
 import { MessageCircle, Plus, X, ArrowLeft } from 'lucide-react';
@@ -75,8 +75,8 @@ export default function RecruiterMessagesPage() {
     };
     const channel = supabase.channel('recruiter-messages-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload);
+    subscribeWithLog(channel, 'recruiter-messages-page');
     return () => {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
@@ -262,42 +262,42 @@ export default function RecruiterMessagesPage() {
                   <span className="text-sm">Loading people you can message…</span>
                 </div>
               ) : (
-              <>
-              {availableUsersHint && (
-                <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2 mb-3">{availableUsersHint}</p>
-              )}
-              <div className="space-y-1 mb-6">
-                {availableUsers.length === 0 && (
-                  <p className="text-sm text-surface-500 dark:text-surface-400 py-2">
-                    No one to message yet. Get an admin to assign you candidates, or they can invite candidates who will then appear here once they sign in.
-                  </p>
-                )}
-                {availableUsers.map(u => (
-                  <label
-                    key={u.id}
-                    className={`flex items-center gap-3 p-2 rounded-xl ${u.notSignedIn ? 'opacity-70 cursor-default' : 'hover:bg-surface-50 dark:hover:bg-surface-700 cursor-pointer'}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedUsers.includes(u.id)}
-                      disabled={!!u.notSignedIn}
-                      onChange={e => !u.notSignedIn && setSelectedUsers(prev => e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id))}
-                      className="rounded border-surface-300 text-brand-600 disabled:opacity-50"
-                    />
-                    <div className="relative shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm">
-                        {(u.name || u.email || '?')[0].toUpperCase()}
-                      </div>
-                      {!u.notSignedIn && <div className="absolute -bottom-0.5 -right-0.5"><OnlineDot profileId={u.id} /></div>}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{u.name || u.email}</p>
-                      <p className="text-xs text-surface-400 dark:text-surface-300">{u.notSignedIn ? 'Not signed in yet' : u.role}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-              </>
+                <>
+                  {availableUsersHint && (
+                    <p className="text-sm text-amber-700 dark:text-amber-200 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2 mb-3">{availableUsersHint}</p>
+                  )}
+                  <div className="space-y-1 mb-6">
+                    {availableUsers.length === 0 && (
+                      <p className="text-sm text-surface-500 dark:text-surface-400 py-2">
+                        No one to message yet. Get an admin to assign you candidates, or they can invite candidates who will then appear here once they sign in.
+                      </p>
+                    )}
+                    {availableUsers.map(u => (
+                      <label
+                        key={u.id}
+                        className={`flex items-center gap-3 p-2 rounded-xl ${u.notSignedIn ? 'opacity-70 cursor-default' : 'hover:bg-surface-50 dark:hover:bg-surface-700 cursor-pointer'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.includes(u.id)}
+                          disabled={!!u.notSignedIn}
+                          onChange={e => !u.notSignedIn && setSelectedUsers(prev => e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id))}
+                          className="rounded border-surface-300 text-brand-600 disabled:opacity-50"
+                        />
+                        <div className="relative shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-500/20 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm">
+                            {(u.name || u.email || '?')[0].toUpperCase()}
+                          </div>
+                          {!u.notSignedIn && <div className="absolute -bottom-0.5 -right-0.5"><OnlineDot profileId={u.id} /></div>}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-surface-800 dark:text-surface-100">{u.name || u.email}</p>
+                          <p className="text-xs text-surface-400 dark:text-surface-300">{u.notSignedIn ? 'Not signed in yet' : u.role}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </>
               )}
               <div className="flex gap-3">
                 <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); }} className="btn-secondary flex-1">Cancel</button>

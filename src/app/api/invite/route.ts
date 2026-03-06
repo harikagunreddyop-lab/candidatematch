@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const { data: { user }, error: authErr } = await adminClient.auth.getUser(token);
   if (authErr || !user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const rl = rateLimitResponse(req, 'api', user.id);
+  const rl = await rateLimitResponse(req, 'api', user.id);
   if (rl) return rl;
 
   const { data: callerProfile } = await adminClient

@@ -202,7 +202,7 @@ export function JobBoardsPanel() {
         <div>
           <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 font-display">Job boards</h2>
           <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-            Connectors sync automatically via cron. Use manual sync only when needed.
+            Connectors sync when your external scheduler (e.g. AWS EventBridge calling /api/cron/ingest) runs. Use manual sync for on-demand refresh or when scheduling is not configured.
           </p>
         </div>
         <button onClick={load} className="btn-ghost text-sm flex items-center gap-1.5">

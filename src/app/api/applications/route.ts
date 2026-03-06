@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 
-  const rl = rateLimitResponse(req, 'api', authResult.user.id);
+  const rl = await rateLimitResponse(req, 'api', authResult.user.id);
   if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));

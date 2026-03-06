@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, Spinner, EmptyState } from '@/components/ui';
 import { Briefcase, MapPin, Building2, ExternalLink, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/helpers';
@@ -73,8 +73,8 @@ export function JobSearchView({ role }: JobSearchViewProps) {
   useEffect(() => {
     const channel = supabase
       .channel('job-search-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
+    subscribeWithLog(channel, 'job-search-sync');
     return () => { supabase.removeChannel(channel); };
   }, [supabase, load]);
 

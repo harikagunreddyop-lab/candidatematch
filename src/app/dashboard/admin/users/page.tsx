@@ -1,7 +1,7 @@
 'use client';
 // src/app/dashboard/admin/users/page.tsx
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
 import {
   UserCheck, Plus, RefreshCw, AlertCircle, Edit2, Trash2,
@@ -403,7 +403,7 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
       setError('Failed to load feature flags');
     }
     setLoading(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.id, supabase]);
 
   useEffect(() => { load(); }, [load]);
@@ -645,8 +645,8 @@ export default function UsersPage() {
     const channel = supabase.channel('users-page-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'users-page-realtime');
     return () => { supabase.removeChannel(channel); };
   }, [load]);
 

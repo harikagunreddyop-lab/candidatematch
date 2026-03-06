@@ -128,6 +128,27 @@ async function fetchHtml(url: string): Promise<{ status: number; body: string | 
   }
 }
 
+async function retryInsert<T>(
+  fn: () => Promise<{ data: T; error: any }>,
+  label: string,
+  maxAttempts = 3,
+): Promise<{ data: T | null; error: any }> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { data, error } = await fn();
+    if (!error) return { data, error: null };
+
+    const msg = error?.message ?? String(error);
+    const isTimeout = msg.includes('fetch failed') || msg.includes('TimeoutError') || msg.includes('CONNECT_TIMEOUT');
+    if (!isTimeout || attempt === maxAttempts) {
+      return { data: null, error };
+    }
+    const delay = Math.pow(2, attempt) * 1000;
+    log(`[DISCOVERY] ${label} attempt ${attempt} failed (timeout), retrying in ${delay}ms`);
+    await new Promise(r => setTimeout(r, delay));
+  }
+  return { data: null, error: new Error('Max retries exceeded') };
+}
+
 async function processCompany(
   supabase: ReturnType<typeof createServiceClient>,
   row: CompanyRow
@@ -168,16 +189,19 @@ async function processCompany(
       const isValid = v.ok;
       if (isValid) validated += 1;
 
-      const { error: discErr } = await supabase.from('board_discoveries').insert({
-        company_name: row.company_name,
-        website: row.website,
-        detected_provider: b.provider,
-        detected_source_org: b.source_org,
-        discovered_from_url: url,
-        validated: isValid,
-        validation_status: v.status,
-        last_error: v.error ?? null,
-      });
+      const { error: discErr } = await retryInsert(
+        () => supabase.from('board_discoveries').insert({
+          company_name: row.company_name,
+          website: row.website,
+          detected_provider: b.provider,
+          detected_source_org: b.source_org,
+          discovered_from_url: url,
+          validated: isValid,
+          validation_status: v.status,
+          last_error: v.error ?? null,
+        }),
+        `insert board_discoveries for ${row.company_name}`,
+      );
       if (discErr) {
         const cause = (discErr as Error & { cause?: unknown })?.cause;
         const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
@@ -185,17 +209,20 @@ async function processCompany(
       }
 
       if (isValid) {
-        const { error: connErr } = await supabase
-          .from('ingest_connectors')
-          .upsert(
-            {
-              provider: b.provider,
-              source_org: b.source_org,
-              is_enabled: true,
-              sync_interval_min: 60,
-            },
-            { onConflict: 'provider,source_org' }
-          );
+        const { error: connErr } = await retryInsert(
+          () => supabase
+            .from('ingest_connectors')
+            .upsert(
+              {
+                provider: b.provider,
+                source_org: b.source_org,
+                is_enabled: true,
+                sync_interval_min: 60,
+              },
+              { onConflict: 'provider,source_org' }
+            ),
+          `upsert connector for ${row.company_name}`,
+        );
         if (connErr) {
           const cause = (connErr as Error & { cause?: unknown })?.cause;
           const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
@@ -208,16 +235,19 @@ async function processCompany(
   }
 
   if (!anyDetection) {
-    const { error: discErr } = await supabase.from('board_discoveries').insert({
-      company_name: row.company_name,
-      website: row.website,
-      detected_provider: null,
-      detected_source_org: null,
-      discovered_from_url: lastUrl,
-      validated: false,
-      validation_status: lastStatus,
-      last_error: lastError ?? 'No provider patterns found',
-    });
+    const { error: discErr } = await retryInsert(
+      () => supabase.from('board_discoveries').insert({
+        company_name: row.company_name,
+        website: row.website,
+        detected_provider: null,
+        detected_source_org: null,
+        discovered_from_url: lastUrl,
+        validated: false,
+        validation_status: lastStatus,
+        last_error: lastError ?? 'No provider patterns found',
+      }),
+      `insert no-match for ${row.company_name}`,
+    );
     if (discErr) {
       const cause = (discErr as Error & { cause?: unknown })?.cause;
       const causeMsg = cause ? ` cause: ${cause instanceof Error ? cause.message : String(cause)}` : '';
@@ -256,7 +286,8 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
   let validated = 0;
   let connectors = 0;
 
-  await runWithConcurrency(rows, 10, async (row) => {
+  // Concurrency reduced from 10→5 to lower Supabase connection pressure
+  await runWithConcurrency(rows, 5, async (row) => {
     attempted += 1;
     try {
       const res = await processCompany(supabase, row);
@@ -279,7 +310,9 @@ export async function runDiscovery(options: DiscoveryOptions): Promise<Discovery
 }
 
 // CLI entry: npm run discovery:run -- --csv ./data/companies.csv --limit 2000
-if (require.main === module) {
+// Use argv check because `require.main === module` doesn't work with tsx/ESM.
+const isDirectRun = process.argv[1]?.replace(/\\/g, '/').includes('discovery/discover');
+if (isDirectRun) {
   const args = process.argv.slice(2);
   let csvPath = '';
   let limit: number | undefined;
@@ -295,7 +328,7 @@ if (require.main === module) {
   }
   if (!csvPath) {
     // eslint-disable-next-line no-console
-    console.error('Usage: discovery:run -- --csv <path> [--limit N]');
+    console.error('Usage: npm run discovery:run -- --csv <path> [--limit N]');
     process.exit(1);
   }
   runDiscovery({ csvPath, limit })

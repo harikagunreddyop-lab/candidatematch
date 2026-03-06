@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runMatching } from '@/lib/matching';
 import { requireAdmin } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { startApplicationRun } from '@/queue/flows/applicationRun.flow';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,18 @@ export async function POST(req: NextRequest) {
   if (authResult instanceof Response) return authResult;
 
   const body = await req.json().catch(() => ({}));
+
+  // Async mode — enqueue and return immediately (< 500ms)
+  if (body.async) {
+    try {
+      const result = await startApplicationRun(body.candidate_id, body.intent || {});
+      return NextResponse.json({ run_id: result.runId, status: 'queued' }, { status: 202 });
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+  }
+
+  // Legacy sync mode — SSE stream (admin panel backward compat)
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({

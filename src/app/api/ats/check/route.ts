@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
-  const rl = rateLimitResponse(req, 'ats', auth.user.id);
+  const rl = await rateLimitResponse(req, 'ats', auth.user.id);
   if (rl) return rl;
 
   // Daily ATS check limit — applies to candidates only (admins/recruiters unrestricted)

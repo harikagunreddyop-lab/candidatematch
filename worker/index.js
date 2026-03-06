@@ -2,7 +2,7 @@ const path = require('path');
 // Load .env from project root (parent of worker/)
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const fastify = require('fastify')({ logger: true });
+const fastify = require('fastify')({ logger: true, bodyLimit: 1_048_576 /* 1 MB */ });
 const { createClient } = require('@supabase/supabase-js');
 const { execSync } = require('child_process');
 const fs = require('fs');
@@ -14,6 +14,7 @@ const { buildAtsDocx } = require('./ats-docx-builder');
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+const WORKER_SECRET = process.env.WORKER_SECRET;
 const PORT = process.env.WORKER_PORT || 3001;
 const TEMP_DIR = path.join(__dirname, 'tmp');
 const USE_LATEX = process.env.USE_LATEX === 'true' || process.env.USE_LATEX === '1';
@@ -23,10 +24,28 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   process.exit(1);
 }
 
+if (!WORKER_SECRET) {
+  console.warn('WARNING: WORKER_SECRET not set — worker is unauthenticated (dev only)');
+}
+
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Ensure temp directory
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+
+// ─── Auth Hook — protect all non-health routes ──────────────────────────────
+fastify.addHook('preHandler', async (request, reply) => {
+  // Skip auth for health check
+  if (request.routeOptions?.url === '/health' || request.url === '/health') return;
+
+  if (WORKER_SECRET) {
+    const provided = request.headers['x-worker-secret'];
+    if (!provided || provided !== WORKER_SECRET) {
+      reply.code(401).send({ error: 'Unauthorized: invalid or missing X-Worker-Secret' });
+      return;
+    }
+  }
+});
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -172,7 +191,7 @@ OUTPUT FORMAT (return ONLY this JSON, no markdown):
       try {
         const p = JSON.parse(objMatch[0]);
         return { summary: p.summary || '', experience: Array.isArray(p.experience) ? p.experience : [] };
-      } catch (_) {}
+      } catch (_) { }
     }
     if (arrMatch) return { summary: '', experience: JSON.parse(arrMatch[0]) };
     return { summary: '', experience: [] };
@@ -362,6 +381,150 @@ async function buildPdfWithPdfLib(candidate, bullets, job) {
 
   return Buffer.from(await doc.save());
 }
+
+// ─── V3 Render Endpoint (no LLM — content_json → DOCX + upload) ────────────
+fastify.post('/render', async (request, reply) => {
+  const { artifact_id, candidate_id, content_json, template_id } = request.body || {};
+
+  if (!artifact_id || !candidate_id || !content_json) {
+    return reply.code(400).send({ error: 'Missing: artifact_id, candidate_id, content_json' });
+  }
+
+  try {
+    const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, BorderStyle } = require('docx');
+
+    const content = content_json;
+    const children = [];
+
+    // ── Name ──
+    children.push(new Paragraph({
+      children: [new TextRun({ text: content.candidateName || 'Resume', bold: true, size: 28, font: 'Calibri' })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 80 },
+    }));
+
+    // ── Contact ──
+    if (content.contactLine) {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: content.contactLine, size: 20, font: 'Calibri' })],
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+      }));
+    }
+
+    // ── Section divider helper ──
+    const addSectionHeader = (title) => {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: title.toUpperCase(), bold: true, size: 22, font: 'Calibri' })],
+        heading: HeadingLevel.HEADING_2,
+        spacing: { before: 240, after: 80 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 1, space: 1, color: '000000' } },
+      }));
+    };
+
+    // ── Summary ──
+    if (content.summary) {
+      addSectionHeader('Professional Summary');
+      children.push(new Paragraph({
+        children: [new TextRun({ text: content.summary, size: 21, font: 'Calibri' })],
+        spacing: { after: 120 },
+      }));
+    }
+
+    // ── Skills ──
+    if (content.skills && content.skills.length > 0) {
+      addSectionHeader('Core Competencies');
+      for (const cat of content.skills) {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${cat.category}: `, bold: true, size: 21, font: 'Calibri' }),
+            new TextRun({ text: cat.items.join(', '), size: 21, font: 'Calibri' }),
+          ],
+          spacing: { after: 40 },
+        }));
+      }
+    }
+
+    // ── Experience ──
+    if (content.experience && content.experience.length > 0) {
+      addSectionHeader('Professional Experience');
+      for (const role of content.experience) {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: role.title || '', bold: true, size: 21, font: 'Calibri' }),
+            new TextRun({ text: role.company ? ` — ${role.company}` : '', size: 21, font: 'Calibri' }),
+          ],
+          spacing: { before: 120, after: 40 },
+        }));
+        if (role.dates) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: role.dates, size: 20, font: 'Calibri', italics: false })],
+            spacing: { after: 40 },
+          }));
+        }
+        for (const bullet of role.bullets || []) {
+          children.push(new Paragraph({
+            children: [new TextRun({ text: `• ${bullet}`, size: 21, font: 'Calibri' })],
+            spacing: { after: 20 },
+            indent: { left: 360 },
+          }));
+        }
+      }
+    }
+
+    // ── Education ──
+    if (content.education && content.education.length > 0) {
+      addSectionHeader('Education');
+      for (const ed of content.education) {
+        children.push(new Paragraph({
+          children: [
+            new TextRun({ text: `${ed.degree} in ${ed.field}`, bold: true, size: 21, font: 'Calibri' }),
+            new TextRun({ text: ` — ${ed.institution} (${ed.date})`, size: 21, font: 'Calibri' }),
+          ],
+          spacing: { after: 40 },
+        }));
+      }
+    }
+
+    // ── Certifications ──
+    if (content.certifications && content.certifications.length > 0) {
+      addSectionHeader('Certifications');
+      for (const cert of content.certifications) {
+        children.push(new Paragraph({
+          children: [new TextRun({ text: `${cert.name} — ${cert.issuer} (${cert.date})`, size: 21, font: 'Calibri' })],
+          spacing: { after: 40 },
+        }));
+      }
+    }
+
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } }, // 0.5 inch
+        },
+        children,
+      }],
+    });
+
+    const docxBuffer = await Packer.toBuffer(doc);
+
+    // Upload DOCX to Supabase Storage
+    const storagePath = `generated/${candidate_id}/${artifact_id}.docx`;
+    const { error: uploadError } = await supabase.storage
+      .from('resumes')
+      .upload(storagePath, docxBuffer, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: true,
+      });
+
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+    return { docx_url: storagePath, pdf_url: null, status: 'ready' };
+  } catch (err) {
+    fastify.log.error(err);
+    return reply.code(500).send({ error: err.message });
+  }
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 async function updateStatus(id, status) {

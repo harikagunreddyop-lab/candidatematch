@@ -109,7 +109,7 @@ function buildAutofillData(candidate: any, fallbackEmail?: string) {
 const CANDIDATE_FIELDS = 'id, full_name, email, phone, location, visa_status, primary_title, secondary_titles, skills, summary, default_pitch, linkedin_url, portfolio_url, github_url, experience, education, certifications, salary_min, salary_max, availability, open_to_remote, open_to_relocate';
 
 export async function GET(req: NextRequest) {
-  const rl = rateLimitResponse(req, 'api');
+  const rl = await rateLimitResponse(req, 'api');
   if (rl) return rl;
 
   const token = req.headers.get('authorization')?.replace('Bearer ', '');

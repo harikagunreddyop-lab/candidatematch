@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { Spinner, StatusBadge } from '@/components/ui';
 import {
@@ -276,8 +276,8 @@ export default function AdminDashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load(true))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load(true))
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load(true));
+    subscribeWithLog(channel, 'admin-dashboard');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -298,212 +298,212 @@ export default function AdminDashboard() {
     <div className="relative min-h-full">
       <div className="pointer-events-none absolute inset-0 -top-8 -left-8 -right-8 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.07),transparent)] dark:bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.12),transparent)]" aria-hidden />
       <div className="relative space-y-8">
-      {/* Hero — modern, animated greeting */}
-      <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-          <div className="min-w-0 flex-1">
-            <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
-              {dateStr}
-            </p>
-            <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
-              {getGreeting()}
-            </h1>
-            <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
-              Pipeline overview
-              {lastRefreshed && (
-                <span className="text-white/40"> · {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-              )}
-            </p>
-            <div className="hero-stats mt-4 sm:mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
-              <span><span className="font-semibold text-white">{stats.candidates}</span> candidates</span>
-              <span className="text-white/30 hidden sm:inline">·</span>
-              <span><span className="font-semibold text-white">{stats.applications}</span> in pipeline</span>
+        {/* Hero — modern, animated greeting */}
+        <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
+            <div className="min-w-0 flex-1">
+              <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
+                {dateStr}
+              </p>
+              <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
+                {getGreeting()}
+              </h1>
+              <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
+                Pipeline overview
+                {lastRefreshed && (
+                  <span className="text-white/40"> · {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                )}
+              </p>
+              <div className="hero-stats mt-4 sm:mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
+                <span><span className="font-semibold text-white">{stats.candidates}</span> candidates</span>
+                <span className="text-white/30 hidden sm:inline">·</span>
+                <span><span className="font-semibold text-white">{stats.applications}</span> in pipeline</span>
+              </div>
+            </div>
+            <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
+              <button onClick={() => load()} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
+                <RefreshCw size={18} className="sm:w-5 sm:h-5" />
+              </button>
+              <Link href="/dashboard/admin/jobs" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
+                <Briefcase size={16} /> Jobs
+              </Link>
+              <Link href="/dashboard/admin/reports" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
+                Reports
+              </Link>
             </div>
           </div>
-          <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-            <button onClick={() => load()} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
-              <RefreshCw size={18} className="sm:w-5 sm:h-5" />
-            </button>
-            <Link href="/dashboard/admin/jobs" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
-              <Briefcase size={16} /> Jobs
+        </div>
+
+        {/* Key metrics — stat cards elite style */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+          {STAT_CONFIG.map((s) => (
+            <StatCard
+              key={s.key}
+              label={s.label}
+              value={(stats as Record<string, number>)[s.key] ?? 0}
+              href={s.href}
+              gradient={s.gradient}
+              lightBg={s.lightBg}
+              iconColor={s.iconColor}
+              Icon={s.icon as React.ComponentType<{ size?: number; className?: string }>}
+            />
+          ))}
+        </div>
+
+        {/* Activity panels */}
+        <div>
+          <h2 className="text-xs font-bold text-surface-500 dark:text-surface-400 uppercase tracking-widest mb-4">
+            Activity
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            <PanelCard
+              title="Recent applications"
+              subtitle="Latest candidate applications"
+              viewAllHref="/dashboard/admin/applications"
+              viewAllLabel="View all"
+              iconBg="bg-blue-500/10 dark:bg-blue-500/20"
+              icon={<ClipboardList size={18} className="text-blue-600 dark:text-blue-400" />}
+              emptyMessage="No applications yet"
+              isEmpty={recentApps.length === 0}
+            >
+              {recentApps.map((app) => (
+                <div
+                  key={app.id}
+                  className="px-4 sm:px-6 py-3 sm:py-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <AvatarInitial name={(app.candidate as any)?.full_name} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
+                        {(app.candidate as any)?.full_name}
+                      </p>
+                      <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
+                        {app.job?.title} at {app.job?.company}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <StatusBadge status={app.status} />
+                      <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1">
+                        {formatRelative(app.created_at)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </PanelCard>
+
+            <PanelCard
+              title="Latest jobs"
+              subtitle="Most recently ingested"
+              viewAllHref="/dashboard/admin/jobs"
+              viewAllLabel="View all"
+              iconBg="bg-violet-500/10 dark:bg-violet-500/20"
+              icon={<Briefcase size={18} className="text-violet-600 dark:text-violet-400" />}
+              emptyMessage="No jobs yet. Use the Jobs page to add or upload roles."
+              isEmpty={recentJobs.length === 0}
+            >
+              {recentJobs.map((job) => (
+                <Link
+                  key={job.id}
+                  href="/dashboard/admin/jobs"
+                  className="px-4 sm:px-6 py-3 sm:py-4 block hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center shrink-0">
+                      <Briefcase size={18} className="text-violet-600 dark:text-violet-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                        {job.title}
+                      </p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <span className="text-xs text-surface-500 dark:text-surface-400">{job.company}</span>
+                        {job.source && (
+                          <span className="px-1.5 py-0.5 rounded-md bg-surface-100 dark:bg-surface-700 text-[10px] font-medium text-surface-600 dark:text-surface-300">
+                            {job.source}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-surface-400 dark:text-surface-500">
+                          {formatRelative(job.scraped_at || job.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
+                  </div>
+                </Link>
+              ))}
+            </PanelCard>
+
+            <PanelCard
+              title="New candidates"
+              subtitle="Recently added to pipeline"
+              viewAllHref="/dashboard/admin/candidates"
+              viewAllLabel="View all"
+              iconBg="bg-emerald-500/10 dark:bg-emerald-500/20"
+              icon={<Users size={18} className="text-emerald-600 dark:text-emerald-400" />}
+              emptyMessage="No candidates yet"
+              isEmpty={recentCandidates.length === 0}
+            >
+              {recentCandidates.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/dashboard/admin/candidates/${c.id}`}
+                  className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
+                >
+                  <AvatarInitial name={c.full_name} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                        {c.full_name}
+                      </p>
+                      <span
+                        className={cn(
+                          'shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
+                          c.active
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400'
+                        )}
+                      >
+                        {c.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-surface-500 dark:text-surface-400 truncate mt-0.5">
+                      {c.primary_title || 'No title'} · {formatRelative(c.created_at)}
+                    </p>
+                  </div>
+                  <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
+                </Link>
+              ))}
+            </PanelCard>
+          </div>
+        </div>
+
+        {/* Quick actions — elite strip like candidate recommended step */}
+        <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
+              <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Quick actions</p>
+              <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 hidden sm:block">Invite users, assign recruiters, view pipeline & reports</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
+            <Link href="/dashboard/admin/users" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
+              Invite user
             </Link>
-            <Link href="/dashboard/admin/reports" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
+            <Link href="/dashboard/admin/assignments" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
+              Assign recruiters
+            </Link>
+            <Link href="/dashboard/admin/pipeline" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
+              Pipeline
+            </Link>
+            <Link href="/dashboard/admin/reports" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 transition-all">
               Reports
             </Link>
           </div>
         </div>
-      </div>
-
-      {/* Key metrics — stat cards elite style */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-        {STAT_CONFIG.map((s) => (
-          <StatCard
-            key={s.key}
-            label={s.label}
-            value={(stats as Record<string, number>)[s.key] ?? 0}
-            href={s.href}
-            gradient={s.gradient}
-            lightBg={s.lightBg}
-            iconColor={s.iconColor}
-            Icon={s.icon as React.ComponentType<{ size?: number; className?: string }>}
-          />
-        ))}
-      </div>
-
-      {/* Activity panels */}
-      <div>
-        <h2 className="text-xs font-bold text-surface-500 dark:text-surface-400 uppercase tracking-widest mb-4">
-          Activity
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          <PanelCard
-            title="Recent applications"
-            subtitle="Latest candidate applications"
-            viewAllHref="/dashboard/admin/applications"
-            viewAllLabel="View all"
-            iconBg="bg-blue-500/10 dark:bg-blue-500/20"
-            icon={<ClipboardList size={18} className="text-blue-600 dark:text-blue-400" />}
-            emptyMessage="No applications yet"
-            isEmpty={recentApps.length === 0}
-          >
-            {recentApps.map((app) => (
-              <div
-                key={app.id}
-                className="px-4 sm:px-6 py-3 sm:py-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <AvatarInitial name={(app.candidate as any)?.full_name} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
-                      {(app.candidate as any)?.full_name}
-                    </p>
-                    <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
-                      {app.job?.title} at {app.job?.company}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <StatusBadge status={app.status} />
-                    <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1">
-                      {formatRelative(app.created_at)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </PanelCard>
-
-          <PanelCard
-            title="Latest jobs"
-            subtitle="Most recently ingested"
-            viewAllHref="/dashboard/admin/jobs"
-            viewAllLabel="View all"
-            iconBg="bg-violet-500/10 dark:bg-violet-500/20"
-            icon={<Briefcase size={18} className="text-violet-600 dark:text-violet-400" />}
-            emptyMessage="No jobs yet. Use the Jobs page to add or upload roles."
-            isEmpty={recentJobs.length === 0}
-          >
-            {recentJobs.map((job) => (
-              <Link
-                key={job.id}
-                href="/dashboard/admin/jobs"
-                className="px-4 sm:px-6 py-3 sm:py-4 block hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center shrink-0">
-                    <Briefcase size={18} className="text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                      {job.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-xs text-surface-500 dark:text-surface-400">{job.company}</span>
-                      {job.source && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-surface-100 dark:bg-surface-700 text-[10px] font-medium text-surface-600 dark:text-surface-300">
-                          {job.source}
-                        </span>
-                      )}
-                      <span className="text-[10px] text-surface-400 dark:text-surface-500">
-                        {formatRelative(job.scraped_at || job.created_at)}
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
-                </div>
-              </Link>
-            ))}
-          </PanelCard>
-
-          <PanelCard
-            title="New candidates"
-            subtitle="Recently added to pipeline"
-            viewAllHref="/dashboard/admin/candidates"
-            viewAllLabel="View all"
-            iconBg="bg-emerald-500/10 dark:bg-emerald-500/20"
-            icon={<Users size={18} className="text-emerald-600 dark:text-emerald-400" />}
-            emptyMessage="No candidates yet"
-            isEmpty={recentCandidates.length === 0}
-          >
-            {recentCandidates.map((c) => (
-              <Link
-                key={c.id}
-                href={`/dashboard/admin/candidates/${c.id}`}
-                className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
-              >
-                <AvatarInitial name={c.full_name} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                      {c.full_name}
-                    </p>
-                    <span
-                      className={cn(
-                        'shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
-                        c.active
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400'
-                      )}
-                    >
-                      {c.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  <p className="text-xs text-surface-500 dark:text-surface-400 truncate mt-0.5">
-                    {c.primary_title || 'No title'} · {formatRelative(c.created_at)}
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
-              </Link>
-            ))}
-          </PanelCard>
-        </div>
-      </div>
-
-      {/* Quick actions — elite strip like candidate recommended step */}
-      <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 shadow-sm">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
-            <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Quick actions</p>
-            <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 hidden sm:block">Invite users, assign recruiters, view pipeline & reports</p>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-          <Link href="/dashboard/admin/users" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-            Invite user
-          </Link>
-          <Link href="/dashboard/admin/assignments" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-            Assign recruiters
-          </Link>
-          <Link href="/dashboard/admin/pipeline" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-            Pipeline
-          </Link>
-          <Link href="/dashboard/admin/reports" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 transition-all">
-            Reports
-          </Link>
-        </div>
-      </div>
       </div>
     </div>
   );

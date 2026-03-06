@@ -1,14 +1,29 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   worker:
     build: ./worker
     ports:
       - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
     environment:
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - WORKER_SECRET=${WORKER_SECRET}
       - WORKER_PORT=3001
     restart: unless-stopped
     healthcheck:

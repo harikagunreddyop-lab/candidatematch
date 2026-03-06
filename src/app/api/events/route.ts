@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
     if (auth instanceof Response) return auth;
 
-    const rl = rateLimitResponse(req, 'api', auth.user.id);
+    const rl = await rateLimitResponse(req, 'api', auth.user.id);
     if (rl) return rl;
 
     let body: { events?: unknown[] };

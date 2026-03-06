@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
 
-  const rl = rateLimitResponse(req, 'admin_heavy', authResult.user.id);
+  const rl = await rateLimitResponse(req, 'admin_heavy', authResult.user.id);
   if (rl) return rl;
 
   const supabase = createServiceClient();

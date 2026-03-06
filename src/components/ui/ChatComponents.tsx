@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { cn, formatRelative } from '@/utils/helpers';
 import { Send, Paperclip, X, Download, File, Check, CheckCheck } from 'lucide-react';
 import { Spinner } from '@/components/ui';
@@ -46,7 +46,7 @@ export function OnlineDot({ profileId }: { profileId: string }) {
         const lastSeen = new Date(data.last_seen_at).getTime();
         setOnline(data.is_online && Date.now() - lastSeen < 60_000);
       });
-  }, [profileId]);
+  }, [profileId, supabase]);
   return (
     <span className={cn('inline-block w-2 h-2 rounded-full', online ? 'bg-green-400' : 'bg-surface-300')} />
   );
@@ -184,7 +184,7 @@ export function ChatPanel({
       .eq('conversation_id', conversationId)
       .eq('profile_id', currentProfile.id);
     onUnreadChange?.();
-  }, [conversationId, currentProfile.id]);
+  }, [conversationId, currentProfile.id, supabase, onUnreadChange]);
 
   useEffect(() => {
     loadMessages();
@@ -202,10 +202,10 @@ export function ChatPanel({
       .on('postgres_changes', {
         event: 'UPDATE', schema: 'public', table: 'messages',
         filter: `conversation_id=eq.${conversationId}`,
-      }, () => loadMessages())
-      .subscribe();
+      }, () => loadMessages());
+    subscribeWithLog(channel, `messages-${conversationId}`);
     return () => { supabase.removeChannel(channel); };
-  }, [conversationId, loadMessages, currentProfile.id, currentProfile.name, currentProfile.email, currentProfile.role, onUnreadChange]);
+  }, [conversationId, supabase, loadMessages, currentProfile.id, currentProfile.name, currentProfile.email, currentProfile.role, onUnreadChange]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -226,7 +226,7 @@ export function ChatPanel({
         profile_id: currentProfile.id, is_online: false, last_seen_at: new Date().toISOString(),
       });
     };
-  }, [currentProfile.id]);
+  }, [currentProfile.id, supabase]);
 
   const sendMessage = async (content: string, attachmentPath?: string, attachmentName?: string, attachmentType?: string) => {
     if (!content.trim() && !attachmentPath) return;

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { useProfile } from '@/hooks';
 import { Spinner, SearchInput } from '@/components/ui';
 import { MessageCircle, Plus, X, AlertCircle, ArrowLeft } from 'lucide-react';
@@ -98,8 +98,8 @@ export default function AdminMessagesPage() {
     const channel = supabase
       .channel('admin-messages-page')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, scheduleReload)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload)
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, scheduleReload);
+    subscribeWithLog(channel, 'admin-messages-page');
     return () => {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
@@ -288,8 +288,8 @@ export default function AdminMessagesPage() {
                               <div className={cn(
                                 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
                                 role === 'admin' ? 'bg-purple-600/20 text-purple-300'
-                                : role === 'recruiter' ? 'bg-brand-600/20 text-brand-300'
-                                : 'bg-green-600/20 text-green-300'
+                                  : role === 'recruiter' ? 'bg-brand-600/20 text-brand-300'
+                                    : 'bg-green-600/20 text-green-300'
                               )}>
                                 {(u.name || u.email || '?')[0].toUpperCase()}
                               </div>

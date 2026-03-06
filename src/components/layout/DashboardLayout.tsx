@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { cn } from '@/utils/helpers';
 import type { Profile } from '@/types';
 import {
@@ -18,40 +18,40 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
 
 const adminNav: NavItem[] = [
-  { label: 'Dashboard',     href: '/dashboard/admin',              icon: <LayoutDashboard size={18} /> },
-  { label: 'Candidates',    href: '/dashboard/admin/candidates',   icon: <Users size={18} /> },
-  { label: 'Applications',  href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
-  { label: 'Pipeline',      href: '/dashboard/admin/pipeline',     icon: <Cpu size={18} /> },
-  { label: 'Jobs',          href: '/dashboard/admin/jobs',         icon: <Briefcase size={18} /> },
-  { label: 'Assignments',   href: '/dashboard/admin/assignments',  icon: <Link2 size={18} /> },
-  { label: 'Users',         href: '/dashboard/admin/users',        icon: <UserCircle size={18} /> },
-  { label: 'Reports',       href: '/dashboard/admin/reports',      icon: <BarChart3 size={18} /> },
-  { label: 'Audit log',     href: '/dashboard/admin/audit',        icon: <FileText size={18} /> },
-  { label: 'Interviews',    href: '/dashboard/admin/interviews',   icon: <Calendar size={18} /> },
-  { label: 'Messages',      href: '/dashboard/admin/messages',     icon: <MessageCircle size={18} /> },
-  { label: 'Compliance',    href: '/dashboard/admin/compliance',   icon: <Shield size={18} /> },
-  { label: 'Settings',      href: '/dashboard/admin/settings',     icon: <Settings size={18} /> },
+  { label: 'Dashboard', href: '/dashboard/admin', icon: <LayoutDashboard size={18} /> },
+  { label: 'Candidates', href: '/dashboard/admin/candidates', icon: <Users size={18} /> },
+  { label: 'Applications', href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
+  { label: 'Pipeline', href: '/dashboard/admin/pipeline', icon: <Cpu size={18} /> },
+  { label: 'Jobs', href: '/dashboard/admin/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Assignments', href: '/dashboard/admin/assignments', icon: <Link2 size={18} /> },
+  { label: 'Users', href: '/dashboard/admin/users', icon: <UserCircle size={18} /> },
+  { label: 'Reports', href: '/dashboard/admin/reports', icon: <BarChart3 size={18} /> },
+  { label: 'Audit log', href: '/dashboard/admin/audit', icon: <FileText size={18} /> },
+  { label: 'Interviews', href: '/dashboard/admin/interviews', icon: <Calendar size={18} /> },
+  { label: 'Messages', href: '/dashboard/admin/messages', icon: <MessageCircle size={18} /> },
+  { label: 'Compliance', href: '/dashboard/admin/compliance', icon: <Shield size={18} /> },
+  { label: 'Settings', href: '/dashboard/admin/settings', icon: <Settings size={18} /> },
 ];
 
 const recruiterNav: NavItem[] = [
-  { label: 'Dashboard',    href: '/dashboard/recruiter',              icon: <LayoutDashboard size={18} /> },
-  { label: 'Job search',   href: '/dashboard/recruiter/jobs',         icon: <Briefcase size={18} /> },
-  { label: 'Candidates',   href: '/dashboard/recruiter/candidates',   icon: <Users size={18} /> },
+  { label: 'Dashboard', href: '/dashboard/recruiter', icon: <LayoutDashboard size={18} /> },
+  { label: 'Job search', href: '/dashboard/recruiter/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Candidates', href: '/dashboard/recruiter/candidates', icon: <Users size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
-  { label: 'Pipeline',     href: '/dashboard/recruiter/pipeline',     icon: <Cpu size={18} /> },
-  { label: 'Talent report', href: '/dashboard/recruiter/reports',     icon: <BarChart3 size={18} /> },
+  { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <Cpu size={18} /> },
+  { label: 'Talent report', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
   { label: 'Integrations', href: '/dashboard/recruiter/integrations', icon: <Plug size={18} /> },
-  { label: 'Messages',     href: '/dashboard/recruiter/messages',     icon: <MessageCircle size={18} /> },
+  { label: 'Messages', href: '/dashboard/recruiter/messages', icon: <MessageCircle size={18} /> },
 ];
 
 const candidateNav: NavItem[] = [
-  { label: 'Dashboard',       href: '/dashboard/candidate',              icon: <LayoutDashboard size={18} /> },
-  { label: 'Job search',      href: '/dashboard/candidate/jobs',         icon: <Briefcase size={18} /> },
-  { label: 'Skill report',    href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
-  { label: 'Interviews',      href: '/dashboard/candidate/interviews',   icon: <Calendar size={18} /> },
-  { label: 'My profile',      href: '/dashboard/candidate/profile',      icon: <UserCircle size={18} /> },
-  { label: 'Settings',       href: '/dashboard/candidate/settings',     icon: <Settings size={18} /> },
-  { label: 'Messages',       href: '/dashboard/candidate/messages',     icon: <MessageCircle size={18} /> },
+  { label: 'Dashboard', href: '/dashboard/candidate', icon: <LayoutDashboard size={18} /> },
+  { label: 'Job search', href: '/dashboard/candidate/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
+  { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
+  { label: 'My profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
+  { label: 'Settings', href: '/dashboard/candidate/settings', icon: <Settings size={18} /> },
+  { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
 ];
 
 export default function DashboardLayout({ children, profile }: { children: React.ReactNode; profile: Profile }) {
@@ -100,8 +100,8 @@ export default function DashboardLayout({ children, profile }: { children: React
     loadUnreadCount();
     const channel = client.channel('layout-unread')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => loadUnreadCount())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants' }, () => loadUnreadCount())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_participants' }, () => loadUnreadCount());
+    subscribeWithLog(channel, 'layout-unread');
     return () => { client.removeChannel(channel); };
   }, [client, loadUnreadCount]);
 
@@ -163,7 +163,7 @@ export default function DashboardLayout({ children, profile }: { children: React
           'relative flex items-center h-[64px] px-4 border-b shrink-0',
           collapsed && 'justify-center px-0'
         )}
-        style={{ borderColor: 'var(--role-sidebar-border)' }}
+          style={{ borderColor: 'var(--role-sidebar-border)' }}
         >
           <Link href={dashboardHref} className="flex items-center gap-3 group">
             <div

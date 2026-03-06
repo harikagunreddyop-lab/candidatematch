@@ -2,7 +2,7 @@
 // src/app/dashboard/recruiter/pipeline/page.tsx
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Spinner, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
 import { MapPin, Star, GripVertical, ExternalLink, Calendar } from 'lucide-react';
@@ -10,13 +10,13 @@ import { cn, formatDate } from '@/utils/helpers';
 import { getScoreBadgeClasses } from '@/lib/ats-score';
 
 const STAGES = [
-  { key: 'ready',     label: 'New Matches', color: 'bg-surface-100 dark:bg-surface-700/80',     header: 'bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-200' },
-  { key: 'applied',   label: 'Applied',     color: 'bg-blue-50 dark:bg-blue-900/30',           header: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200' },
-  { key: 'screening', label: 'Screening',   color: 'bg-yellow-50 dark:bg-yellow-900/25',       header: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200' },
-  { key: 'interview', label: 'Interview',   color: 'bg-purple-50 dark:bg-purple-900/25',       header: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200' },
-  { key: 'offer',     label: 'Offer',       color: 'bg-green-50 dark:bg-green-900/25',        header: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200' },
-  { key: 'rejected',  label: 'Rejected',    color: 'bg-red-50 dark:bg-red-900/25',             header: 'bg-red-100 dark:bg-red-800/50 text-red-600 dark:text-red-300' },
-  { key: 'withdrawn', label: 'Withdrawn',   color: 'bg-surface-50 dark:bg-surface-700/50',     header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
+  { key: 'ready', label: 'New Matches', color: 'bg-surface-100 dark:bg-surface-700/80', header: 'bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-200' },
+  { key: 'applied', label: 'Applied', color: 'bg-blue-50 dark:bg-blue-900/30', header: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200' },
+  { key: 'screening', label: 'Screening', color: 'bg-yellow-50 dark:bg-yellow-900/25', header: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200' },
+  { key: 'interview', label: 'Interview', color: 'bg-purple-50 dark:bg-purple-900/25', header: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200' },
+  { key: 'offer', label: 'Offer', color: 'bg-green-50 dark:bg-green-900/25', header: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200' },
+  { key: 'rejected', label: 'Rejected', color: 'bg-red-50 dark:bg-red-900/25', header: 'bg-red-100 dark:bg-red-800/50 text-red-600 dark:text-red-300' },
+  { key: 'withdrawn', label: 'Withdrawn', color: 'bg-surface-50 dark:bg-surface-700/50', header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
 ];
 
 function scoreColor(score: number) {
@@ -118,8 +118,8 @@ export default function PipelinePage() {
     const channel = supabase.channel('recruiter-pipeline')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+    subscribeWithLog(channel, 'recruiter-pipeline');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
 

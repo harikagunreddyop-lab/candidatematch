@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
+import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { MessageCircle, X, ChevronLeft, Plus } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import { Spinner } from '@/components/ui';
@@ -67,17 +67,17 @@ export default function FloatingChatWidget({ currentProfile }: { currentProfile:
     setConversations(convs);
     setTotalUnread(unreadTotal);
     setLoading(false);
-  }, [currentProfile.id]);
+  }, [currentProfile.id, supabase]);
 
   useEffect(() => {
     loadConversations();
     const channel = supabase
       .channel('widget-conversations')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => loadConversations())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => loadConversations())
-      .subscribe();
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => loadConversations());
+    subscribeWithLog(channel, 'widget-conversations');
     return () => { supabase.removeChannel(channel); };
-  }, [loadConversations]);
+  }, [supabase, loadConversations]);
 
   const loadAvailableUsers = async () => {
     let query = supabase.from('profiles').select('*').neq('id', currentProfile.id);

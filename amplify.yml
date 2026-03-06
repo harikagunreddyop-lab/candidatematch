@@ -16,7 +16,14 @@ frontend:
         - env | grep -e AUTOFILL_ALLOWED_ORIGINS >> .env.production || true
         - env | grep -e NEXT_PUBLIC_APP_URL >> .env.production || true
         - env | grep -e GMAIL_ >> .env.production || true
-        - cat .env.production 2>/dev/null; echo "---"
+        - |
+          echo "Validating required env vars..."
+          missing=0
+          for var in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY ANTHROPIC_API_KEY CRON_SECRET; do
+            grep -q "^${var}=" .env.production || { echo "FATAL: $var is missing from env"; missing=1; }
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "All required env vars present."
         - npm run build
   artifacts:
     baseDirectory: .next

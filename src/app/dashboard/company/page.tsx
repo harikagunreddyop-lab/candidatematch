@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Users, Briefcase, TrendingUp, UserPlus, BarChart2, ChevronRight, Building2, Clock, Target, Zap } from 'lucide-react';
 import { cn, formatRelative } from '@/utils/helpers';
 import type { Company, CompanyAnalytics } from '@/types';
@@ -101,7 +102,7 @@ export default function CompanyDashboard() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             {company?.logo_url
-              ? <img src={company.logo_url} alt={company.name} className="w-9 h-9 rounded-xl object-cover" />
+              ? <Image src={company.logo_url} alt={company.name} width={36} height={36} className="w-9 h-9 rounded-xl object-cover" unoptimized />
               : <div className="w-9 h-9 rounded-xl bg-violet-500/20 flex items-center justify-center"><Building2 className="w-5 h-5 text-violet-400" /></div>
             }
             <h1 className="text-2xl font-bold text-surface-900 dark:text-white">{company?.name}</h1>

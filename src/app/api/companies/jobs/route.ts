@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { checkCompanyActiveJobLimit } from '@/lib/plan-limits';
+import { logActivity, getClientIp } from '@/lib/activity-log';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +69,18 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await logActivity({
+    supabase,
+    company_id: companyId,
+    user_id: auth.profile.id,
+    action: 'job_created',
+    resource_type: 'job',
+    resource_id: job.id,
+    metadata: { title: job.title },
+    ip_address: getClientIp(req),
+    user_agent: req.headers.get('user-agent') ?? null,
+  });
 
   return NextResponse.json({ job });
 }

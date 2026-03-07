@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import type { Role, EffectiveRole } from '@/types';
+import type { AuthContext } from '@/lib/auth-context';
+import { isPlatformAdmin } from '@/lib/auth-context';
 
 export interface ApiAuthResult {
   user: { id: string; email?: string };
-  profile: {
-    id: string;
-    role: Role;
-    effective_role: EffectiveRole;
-    company_id?: string;
-  };
+  profile: AuthContext & { role: Role };
   supabase: ReturnType<typeof createServerClient>;
 }
 
@@ -74,7 +71,7 @@ export async function requireApiAuth(
       id: profileRow.id,
       role: legacyRole,
       effective_role: effectiveRole,
-      company_id: profileRow.company_id,
+      company_id: profileRow.company_id ?? null,
     },
     supabase,
   };
@@ -93,8 +90,8 @@ export async function canAccessCandidate(
   candidateId: string,
   serviceSupabase: ReturnType<typeof import('@/lib/supabase-server').createServiceClient>
 ): Promise<boolean> {
+  if (isPlatformAdmin(auth.profile)) return true;
   const role = auth.profile.effective_role;
-  if (role === 'platform_admin') return true;
   if (role === 'company_admin') {
     // Company admin can access candidates applied to their company's jobs
     const { data } = await serviceSupabase

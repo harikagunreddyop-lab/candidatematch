@@ -30,11 +30,10 @@ export interface Company {
   updated_at: string;
 }
 
-export interface ProfileWithRole extends Profile {
+/** Profile shape passed to dashboard layout (serializable; includes effective_role from profile_roles). */
+export interface DashboardProfile extends Profile {
   effective_role: EffectiveRole;
-  company_id?: string;
-  company?: Company;
-  permissions?: Record<string, boolean>;
+  company_id?: string | null;
 }
 
 export interface CompanyInvitation {
@@ -116,6 +115,13 @@ export interface Profile {
   updated_at: string;
   /** When true, recruiter can use AI resume generation (admin-granted). */
   resume_generation_allowed?: boolean;
+}
+
+export interface ProfileWithRole extends Profile {
+  effective_role: EffectiveRole;
+  company_id?: string | null;
+  company?: Company;
+  permissions?: Record<string, boolean>;
 }
 
 export interface Experience {

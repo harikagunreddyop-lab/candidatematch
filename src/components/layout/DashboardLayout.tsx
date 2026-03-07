@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { cn } from '@/utils/helpers';
-import type { Profile } from '@/types';
+import type { DashboardProfile } from '@/types';
 import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
@@ -39,6 +39,7 @@ const companyAdminNav: NavItem[] = [
   { label: 'Team',        href: '/dashboard/company/team',        icon: <Users size={18} /> },
   { label: 'Jobs',        href: '/dashboard/company/jobs',        icon: <Briefcase size={18} /> },
   { label: 'Analytics',   href: '/dashboard/company/analytics',   icon: <BarChart3 size={18} /> },
+  { label: 'Activity',    href: '/dashboard/company/activity',    icon: <FileText size={18} /> },
   { label: 'Messages',    href: '/dashboard/company/messages',    icon: <MessageCircle size={18} /> },
   { label: 'Settings',    href: '/dashboard/company/settings',    icon: <Settings size={18} /> },
 ];
@@ -49,6 +50,7 @@ const recruiterNav: NavItem[] = [
   { label: 'Candidates', href: '/dashboard/recruiter/candidates', icon: <Users size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
   { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <Cpu size={18} /> },
+  { label: 'Activity', href: '/dashboard/company/activity', icon: <FileText size={18} /> },
   { label: 'Talent report', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
   { label: 'Integrations', href: '/dashboard/recruiter/integrations', icon: <Plug size={18} /> },
   { label: 'Messages', href: '/dashboard/recruiter/messages', icon: <MessageCircle size={18} /> },
@@ -65,7 +67,7 @@ const candidateNav: NavItem[] = [
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
 ];
 
-export default function DashboardLayout({ children, profile }: { children: React.ReactNode; profile: Profile }) {
+export default function DashboardLayout({ children, profile }: { children: React.ReactNode; profile: DashboardProfile }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -76,9 +78,9 @@ export default function DashboardLayout({ children, profile }: { children: React
     setClient(createClient());
   }, []);
 
-  const effectiveRole = (profile as { effective_role?: string }).effective_role || profile.role;
+  const effectiveRole = profile.effective_role;
   const baseNavItems =
-    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? adminNav :
+    (effectiveRole === 'platform_admin') ? adminNav :
     effectiveRole === 'company_admin'  ? companyAdminNav :
     effectiveRole === 'recruiter'      ? recruiterNav :
     candidateNav;
@@ -310,7 +312,7 @@ export default function DashboardLayout({ children, profile }: { children: React
           <div />
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
-            {(effectiveRole === 'platform_admin' || effectiveRole === 'admin') && <AdminNotificationBell adminId={profile.id} />}
+            {effectiveRole === 'platform_admin' && <AdminNotificationBell adminId={profile.id} />}
             <Link
               href={messagesHref}
               className="relative p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"

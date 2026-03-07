@@ -765,7 +765,7 @@ export default function CandidateDashboard() {
   const matchDateRange = (() => {
     switch (matchDateFilter) {
       case 'today':
-        return { start: todayStart.getTime(), end: Number.POSITIVE_INFINITY };
+        return { start: todayStart.getTime(), end: todayStart.getTime() + dayMs };
       case 'yesterday':
         return { start: todayStart.getTime() - dayMs, end: todayStart.getTime() };
       case '7':
@@ -781,7 +781,7 @@ export default function CandidateDashboard() {
   const jobDateRange = (() => {
     switch (jobDateFilter) {
       case 'today':
-        return { start: todayStart.getTime(), end: Number.POSITIVE_INFINITY };
+        return { start: todayStart.getTime(), end: todayStart.getTime() + dayMs };
       case 'yesterday':
         return { start: todayStart.getTime() - dayMs, end: todayStart.getTime() };
       case '7':
@@ -803,7 +803,8 @@ export default function CandidateDashboard() {
       if (t < matchDateRange.start || t >= matchDateRange.end) return false;
     }
     if (jobDateFilter !== 'all') {
-      const jt = m.job?.created_at ? new Date(m.job.created_at).getTime() : 0;
+      const jobDate = m.job?.scraped_at || m.job?.created_at;
+      const jt = jobDate ? new Date(jobDate).getTime() : 0;
       if (jt < jobDateRange.start || jt >= jobDateRange.end) return false;
     }
     if (matchSearch.trim()) {
@@ -1361,7 +1362,7 @@ export default function CandidateDashboard() {
                               ATS {atsScore}
                             </span>
                           )}
-                          {(() => { const badge = getJobAgeBadge(m.job?.created_at); return badge ? <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold', badge.className)}><Calendar size={9} />{badge.label}</span> : null; })()}
+                          {(() => { const badge = getJobAgeBadge(m.job?.scraped_at || m.job?.created_at); return badge ? <span className={cn('inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold', badge.className)}><Calendar size={9} />{badge.label}</span> : null; })()}
                         </div>
                         {(m as any).match_reason && (
                           <details className="mt-2 group">

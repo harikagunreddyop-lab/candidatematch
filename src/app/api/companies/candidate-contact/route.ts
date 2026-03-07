@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { SUCCESS_FEE_CENTS, isCompanyPlanId, type CompanyPlanId } from '@/lib/plan-limits';
+import { logActivity, getClientIp } from '@/lib/activity-log';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,6 +92,18 @@ export async function GET(req: NextRequest) {
       { onConflict: 'company_id,usage_month' },
     );
   }
+
+  await logActivity({
+    supabase,
+    company_id: companyId,
+    user_id: auth.profile.id,
+    action: 'candidate_viewed',
+    resource_type: 'candidate',
+    resource_id: candidateId,
+    metadata: {},
+    ip_address: getClientIp(req),
+    user_agent: req.headers.get('user-agent') ?? null,
+  });
 
   return NextResponse.json({
     requires_agreement: false,

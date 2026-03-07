@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
   if (isPro) {
     const { data: matches } = await supabase
       .from('candidate_job_matches')
-      .select('*, job:jobs(id, title, company, location, remote_type)')
+      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
       .eq('candidate_id', candidate.id)
       .order('fit_score', { ascending: false });
     return NextResponse.json({
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
   if (usedThisWeek >= FREE_TIER_WEEKLY_MATCH_LIMIT) {
     const { data: capped } = await supabase
       .from('candidate_job_matches')
-      .select('*, job:jobs(id, title, company, location, remote_type)')
+      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
       .eq('candidate_id', candidate.id)
       .gte('matched_at', weekStart)
       .order('fit_score', { ascending: false })
@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
 
   const { data: matches } = await supabase
     .from('candidate_job_matches')
-    .select('*, job:jobs(id, title, company, location, remote_type)')
+    .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
     .eq('candidate_id', candidate.id)
     .gte('matched_at', weekStart)
     .order('fit_score', { ascending: false })

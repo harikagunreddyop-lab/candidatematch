@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Building2, Plus, ChevronRight, Users, TrendingUp } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
@@ -65,7 +66,7 @@ export default function CompaniesPage() {
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 {co.logo_url
-                  ? <img src={co.logo_url} alt={co.name} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+                  ? <Image src={co.logo_url} alt={co.name} width={40} height={40} className="w-10 h-10 rounded-xl object-cover shrink-0" unoptimized />
                   : <div className="w-10 h-10 rounded-xl bg-violet-500/15 flex items-center justify-center shrink-0"><Building2 className="w-5 h-5 text-violet-400" /></div>
                 }
                 <div className="min-w-0">

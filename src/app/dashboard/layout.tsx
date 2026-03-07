@@ -1,18 +1,19 @@
 import { requireAuth } from '@/lib/auth';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import type { DashboardProfile } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   try {
     const profile = await requireAuth();
-    // Pass a plain serializable object to avoid RSC serialization issues
-    const serializable = {
+    const serializable: DashboardProfile = {
       id: profile.id,
       name: profile.name ?? '',
       email: profile.email ?? '',
       role: profile.role,
-      effective_role: (profile as { effective_role?: string }).effective_role ?? profile.role,
+      effective_role: profile.effective_role,
+      company_id: profile.company_id ?? null,
       avatar_url: profile.avatar_url ?? undefined,
       created_at: String(profile.created_at ?? ''),
       updated_at: String(profile.updated_at ?? ''),

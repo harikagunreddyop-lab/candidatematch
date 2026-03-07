@@ -16,7 +16,7 @@ interface ActivityEntry {
   actor_name?: string | null;
 }
 
-export default function AdminAuditPage() {
+export default function CompanyActivityPage() {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(100);
@@ -43,8 +43,8 @@ export default function AdminAuditPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Audit log</h1>
-          <p className="text-sm text-surface-500 mt-1">Recent actions: jobs created, candidate contact views</p>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Activity</h1>
+          <p className="text-sm text-surface-500 mt-1">Jobs created and candidate contact views for your company</p>
         </div>
         <select value={limit} onChange={e => setLimit(Number(e.target.value))} className="input text-sm py-2 px-3 w-full sm:w-28">
           <option value={50}>Last 50</option>

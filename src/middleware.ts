@@ -1,12 +1,12 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import type { EffectiveRole } from '@/types';
 
-// Which roles are allowed on which route prefixes
-const ROLE_ROUTES: Record<string, string[]> = {
-  '/dashboard/admin':     ['admin', 'platform_admin'],
-  '/dashboard/company':   ['admin', 'platform_admin', 'company_admin'],
-  '/dashboard/recruiter': ['admin', 'platform_admin', 'company_admin', 'recruiter'],
-  '/dashboard/candidate': ['candidate', 'admin', 'platform_admin'],
+const ROLE_ROUTES: Record<string, (EffectiveRole | 'admin')[]> = {
+  '/dashboard/admin':     ['platform_admin', 'admin'],
+  '/dashboard/company':   ['platform_admin', 'company_admin', 'admin'],
+  '/dashboard/recruiter': ['platform_admin', 'company_admin', 'recruiter', 'admin'],
+  '/dashboard/candidate': ['candidate', 'platform_admin', 'admin'],
 };
 
 function getDestination(effectiveRole?: string, legacyRole?: string): string {
@@ -129,7 +129,7 @@ export async function middleware(request: NextRequest) {
       // Role Check: If route is protected and user has a role
       if (matchedPrefix && activeRole) {
         const allowedRoles = ROLE_ROUTES[matchedPrefix];
-        if (!allowedRoles.includes(activeRole)) {
+        if (!allowedRoles.includes(activeRole as EffectiveRole | 'admin')) {
           const dest = getDestination(effectiveRole, role);
           return NextResponse.redirect(new URL(dest, request.url));
         }

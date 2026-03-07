@@ -4,6 +4,7 @@ import { validateCronAuth } from '@/lib/security';
 import { requireAdmin } from '@/lib/api-auth';
 import { structuredLog } from '@/lib/logger';
 
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 

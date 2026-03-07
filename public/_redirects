@@ -1,0 +1,2 @@
+# Optional: redirect www to non-www (configure in Amplify or your host)
+# https://www.orioncmos.com/* https://orioncmos.com/:splat 301!

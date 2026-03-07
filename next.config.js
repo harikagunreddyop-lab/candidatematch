@@ -7,6 +7,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  output: process.env.BUILD_STANDALONE === 'true' ? 'standalone' : undefined,
+  experimental: {
+    instrumentationHook: true,
+  },
   images: {
     domains: [],
   },
@@ -28,4 +32,5 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+const { withSentryConfig } = require('@sentry/nextjs');
+module.exports = withSentryConfig(nextConfig, { silent: true });

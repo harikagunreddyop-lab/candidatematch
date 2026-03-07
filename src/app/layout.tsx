@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { RegisterSW } from '@/components/RegisterSW';
+import { PostHogProvider } from '@/components/PostHogProvider';
 
 export const metadata: Metadata = {
   title: 'CandidateMatch',
@@ -28,8 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body>
-        <RegisterSW />
-        <ThemeProvider>{children}</ThemeProvider>
+        <PostHogProvider>
+          <RegisterSW />
+          <ThemeProvider>{children}</ThemeProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

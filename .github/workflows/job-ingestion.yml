@@ -1,0 +1,29 @@
+name: Job Ingestion Cron
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ingest-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Job Ingestion
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.APP_URL || 'https://master.d1zctiy8vgnlrr.amplifyapp.com' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET not set in repo secrets — skipping"
+            exit 0
+          fi
+          code=$(curl -s -o /tmp/ingest.json -w "%{http_code}" -X GET \
+            "${APP_URL}/api/cron/ingest" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "HTTP $code"
+          cat /tmp/ingest.json || true
+          if [ "$code" -ne 200 ]; then
+            echo "Job ingestion returned $code"
+            exit 1
+          fi

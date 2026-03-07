@@ -8,6 +8,10 @@ import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { checkCompanyActiveJobLimit } from '@/lib/plan-limits';
 import { logActivity, getClientIp } from '@/lib/activity-log';
+import { sanitizePlainText, sanitizeRequiredString, sanitizeString } from '@/lib/sanitize';
+import { checkRateLimit, strictRateLimit } from '@/lib/ratelimit-upstash';
+import { invalidateCache } from '@/lib/redis';
+import { captureServerEvent, AnalyticsEvents } from '@/lib/analytics-posthog-server';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +25,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No company context' }, { status: 400 });
   }
 
+  const rl = await checkRateLimit(`user:${auth.profile.id}:create-job`, strictRateLimit);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait before creating another job.' },
+      { status: 429 }
+    );
+  }
+
   const body = await req.json().catch(() => ({}));
-  const title = body.title?.trim();
+  const title = sanitizeRequiredString(body.title, 500);
   if (!title) {
     return NextResponse.json({ error: 'title required' }, { status: 400 });
   }
@@ -41,12 +53,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const companyName = body.company?.trim() || body.company_name?.trim() || 'Company';
-  const jdRaw = body.jd_raw?.trim() || body.description?.trim() || '';
+  const companyName = sanitizeString(body.company || body.company_name, 300) || 'Company';
+  const jdRaw = sanitizePlainText(body.jd_raw || body.description, 100_000);
   const jdClean = jdRaw.startsWith('<') ? jdRaw.replace(/<[^>]*>/g, ' ').trim() : jdRaw;
+  const locationStr = sanitizeString(body.location, 500);
+  const urlStr = sanitizeString(body.url, 2048);
   const dedupeHash = crypto
     .createHash('sha256')
-    .update([title, companyName, body.location || '', jdClean.slice(0, 500)].map(s => (s || '').toLowerCase().trim()).join('|'))
+    .update([title, companyName, locationStr, jdClean.slice(0, 500)].map(s => (s || '').toLowerCase().trim()).join('|'))
     .digest('hex');
 
   const { data: job, error } = await supabase
@@ -55,8 +69,8 @@ export async function POST(req: NextRequest) {
       source: 'company',
       title,
       company: companyName,
-      location: body.location?.trim() || null,
-      url: body.url?.trim() || null,
+      location: locationStr || null,
+      url: urlStr || null,
       jd_raw: jdRaw || null,
       jd_clean: jdClean || null,
       dedupe_hash: dedupeHash,
@@ -69,6 +83,16 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  await captureServerEvent(auth.user.id, AnalyticsEvents.JOB_CREATED, {
+    job_id: job.id,
+    company_id: companyId,
+    user_id: auth.profile.id,
+    title: job.title,
+    source: 'company',
+  });
+
+  await invalidateCache(`market:jobs:*`);
 
   await logActivity({
     supabase,

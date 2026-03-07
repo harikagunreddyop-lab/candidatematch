@@ -1,89 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CandidateMatch Autofill</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      width: 280px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #1a1a2e;
-      color: #e8e8f0;
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      background: #0a0a14;
+      color: #e2e4f0;
     }
+
     .header {
-      padding: 14px 16px 12px;
-      background: #16213e;
-      border-bottom: 1px solid #2a2a4c;
-    }
-    .header h1 { font-size: 14px; font-weight: 700; color: #7c83fd; }
-    .header p  { font-size: 11px; color: #888; margin-top: 2px; }
-    .body      { padding: 14px 16px; }
-
-    .status-chip {
-      display: inline-flex;
+      padding: 16px;
+      background: linear-gradient(135deg, rgba(124,131,253,0.12) 0%, rgba(139,92,246,0.08) 100%);
+      border-bottom: 1px solid rgba(124,131,253,0.15);
+      display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 5px 10px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .status-chip.connected    { background: #064e3b; color: #34d399; }
-    .status-chip.disconnected { background: #451a03; color: #fcd34d; }
-    .status-chip .dot {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: currentColor;
-    }
-    .status-chip.connected .dot { animation: pulse 1.5s infinite; }
-    @keyframes pulse {
-      0%,100% { opacity: 1; }
-      50%      { opacity: 0.4; }
+      gap: 10px;
     }
 
-    .info  { font-size: 12px; color: #888; margin-bottom: 14px; line-height: 1.5; }
-    kbd    { background: #2a2a4c; color: #7c83fd; padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #7c83fd;
+      box-shadow: 0 0 12px #7c83fd;
+      animation: pulse 2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; box-shadow: 0 0 12px #7c83fd; }
+      50%      { opacity:0.5; box-shadow: 0 0 6px #7c83fd; }
+    }
+
+    .header-text h1 { font-size: 14px; font-weight: 700; color: #7c83fd; }
+    .header-text p  { font-size: 11px; color: #555; margin-top: 1px; }
+
+    .body { padding: 16px; }
+
+    /* Status chip */
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 11px; border-radius: 99px; font-size: 12px; font-weight: 600;
+      margin-bottom: 14px;
+    }
+    .chip.connected    { background: rgba(52,211,153,0.1); color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+    .chip.disconnected { background: rgba(245,158,11,0.1); color: #f59e0b; border: 1px solid rgba(245,158,11,0.2); }
+    .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .chip.connected .dot { animation: pulse 1.5s infinite; }
+
+    .info { font-size: 12px; color: #777; margin-bottom: 16px; line-height: 1.6; }
+    .info kbd {
+      background: rgba(124,131,253,0.15);
+      color: #7c83fd; padding: 1px 6px; border-radius: 5px; font-size: 11px;
+    }
+
+    #actions { display: flex; flex-direction: column; gap: 7px; }
 
     .btn {
-      display: block;
-      width: 100%;
-      padding: 9px 12px;
-      border: none;
-      border-radius: 9px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity 0.15s;
-      text-align: center;
-      text-decoration: none;
+      padding: 10px 14px; border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s; text-align: center;
+      font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 6px;
     }
-    .btn:hover { opacity: 0.85; }
-    .btn-primary   { background: #7c83fd; color: #fff; }
-    .btn-secondary { background: #2a2a4c; color: #c8c8e0; margin-top: 8px; }
-    .btn-danger    { background: #7f1d1d; color: #fca5a5; margin-top: 8px; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c83fd, #8b5cf6);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(124,131,253,0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 20px rgba(124,131,253,0.45); }
+    .btn-secondary { background: rgba(124,131,253,0.1); color: #9da4fd; border: 1px solid rgba(124,131,253,0.2); }
+    .btn-secondary:hover { background: rgba(124,131,253,0.16); }
+    .btn-danger { background: rgba(239,68,68,0.08); color: #f87171; border: 1px solid rgba(239,68,68,0.15); }
+    .btn-danger:hover { background: rgba(239,68,68,0.15); }
 
-    .time-left { font-size: 10px; color: #666; margin-top: 8px; text-align: center; }
+    input[type="url"] {
+      width: 100%; padding: 9px 12px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; color: #e2e4f0;
+      font-size: 12px; outline: none; margin-bottom: 8px; font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    input[type="url"]:focus { border-color: rgba(124,131,253,0.4); }
+    input[type="url"]::placeholder { color: #444; }
+
+    .time-left { font-size: 10px; color: #555; text-align: center; margin-top: 10px; }
+    .hint {
+      font-size: 10px; color: #444; text-align: center; margin-top: 8px; line-height: 1.5;
+    }
+
+    .divider { height: 1px; background: rgba(255,255,255,0.05); margin: 12px 0; }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>🤖 CandidateMatch Autofill</h1>
-    <p>Intelligent job application filler</p>
+    <div class="logo-dot"></div>
+    <div class="header-text">
+      <h1>CandidateMatch Autofill</h1>
+      <p>Elite job application filler</p>
+    </div>
   </div>
 
   <div class="body">
-    <div id="status-chip" class="status-chip disconnected">
+    <div id="chip" class="chip disconnected">
       <span class="dot"></span>
-      <span id="status-text">Checking…</span>
+      <span id="chip-text">Checking…</span>
     </div>
-    <p id="status-info" class="info"></p>
+    <p id="info" class="info"></p>
     <div id="actions"></div>
-    <p id="time-left" class="time-left" style="display:none"></p>
+    <p id="time-left" class="time-left" style="display:none;"></p>
   </div>
 
-  <script src="popup.js"></script>
+  <script src="dist/popup.js"></script>
 </body>
 </html>
+

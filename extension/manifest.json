@@ -1,43 +1,43 @@
 {
-    "manifest_version": 3,
-    "name": "CandidateMatch Autofill",
-    "version": "1.0.0",
-    "description": "Autofill job application forms using your CandidateMatch profile. Press Ctrl+Shift+F to activate.",
-    "permissions": [
-        "storage",
-        "activeTab",
-        "scripting"
-    ],
-    "host_permissions": [
-        "<all_urls>"
-    ],
-    "background": {
-        "service_worker": "dist/background.js",
-        "type": "module"
-    },
-    "content_scripts": [
-        {
-            "matches": [
-                "<all_urls>"
-            ],
-            "js": [
-                "dist/content.js"
-            ],
-            "run_at": "document_idle",
-            "all_frames": false
-        }
-    ],
-    "commands": {
-        "activate-autofill": {
-            "suggested_key": {
-                "default": "Ctrl+Shift+F",
-                "mac": "Command+Shift+F"
-            },
-            "description": "Activate CandidateMatch Autofill on current page"
-        }
-    },
-    "action": {
-        "default_title": "CandidateMatch Autofill",
-        "default_popup": "popup.html"
+  "manifest_version": 3,
+  "name": "CandidateMatch Autofill",
+  "version": "2.0.0",
+  "description": "Elite autofill for job applications. Fills Workday, Greenhouse, Lever, iCIMS, Ashby + any ATS in one keystroke.",
+  "permissions": ["storage", "activeTab", "scripting", "alarms"],
+  "host_permissions": ["<all_urls>"],
+  "background": {
+    "service_worker": "dist/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "commands": {
+    "activate-autofill": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+F",
+        "mac": "Command+Shift+F"
+      },
+      "description": "Activate CandidateMatch Autofill on the current page"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }
+

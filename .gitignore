@@ -13,3 +13,4 @@ www
 coverage
 *.tsbuildinfo
 *.zip
+extension/dist

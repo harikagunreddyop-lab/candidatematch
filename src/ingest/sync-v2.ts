@@ -1,7 +1,7 @@
 /**
- * Parallelized job ingestion sync engine (Week 1).
+ * Parallelized job ingestion sync engine.
  *
- * Goals:
+ * Features:
  * - Fetch job lists/details in parallel per connector
  * - Batch ingest_jobs upserts to reduce DB roundtrips
  * - Skip unchanged ingest_jobs using content_hash
@@ -31,9 +31,9 @@ export interface SyncV2Result {
   error?: string;
 }
 
-const ITEM_CONCURRENCY = 50;
-const CONNECTOR_CONCURRENCY = 10;
-const UPSERT_BATCH_SIZE = 1000;
+const ITEM_CONCURRENCY = parseInt(process.env.INGEST_ITEM_CONCURRENCY ?? '50', 10) || 50;
+const CONNECTOR_CONCURRENCY = parseInt(process.env.INGEST_CONNECTOR_CONCURRENCY ?? '10', 10) || 10;
+const UPSERT_BATCH_SIZE = parseInt(process.env.INGEST_UPSERT_BATCH_SIZE ?? '1000', 10) || 1000;
 
 async function fetchAndNormalizeJobs(
   connector: Connector

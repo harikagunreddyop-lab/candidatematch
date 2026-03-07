@@ -9,7 +9,7 @@
 
 CandidateMatch is an AI-powered recruiting platform that:
 
-1. **Ingests jobs** from Greenhouse, Lever, Ashby APIs, CSV/Excel uploads, and manual entry. Jobs are deduplicated and promoted into a single `jobs` table.
+1. **Ingests jobs** from Greenhouse, Lever, Ashby, Adzuna APIs, CSV/Excel uploads, and manual entry. Jobs are deduplicated and promoted into a single `jobs` table.
 
 2. **Matches candidates to jobs** using title compatibility, domain classification, skill overlap (via `candidate_skill_index` and `job_skill_index`), and ATS scoring. Matches are stored in `candidate_job_matches`.
 
@@ -69,7 +69,7 @@ CandidateMatch is an AI-powered recruiting platform that:
 | **External** | Anthropic Claude, Greenhouse/Lever/Ashby APIs, Gmail OAuth | AI, job boards, email |
 | **Extension** | Chrome Manifest v3, content script, service worker | Autofill on job sites |
 | **Cron** | AWS EventBridge Scheduler | Calls /api/cron/* endpoints on schedule; CRON_SECRET auth |
-| **Queues** | None | No Bull/Redis; cron triggers synchronous work |
+| **Queues** | BullMQ + Redis (optional) | JD extraction queue when REDIS_URL set; cron triggers ingest/match/cleanup/discovery |
 | **AI** | Anthropic Claude (Haiku/Sonnet) | JD extraction, bullet rewrite, briefs, interview kit |
 
 ---
@@ -92,7 +92,7 @@ CandidateMatch is an AI-powered recruiting platform that:
 
 | Table | Columns (key) | Indexes | Role |
 |-------|---------------|---------|------|
-| **ingest_connectors** | id, provider, source_org, is_enabled, sync_interval_min, last_run_at | UNIQUE(provider, source_org) | Connectors (greenhouse/lever/ashby per company) |
+| **ingest_connectors** | id, provider, source_org, is_enabled, sync_interval_min, last_run_at | UNIQUE(provider, source_org) | Connectors (greenhouse/lever/ashby/adzuna) |
 | **ingest_jobs** | id, provider, source_org, source_job_id, title, description_text, status (open/closed) | idx_ingest_jobs_provider_org_status | Raw jobs from connectors before promotion |
 | **board_discoveries** | id, company_name, website, detected_provider, validated | idx_board_discoveries_company | Discovery log |
 | **companies** | name, website | (assumed) | Company list for discovery; populated by script |
@@ -126,6 +126,7 @@ CandidateMatch is an AI-powered recruiting platform that:
 | **Greenhouse** | Discovery → Connector → Sync | List jobs API → detail → normalize → upsert ingest_jobs → promote |
 | **Lever** | Discovery → Connector → Sync | Same as Greenhouse |
 | **Ashby** | Discovery → Connector → Sync | Same as Greenhouse |
+| **Adzuna** | Manual connector (provider=adzuna, source_org=country) | Search API by country; requires ADZUNA_APP_ID/ADZUNA_APP_KEY |
 | **Apify / LinkedIn** | CSV/Excel upload (Admin) | Upload jobs parsed from Apify export → insert jobs with dedupe_hash |
 | **CSV upload** | Admin Job Boards, Upload | POST /api/upload-jobs with rows → dedupe by hash → insert jobs |
 | **Manual** | Admin Add Job | Insert directly into jobs |
@@ -142,7 +143,7 @@ CandidateMatch is an AI-powered recruiting platform that:
 
 - Stored in `ingest_connectors`: `(provider, source_org)` unique.
 - `sync_interval_min` (default 60) and `last_run_at` determine when cron syncs.
-- Adapters in `ingest/adapters/`: `greenhouse.ts`, `lever.ts`, `ashby.ts`.
+- Adapters in `ingest/adapters/`: `greenhouse.ts`, `lever.ts`, `ashby.ts`, `adzuna.ts` (source_org = country code; requires ADZUNA_APP_ID/ADZUNA_APP_KEY).
 
 ### Ingest Flow (sync.ts)
 
@@ -340,6 +341,7 @@ Stores: `fit_score`, `matched_keywords`, `missing_keywords`, `match_reason`, `at
 |----------|----------|------|---------|
 | `GET /api/cron/match` | Every 6 hours | Bearer CRON_SECRET | Run matching (incremental by default; full fallback if no new jobs) |
 | `GET /api/cron/ingest` | Hourly | Bearer CRON_SECRET | Sync due ingest connectors |
+| `GET /api/cron/discovery` | Daily (optional) | Bearer CRON_SECRET | Auto-discover job boards from companies table |
 | `GET /api/cron/cleanup` | Daily 03:00 UTC | Bearer CRON_SECRET | Delete stale applications (ready/applied/screening, no status history for 21+ days) |
 
 **Scheduling:** These endpoints are passive HTTP handlers. They do NOT self-trigger — they must be called by an external scheduler. In production on AWS Amplify, use **AWS EventBridge Scheduler** (see `docs/CRON_AMPLIFY.md`). If EventBridge is not configured, use the manual fallbacks listed below.
@@ -349,6 +351,7 @@ Stores: `fit_score`, `matched_keywords`, `missing_keywords`, `match_reason`, `at
 | Subsystem | Auto? | Trigger | Auth | Manual Fallback |
 |---|---|---|---|---|
 | **Job Ingest** | Conditional | EventBridge → `GET /api/cron/ingest` (hourly) | CRON_SECRET | `POST /api/admin/maintenance/ingest` (admin JWT) or `POST /api/connectors/sync-all` (admin JWT) |
+| **Discovery** | Conditional | EventBridge → `GET /api/cron/discovery` (daily) | CRON_SECRET | `POST /api/discovery/run` (admin JWT, useCompaniesTable or CSV) |
 | **Matching** | Conditional | EventBridge → `GET /api/cron/match` (every 6h) | CRON_SECRET | `POST /api/admin/maintenance/match` (admin JWT) or `GET /api/matches` / Admin Dashboard "Run Matching" |
 | **Matching** | **Yes** | On resume upload (`POST /api/candidate-resumes`) | User JWT | — (automatic, fire-and-forget) |
 | **Matching** | **Yes** | On CSV job upload (`POST /api/upload-jobs`) | Admin JWT | — (automatic, scoped to new jobs) |

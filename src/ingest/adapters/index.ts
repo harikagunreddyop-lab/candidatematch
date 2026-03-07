@@ -6,11 +6,13 @@ import type { PublicJobsAdapter, Provider } from './types';
 import { greenhouse } from './greenhouse';
 import { lever } from './lever';
 import { ashby } from './ashby';
+import { adzuna } from './adzuna';
 
 export const adapters: Record<Provider, PublicJobsAdapter> = {
   greenhouse,
   lever,
   ashby,
+  adzuna,
 };
 
 export type { CanonicalJob, Connector, ListItem, PublicJobsAdapter, Provider } from './types';

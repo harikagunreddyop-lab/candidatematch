@@ -7,7 +7,8 @@ The three cron endpoints are:
 
 | Endpoint | Default schedule | Purpose |
 |---|---|---|
-| `GET /api/cron/ingest` | Every 1 hour | Sync Greenhouse / Lever / Ashby connectors |
+| `GET /api/cron/ingest` | Every 1 hour | Sync job board connectors (Greenhouse, Lever, Ashby, Adzuna) |
+| `GET /api/cron/discovery` | Daily (optional) | Auto-discover job boards from companies table |
 | `GET /api/cron/match` | Every 6 hours | Run incremental job matching |
 | `GET /api/cron/cleanup` | Daily at 03:00 UTC | Delete stale applications |
 
@@ -53,7 +54,13 @@ Generate one:
 - **Target:** Same API destination pattern → `GET /api/cron/match`
 - **Retry:** Max 1 retry, max age 2 hours.
 
-#### Schedule 3: Cleanup (daily 3 AM UTC)
+#### Schedule 3: Discovery (daily, optional)
+- **Name:** `candidatematch-discovery`
+- **Schedule pattern:** Cron-based → `0 2 * * ? *` (2 AM UTC)
+- **Target:** `GET /api/cron/discovery`
+- **Retry:** Max 1 retry.
+
+#### Schedule 4: Cleanup (daily 3 AM UTC)
 - **Name:** `candidatematch-cleanup`
 - **Schedule pattern:** Cron-based → `0 3 * * ? *`
 - **Target:** `GET /api/cron/cleanup`

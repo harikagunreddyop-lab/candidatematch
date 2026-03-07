@@ -1,27 +1,28 @@
 /**
- * Job queue stub for Week 1 implementation.
- *
- * Week 1: Just call precomputeJobRequirements directly (but async).
- * Week 2: Replace with BullMQ queue.
+ * Queue JD requirements extraction.
+ * Uses BullMQ when REDIS_URL is set; otherwise runs inline (fire-and-forget).
  */
 
 import { log } from '@/lib/logger';
 import { precomputeJobRequirements } from '@/lib/matching';
 import { createServiceClient } from '@/lib/supabase-server';
+import { jdExtractQueue } from '@/queue/queues';
 
 /**
- * Queue JD requirements extraction (Week 1: direct call, Week 2: BullMQ).
+ * Queue JD requirements extraction.
+ * Prefers BullMQ when available; falls back to direct async call.
  */
 export async function queueJobRequirementsExtraction(jobIds: string[]): Promise<void> {
   if (!jobIds.length) return;
 
-  log(`[QUEUE] Queuing ${jobIds.length} jobs for JD extraction`);
+  if (jdExtractQueue) {
+    log(`[QUEUE] Adding ${jobIds.length} jobs to jd-extract queue`);
+    await jdExtractQueue.add('extract', { jobIds }, { attempts: 2, backoff: { type: 'exponential', delay: 5000 } });
+    return;
+  }
 
-  // Week 1: Just call async (don't block sync).
-  // This will be replaced with BullMQ in Week 2.
+  log(`[QUEUE] Queuing ${jobIds.length} jobs for JD extraction (inline)`);
   const supabase = createServiceClient();
-
-  // Fire and forget (don't await).
   precomputeJobRequirements(supabase, jobIds).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[QUEUE] JD extraction failed:', err);

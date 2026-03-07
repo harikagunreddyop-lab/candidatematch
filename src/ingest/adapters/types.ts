@@ -1,6 +1,6 @@
-﻿import { createHash } from 'crypto';
+import { createHash } from 'crypto';
 
-export type Provider = 'greenhouse' | 'lever' | 'ashby';
+export type Provider = 'greenhouse' | 'lever' | 'ashby' | 'adzuna';
 
 export interface Connector {
   id: string;

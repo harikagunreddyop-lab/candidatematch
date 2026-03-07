@@ -19,6 +19,11 @@ export const tailorQueue: Queue | null = queuesEnabled ? new Queue('tailor', con
 /** Resume rendering: content_json → DOCX + PDF */
 export const renderQueue: Queue | null = queuesEnabled ? new Queue('render', connOpts!) : null;
 
+/** JD requirements extraction for newly promoted jobs (ingest pipeline) */
+export const jdExtractQueue: Queue<{ jobIds: string[] }> | null = queuesEnabled
+  ? new Queue<{ jobIds: string[] }>('jd-extract', connOpts!)
+  : null;
+
 export type MatchJobData = {
     runId: string;
     stepId: string;

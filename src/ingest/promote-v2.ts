@@ -1,10 +1,6 @@
 /**
- * Week 1 bulk promotion facade.
- *
- * This thin wrapper exists so that we can evolve a more
- * optimized bulk promotion path in Week 2+ without changing
- * all call sites again. For now it simply delegates to the
- * existing, well-tested promoteIngestJobs implementation.
+ * Bulk promotion facade for ingest → jobs.
+ * Delegates to promoteIngestJobs; can be optimized for larger batches if needed.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';

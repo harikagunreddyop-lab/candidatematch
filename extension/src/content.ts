@@ -116,7 +116,13 @@ async function runAutofill(): Promise<void> {
 
   if (!profileResult.ok) {
     if (profileResult.needsReauth) {
-      showReauthBanner(`${window.location.origin}/connect-extension`);
+      chrome.storage.local.get('cm_auth_v1', (result) => {
+        const auth = result['cm_auth_v1'];
+        const connectUrl = auth?.baseUrl
+          ? `${auth.baseUrl}/dashboard/candidate/connect-extension`
+          : '/dashboard/candidate/connect-extension';
+        showReauthBanner(connectUrl);
+      });
     }
     setStatus('Could not load profile. Please reconnect.', 'err');
     return;
@@ -293,10 +299,178 @@ function checkForConnectToken(): void {
   if (!token || !expiry) return;
   el.dataset.cmProcessed = '1';
   chrome.storage.local.set(
-    { cm_auth_v2: { token, expiry, baseUrl }, cm_base_url: baseUrl },
+    { cm_auth_v1: { token, expiry, baseUrl }, cm_base_url: baseUrl },
     () => document.dispatchEvent(new CustomEvent('cm:connected', { detail: { baseUrl } }))
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Auto-start detection
+// ─────────────────────────────────────────────────────────────────────────────
+
+let autoStarted = false;
+let panelReady = false;
+
+function ensurePanel(): void {
+  if (!panelReady) {
+    createPanel({
+      atsType: detectAts(),
+      onRerun: () => runAutofill(),
+      onCoverLetter: handleCoverLetter,
+      onCorrection: handleCorrection,
+      onSkipField: handleSkipField,
+    });
+    panelReady = true;
+  }
+}
+
+/** Score this page. Returns true if it looks like a job application page. */
+function isJobApplicationPage(): boolean {
+  let score = 0;
+  const url = window.location.href.toLowerCase();
+  const host = window.location.hostname.toLowerCase();
+  const title = document.title.toLowerCase();
+
+  const jobUrlPatterns = [
+    '/apply',
+    '/application',
+    '/job-application',
+    '/submit-application',
+    '/jobs/',
+    '/careers/',
+    '/candidate',
+    '/recruiting',
+  ];
+  if (jobUrlPatterns.some((p) => url.includes(p))) score += 2;
+
+  const jobQueryParams = ['?job=', '?jobid=', '?gh_jid=', '?lever-', '?ref=jobs', 'job_id=', 'jobid='];
+  if (jobQueryParams.some((p) => url.includes(p))) score += 2;
+
+  const atsHosts = [
+    'greenhouse.io',
+    'lever.co',
+    'myworkdayjobs.com',
+    'workday.com',
+    'icims.com',
+    'smartrecruiters.com',
+    'taleo.net',
+    'ashbyhq.com',
+    'bamboohr.com',
+    'workable.com',
+    'jobvite.com',
+    'jazzhr.com',
+    'successfactors.com',
+    'oraclecloud.com',
+    'sapsf.com',
+  ];
+  if (atsHosts.some((h) => host.includes(h))) score += 3;
+
+  const forms = document.querySelectorAll('form');
+  // eslint-disable-next-line no-restricted-syntax
+  for (const form of forms) {
+    const fillableInputs = form.querySelectorAll(
+      'input[type="text"], input[type="email"], input[type="tel"], input[type="url"], textarea, select'
+    );
+    if (fillableInputs.length >= 3) {
+      score += 2;
+      break;
+    }
+  }
+
+  if (forms.length === 0) {
+    const inputs = document.querySelectorAll(
+      'input[type="text"], input[type="email"], input[type="tel"], textarea'
+    );
+    if (inputs.length >= 3) score += 2;
+  }
+
+  const atsSelectors = [
+    '[data-automation-id="submitButton"]',
+    '#application_form',
+    '.application-form',
+    '[class*="apply-form"]',
+    '[class*="job-application"]',
+    '[class*="application-form"]',
+    '.lever-apply',
+    '[data-qa="btn-apply"]',
+    '#apply-form',
+    '[id*="application"]',
+    '[class*="applyForm"]',
+  ];
+  if (atsSelectors.some((sel) => document.querySelector(sel))) score += 3;
+
+  const applyKeywords = ['apply', 'application', 'submit your application', 'job application'];
+  if (applyKeywords.some((k) => title.includes(k))) score += 1;
+
+  const h1 = document.querySelector('h1')?.textContent?.toLowerCase() || '';
+  if (applyKeywords.some((k) => h1.includes(k))) score += 1;
+
+  return score >= 2;
+}
+
+/** Main auto-start entry point — called after page load */
+async function tryAutoStart(): Promise<void> {
+  if (autoStarted) return;
+
+  const auth = await new Promise<Record<string, unknown>>((resolve) => {
+    chrome.storage.local.get('cm_auth_v1', (result) => resolve(result as Record<string, unknown>));
+  });
+  const stored = auth.cm_auth_v1 as { token?: string; expiry?: number } | undefined;
+  if (!stored?.token || typeof stored.expiry !== 'number' || Date.now() > stored.expiry - 30_000) return;
+
+  if (!isJobApplicationPage()) return;
+
+  autoStarted = true;
+  ensurePanel();
+  await runAutofill();
+}
+
+/** Watch for SPA navigation — forms may load after initial page render */
+function watchForFormAppearance(): void {
+  if (autoStarted) return;
+
+  let watchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  const observer = new MutationObserver(() => {
+    if (autoStarted) {
+      observer.disconnect();
+      return;
+    }
+    if (watchTimeout) clearTimeout(watchTimeout);
+    watchTimeout = setTimeout(async () => {
+      if (!autoStarted && isJobApplicationPage()) {
+        observer.disconnect();
+        autoStarted = true;
+        ensurePanel();
+        await runAutofill();
+      }
+    }, 300);
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  setTimeout(() => {
+    observer.disconnect();
+    if (watchTimeout) clearTimeout(watchTimeout);
+  }, 8_000);
+}
+
+// Manual activation / URL change listener
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type === 'CM_ACTIVATE') {
+    ensurePanel();
+    autoStarted = true;
+    void runAutofill();
+    return;
+  }
+  if (msg?.type === 'CM_URL_CHANGED') {
+    autoStarted = false;
+    panelReady = false;
+    setTimeout(() => {
+      void tryAutoStart();
+    }, 1_000);
+  }
+});
 
 function pollForToken(): void {
   checkForConnectToken();
@@ -305,26 +479,27 @@ function pollForToken(): void {
   setTimeout(() => observer.disconnect(), 10_000);
 }
 
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type !== 'CM_ACTIVATE') return;
-
-  if (!panelOpen) {
-    const ats = detectAts();
-    createPanel({
-      atsType: ats,
-      onRerun: runAutofill,
-      onCoverLetter: handleCoverLetter,
-      onCorrection: handleCorrection,
-      onSkipField: handleSkipField,
-    });
-    panelOpen = true;
-  }
-  void runAutofill();
-});
-
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
+async function boot(): Promise<void> {
   pollForToken();
-} else {
-  window.addEventListener('DOMContentLoaded', pollForToken, { once: true });
+
+  if (document.readyState === 'complete') {
+    setTimeout(() => {
+      void tryAutoStart();
+      watchForFormAppearance();
+    }, 800);
+  } else {
+    window.addEventListener(
+      'load',
+      () => {
+        setTimeout(() => {
+          void tryAutoStart();
+          watchForFormAppearance();
+        }, 800);
+      },
+      { once: true }
+    );
+  }
 }
+
+void boot();
 

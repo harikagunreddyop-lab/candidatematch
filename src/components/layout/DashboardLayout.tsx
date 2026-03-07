@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
   Zap, Menu, Link2, Plug, MessageCircle,
-  BarChart3, Settings, Calendar, FileText, Shield,
+  BarChart3, Settings, Calendar, FileText, Shield, Building2,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -25,12 +25,22 @@ const adminNav: NavItem[] = [
   { label: 'Jobs', href: '/dashboard/admin/jobs', icon: <Briefcase size={18} /> },
   { label: 'Assignments', href: '/dashboard/admin/assignments', icon: <Link2 size={18} /> },
   { label: 'Users', href: '/dashboard/admin/users', icon: <UserCircle size={18} /> },
+  { label: 'Companies', href: '/dashboard/admin/companies', icon: <Building2 size={18} /> },
   { label: 'Reports', href: '/dashboard/admin/reports', icon: <BarChart3 size={18} /> },
   { label: 'Audit log', href: '/dashboard/admin/audit', icon: <FileText size={18} /> },
   { label: 'Interviews', href: '/dashboard/admin/interviews', icon: <Calendar size={18} /> },
   { label: 'Messages', href: '/dashboard/admin/messages', icon: <MessageCircle size={18} /> },
   { label: 'Compliance', href: '/dashboard/admin/compliance', icon: <Shield size={18} /> },
   { label: 'Settings', href: '/dashboard/admin/settings', icon: <Settings size={18} /> },
+];
+
+const companyAdminNav: NavItem[] = [
+  { label: 'Dashboard',   href: '/dashboard/company',             icon: <LayoutDashboard size={18} /> },
+  { label: 'Team',        href: '/dashboard/company/team',        icon: <Users size={18} /> },
+  { label: 'Jobs',        href: '/dashboard/company/jobs',        icon: <Briefcase size={18} /> },
+  { label: 'Analytics',   href: '/dashboard/company/analytics',   icon: <BarChart3 size={18} /> },
+  { label: 'Messages',    href: '/dashboard/company/messages',    icon: <MessageCircle size={18} /> },
+  { label: 'Settings',    href: '/dashboard/company/settings',    icon: <Settings size={18} /> },
 ];
 
 const recruiterNav: NavItem[] = [
@@ -65,7 +75,12 @@ export default function DashboardLayout({ children, profile }: { children: React
     setClient(createClient());
   }, []);
 
-  const baseNavItems = profile.role === 'admin' ? adminNav : profile.role === 'recruiter' ? recruiterNav : candidateNav;
+  const effectiveRole = (profile as { effective_role?: string }).effective_role || profile.role;
+  const baseNavItems =
+    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? adminNav :
+    effectiveRole === 'company_admin'  ? companyAdminNav :
+    effectiveRole === 'recruiter'      ? recruiterNav :
+    candidateNav;
 
   const loadUnreadCount = useCallback(async () => {
     if (!client) return;
@@ -130,8 +145,14 @@ export default function DashboardLayout({ children, profile }: { children: React
   };
 
   const role = profile.role as 'candidate' | 'recruiter' | 'admin';
-  const dashboardHref = role === 'admin' ? '/dashboard/admin' : role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
-  const messagesHref = role === 'admin' ? '/dashboard/admin/messages' : role === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
+  const dashboardHref =
+    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? '/dashboard/admin' :
+    effectiveRole === 'company_admin' ? '/dashboard/company' :
+    role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
+  const messagesHref =
+    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? '/dashboard/admin/messages' :
+    effectiveRole === 'company_admin' ? '/dashboard/company/messages' :
+    role === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
 
   return (
     <div className="min-h-screen flex" data-role={role} style={{ backgroundColor: 'var(--role-main-bg)' }}>
@@ -286,7 +307,7 @@ export default function DashboardLayout({ children, profile }: { children: React
           <div />
           <div className="flex items-center gap-2 sm:gap-4">
             <ThemeToggle />
-            {profile.role === 'admin' && <AdminNotificationBell adminId={profile.id} />}
+            {(effectiveRole === 'platform_admin' || effectiveRole === 'admin') && <AdminNotificationBell adminId={profile.id} />}
             <Link
               href={messagesHref}
               className="relative p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"
@@ -300,7 +321,7 @@ export default function DashboardLayout({ children, profile }: { children: React
             </Link>
             <div className="text-right hidden sm:block">
               <p className="text-sm font-medium text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
-              <p className="text-xs capitalize" style={{ color: 'var(--role-accent)' }}>{profile.role}</p>
+              <p className="text-xs capitalize" style={{ color: 'var(--role-accent)' }}>{effectiveRole?.replace('_', ' ') || profile.role}</p>
             </div>
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm text-white border"

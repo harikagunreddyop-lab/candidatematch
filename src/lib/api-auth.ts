@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import type { Role } from '@/types';
+import type { Role, EffectiveRole } from '@/types';
 
 export interface ApiAuthResult {
   user: { id: string; email?: string };
-  profile: { id: string; role: Role };
+  profile: {
+    id: string;
+    role: Role;
+    effective_role: EffectiveRole;
+    company_id?: string;
+  };
   supabase: ReturnType<typeof createServerClient>;
 }
 
-/** Create Supabase server client from request cookies (for API routes). */
 export function createServerSupabaseFromRequest(req: NextRequest) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,79 +28,94 @@ export function createServerSupabaseFromRequest(req: NextRequest) {
 }
 
 /**
- * Get authenticated user + profile for API routes.
- * Returns a 401 Response if not logged in, or 403 if role is required and not allowed.
+ * Authenticate API request. Supports both legacy Role[] and new EffectiveRole[].
+ * All existing callers using roles: ['admin','recruiter','candidate'] continue to work.
+ * 'admin' in roles array matches both 'admin' legacy AND 'platform_admin'/'company_admin' effective roles.
  */
 export async function requireApiAuth(
   req: NextRequest,
-  options?: { roles?: Role[] }
+  options?: { roles?: Role[]; effectiveRoles?: EffectiveRole[] }
 ): Promise<ApiAuthResult | NextResponse> {
   const supabase = createServerSupabaseFromRequest(req);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: profileRow, error: profileError } = await supabase
-    .from('profiles')
-    .select('id, role')
+  const { data: profileRow } = await supabase
+    .from('profile_roles')
+    .select('id, legacy_role, effective_role, company_id')
     .eq('id', user.id)
     .single();
 
-  if (profileError || !profileRow) {
-    return NextResponse.json({ error: 'Profile not found' }, { status: 403 });
+  if (!profileRow) return NextResponse.json({ error: 'Profile not found' }, { status: 403 });
+
+  const legacyRole = profileRow.legacy_role as Role;
+  const effectiveRole = profileRow.effective_role as EffectiveRole;
+
+  // Check effectiveRoles (new system)
+  if (options?.effectiveRoles?.length) {
+    if (!options.effectiveRoles.includes(effectiveRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
   }
 
-  const profile = { id: profileRow.id, role: profileRow.role as Role };
-  if (options?.roles?.length && !options.roles.includes(profile.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  // Check legacy roles (backwards compat)
+  // 'admin' in the legacy list = matches platform_admin OR company_admin
+  if (options?.roles?.length && !options?.effectiveRoles?.length) {
+    const legacyMatch = options.roles.some(r => {
+      if (r === 'admin') return effectiveRole === 'platform_admin' || effectiveRole === 'company_admin' || legacyRole === 'admin';
+      return r === legacyRole || r === effectiveRole;
+    });
+    if (!legacyMatch) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  return { user, profile, supabase };
+  return {
+    user,
+    profile: {
+      id: profileRow.id,
+      role: legacyRole,
+      effective_role: effectiveRole,
+      company_id: profileRow.company_id,
+    },
+    supabase,
+  };
 }
 
-/**
- * Require admin only. Returns 401/403 Response or { user, profile, supabase }.
- */
 export async function requireAdmin(req: NextRequest): Promise<ApiAuthResult | NextResponse> {
   return requireApiAuth(req, { roles: ['admin'] });
 }
 
-/**
- * Require recruiter or admin.
- */
 export async function requireRecruiterOrAdmin(req: NextRequest): Promise<ApiAuthResult | NextResponse> {
   return requireApiAuth(req, { roles: ['admin', 'recruiter'] });
 }
 
-/**
- * Check if the current user can access the given candidate_id.
- * - Admin: always
- * - Recruiter: must be assigned to that candidate
- * - Candidate: must be their own candidate_id (user_id match)
- * Uses service client for assignment check. Call after requireApiAuth; pass the auth supabase only for profile.
- */
 export async function canAccessCandidate(
   auth: ApiAuthResult,
   candidateId: string,
   serviceSupabase: ReturnType<typeof import('@/lib/supabase-server').createServiceClient>
 ): Promise<boolean> {
-  if (auth.profile.role === 'admin') return true;
-  if (auth.profile.role === 'candidate') {
-    const { data: c } = await serviceSupabase
-      .from('candidates')
+  const role = auth.profile.effective_role;
+  if (role === 'platform_admin') return true;
+  if (role === 'company_admin') {
+    // Company admin can access candidates applied to their company's jobs
+    const { data } = await serviceSupabase
+      .from('candidate_activity')
       .select('id')
-      .eq('id', candidateId)
-      .eq('user_id', auth.user.id)
-      .single();
+      .eq('candidate_id', candidateId)
+      .eq('company_id', auth.profile.company_id)
+      .limit(1)
+      .maybeSingle();
+    return !!data;
+  }
+  if (role === 'candidate') {
+    const { data: c } = await serviceSupabase
+      .from('candidates').select('id').eq('id', candidateId).eq('user_id', auth.user.id).single();
     return !!c;
   }
-  if (auth.profile.role === 'recruiter') {
-    const { data: assignment } = await serviceSupabase
+  if (role === 'recruiter') {
+    const { data } = await serviceSupabase
       .from('recruiter_candidate_assignments')
-      .select('recruiter_id')
-      .eq('candidate_id', candidateId)
-      .eq('recruiter_id', auth.profile.id)
-      .single();
-    return !!assignment;
+      .select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', auth.profile.id).single();
+    return !!data;
   }
   return false;
 }

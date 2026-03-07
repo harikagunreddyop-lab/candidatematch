@@ -4,7 +4,7 @@ export interface StoredAuth {
   baseUrl: string; // e.g. https://app.candidatematch.com (no trailing slash)
 }
 
-const TOKEN_KEY = 'cm_auth_v2';
+const TOKEN_KEY = 'cm_auth_v1';
 const BASE_URL_KEY = 'cm_base_url';
 
 export async function getStoredAuth(): Promise<StoredAuth | null> {

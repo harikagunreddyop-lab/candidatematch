@@ -111,15 +111,15 @@ Write the cover letter now:`;
 
     if (!aiRes.ok) {
       const errBody = await aiRes.json().catch(() => ({}));
+      // eslint-disable-next-line
       return NextResponse.json(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { error: 'AI generation failed', detail: (errBody as any)?.error?.message },
         { status: 502, headers: CORS_HEADERS },
       );
     }
 
     const aiData = await aiRes.json();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line
     const coverLetter = (aiData as any).content?.[0]?.text?.trim() || '';
 
     return NextResponse.json(

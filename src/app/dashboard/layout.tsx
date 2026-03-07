@@ -12,6 +12,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
       name: profile.name ?? '',
       email: profile.email ?? '',
       role: profile.role,
+      effective_role: (profile as { effective_role?: string }).effective_role ?? profile.role,
       avatar_url: profile.avatar_url ?? undefined,
       created_at: String(profile.created_at ?? ''),
       updated_at: String(profile.updated_at ?? ''),

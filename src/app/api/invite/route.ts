@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   if (!email || !role) {
     return NextResponse.json({ error: 'email and role are required' }, { status: 400 });
   }
-  if (!['candidate', 'recruiter', 'admin'].includes(role)) {
+  if (!['candidate', 'recruiter', 'admin', 'company_admin'].includes(role)) {
     return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
   }
 
@@ -41,12 +41,13 @@ export async function POST(req: NextRequest) {
 
   const { data: callerProfile } = await adminClient
     .from('profiles')
-    .select('role')
+    .select('role, effective_role, company_id')
     .eq('id', user.id)
     .single();
 
-  if (callerProfile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Only admins can send invites' }, { status: 403 });
+  const callerEffectiveRole = callerProfile?.effective_role || callerProfile?.role;
+  if (!['admin', 'platform_admin', 'company_admin'].includes(callerEffectiveRole as string)) {
+    return NextResponse.json({ error: 'Only admins or company admins can send invites' }, { status: 403 });
   }
 
   const displayName = name || email.split('@')[0];
@@ -88,6 +89,19 @@ export async function POST(req: NextRequest) {
       role,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'id' });
+
+    // If inviting a company staff member, link them to the caller's company
+    if (['recruiter', 'company_admin'].includes(role)) {
+      const { data: callerFull } = await adminClient
+        .from('profiles').select('company_id, effective_role').eq('id', user.id).single();
+
+      if (callerFull?.company_id) {
+        await adminClient.from('profiles').update({
+          company_id: callerFull.company_id,
+          effective_role: role === 'company_admin' ? 'company_admin' : 'recruiter',
+        }).eq('id', inviteData.user.id);
+      }
+    }
   }
 
   return NextResponse.json({ success: true, email, role });

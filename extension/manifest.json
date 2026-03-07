@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "CandidateMatch Autofill",
   "version": "2.0.0",
-  "description": "Elite autofill for job applications. Fills Workday, Greenhouse, Lever, iCIMS, Ashby + any ATS in one keystroke.",
-  "permissions": ["storage", "activeTab", "scripting", "alarms"],
+  "description": "Automatically fills job application forms the moment you land on them. Works on Workday, Greenhouse, Lever, iCIMS, Ashby + any ATS.",
+  "permissions": ["storage", "activeTab", "scripting", "alarms", "tabs"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "dist/background.js",

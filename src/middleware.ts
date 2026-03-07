@@ -2,12 +2,21 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Which roles are allowed on which route prefixes
-// Added 'admin' to candidate routes for oversight capabilities
 const ROLE_ROUTES: Record<string, string[]> = {
-  '/dashboard/admin': ['admin'],
-  '/dashboard/recruiter': ['recruiter', 'admin'],
-  '/dashboard/candidate': ['candidate', 'admin'],
+  '/dashboard/admin':     ['admin', 'platform_admin'],
+  '/dashboard/company':   ['admin', 'platform_admin', 'company_admin'],
+  '/dashboard/recruiter': ['admin', 'platform_admin', 'company_admin', 'recruiter'],
+  '/dashboard/candidate': ['candidate', 'admin', 'platform_admin'],
 };
+
+function getDestination(effectiveRole?: string, legacyRole?: string): string {
+  const r = effectiveRole || legacyRole;
+  if (r === 'platform_admin' || r === 'admin') return '/dashboard/admin';
+  if (r === 'company_admin') return '/dashboard/company';
+  if (r === 'recruiter') return '/dashboard/recruiter';
+  if (r === 'candidate') return '/dashboard/candidate';
+  return '/auth';
+}
 
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -61,14 +70,16 @@ export async function middleware(request: NextRequest) {
 
   // ── Logged in Logic ──────────────────────────────────────────────────────
   if (user) {
-    // Fetch role once
+    // Fetch role once (use profile_roles for effective_role)
     const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
+      .from('profile_roles')
+      .select('legacy_role, effective_role, company_id')
       .eq('id', user.id)
       .single();
 
-    const role = profile?.role as string | undefined;
+    const role = profile?.legacy_role as string | undefined;
+    const effectiveRole = profile?.effective_role as string | undefined;
+    const activeRole = effectiveRole || role;
 
     // ── No profile or role (e.g. not yet approved) → pending approval page ──
     if (!role && (pathname === '/auth' || pathname.startsWith('/dashboard'))) {
@@ -85,17 +96,13 @@ export async function middleware(request: NextRequest) {
 
     // ── Already approved user on pending-approval page → send to dashboard ──
     if (pathname === '/pending-approval' && role) {
-      const dest = role === 'admin' ? '/dashboard/admin'
-        : role === 'recruiter' ? '/dashboard/recruiter'
-          : '/dashboard/candidate';
+      const dest = getDestination(effectiveRole, role);
       return NextResponse.redirect(new URL(dest, request.url));
     }
 
     // ── On auth page → redirect to correct dashboard ──────────────
     if (pathname === '/auth') {
-      const dest = role === 'admin' ? '/dashboard/admin'
-        : role === 'recruiter' ? '/dashboard/recruiter'
-          : '/dashboard/candidate';
+      const dest = getDestination(effectiveRole, role);
       return NextResponse.redirect(new URL(dest, request.url));
     }
 
@@ -104,27 +111,22 @@ export async function middleware(request: NextRequest) {
       const matchedPrefix = Object.keys(ROLE_ROUTES).find(prefix => pathname.startsWith(prefix));
 
       // Role Check: If route is protected and user has a role
-      if (matchedPrefix && role) {
+      if (matchedPrefix && activeRole) {
         const allowedRoles = ROLE_ROUTES[matchedPrefix];
-        if (!allowedRoles.includes(role)) {
-          // User tried to access a route they don't belong to
-          const dest = role === 'admin' ? '/dashboard/admin'
-            : role === 'recruiter' ? '/dashboard/recruiter'
-              : '/dashboard/candidate';
+        if (!allowedRoles.includes(activeRole)) {
+          const dest = getDestination(effectiveRole, role);
           return NextResponse.redirect(new URL(dest, request.url));
         }
       }
 
       // /dashboard root → redirect to role-specific dashboard
-      if (pathname === '/dashboard' && role) {
-        const dest = role === 'admin' ? '/dashboard/admin'
-          : role === 'recruiter' ? '/dashboard/recruiter'
-            : '/dashboard/candidate';
+      if (pathname === '/dashboard' && activeRole) {
+        const dest = getDestination(effectiveRole, role);
         return NextResponse.redirect(new URL(dest, request.url));
       }
 
       // ── Candidate Access Gates (self-service: onboarding allowed, no recruiter required) ──
-      const isCandidate = role === 'candidate';
+      const isCandidate = activeRole === 'candidate';
       const isCandidateDashboard = pathname.startsWith('/dashboard/candidate');
       const isOnboardingPage = pathname === '/dashboard/candidate/onboarding';
       const isWaitingPage = pathname === '/dashboard/candidate/waiting';

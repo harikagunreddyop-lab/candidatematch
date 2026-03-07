@@ -58,5 +58,21 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   }
 });
 
+// ── Tab navigation detection ─────────────────────────────────────────────────
+// When a tab URL changes, notify the content script so it can re-evaluate
+// whether to auto-start on the new URL.
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status !== 'complete') return;
+  if (!tab.url) return;
+
+  if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) return;
+
+  chrome.tabs
+    .sendMessage(tabId, { type: 'CM_URL_CHANGED', url: tab.url })
+    .catch(() => {
+      // Content script might not be injected yet; it's safe to ignore.
+    });
+});
+
 export {};
 

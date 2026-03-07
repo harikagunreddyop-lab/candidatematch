@@ -46,9 +46,12 @@ export default function CandidateOnboardingPage() {
   // ── Candidate ID (set after step 1 creates the record) ──
   const [candidateId, setCandidateId] = useState<string | null>(null);
 
-  // Prefill email from auth
+  // Auth: show "Not logged in" upfront instead of only on Continue
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
+      setAuthStatus(data?.user ? 'authenticated' : 'unauthenticated');
       if (data?.user?.email) setEmail(data.user.email);
     });
   }, [supabase]);
@@ -99,7 +102,8 @@ export default function CandidateOnboardingPage() {
       }
       next();
     } catch (err: any) {
-      setError(err.message || 'Failed to save');
+      const msg = err?.message || 'Failed to save';
+      setError(msg === 'Not logged in' ? 'You\'re not logged in. Please sign in and try again.' : msg);
     } finally { setSaving(false); }
   }, [fullName, email, phone, location, supabase]);
 
@@ -195,8 +199,9 @@ export default function CandidateOnboardingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 py-8 px-4">
-      {/* Progress bar */}
-      <div className="max-w-2xl mx-auto mb-6">
+      {/* Progress bar — only when authenticated */}
+      {authStatus === 'authenticated' && (
+        <div className="max-w-2xl mx-auto mb-6">
         <div className="flex items-center justify-between mb-2">
           {[1, 2, 3, 4, 5].map(s => (
             <div key={s} className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold transition-all ${s <= step ? 'bg-blue-600 text-white' : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-400'}`}>
@@ -208,15 +213,35 @@ export default function CandidateOnboardingPage() {
           <div className="h-full bg-blue-600 transition-all duration-500 rounded-full" style={{ width: `${((step - 1) / 4) * 100}%` }} />
         </div>
       </div>
+      )}
 
       {error && (
-        <div className="max-w-2xl mx-auto mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm">
-          {error}
+        <div className="max-w-2xl mx-auto mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm flex flex-wrap items-center gap-2">
+          <span>{error}</span>
+          {error.includes('not logged in') && (
+            <a href="/auth" className="underline font-medium hover:no-underline">Sign in →</a>
+          )}
+        </div>
+      )}
+
+      {/* Not logged in — show sign-in prompt instead of form */}
+      {authStatus === 'unauthenticated' && (
+        <div className={card}>
+          <h1 className={heading}>Sign in required</h1>
+          <p className={subtitle}>You need to be signed in to complete onboarding.</p>
+          <a href="/auth" className={`${btnPrimary} inline-block`}>Sign in →</a>
+        </div>
+      )}
+
+      {/* Loading auth */}
+      {authStatus === 'loading' && (
+        <div className={card}>
+          <p className={subtitle}>Checking sign-in…</p>
         </div>
       )}
 
       {/* Step 1: Basics */}
-      {step === 1 && (
+      {authStatus === 'authenticated' && step === 1 && (
         <div className={card}>
           <h1 className={heading}>Welcome to CandidateMatch</h1>
           <p className={subtitle}>Let&apos;s start with your basic information</p>
@@ -249,7 +274,7 @@ export default function CandidateOnboardingPage() {
       )}
 
       {/* Step 2: Resume Upload */}
-      {step === 2 && (
+      {authStatus === 'authenticated' && step === 2 && (
         <div className={card}>
           <h1 className={heading}>Upload Your Resume</h1>
           <p className={subtitle}>We&apos;ll use this to pre-fill your profile and match you to jobs</p>
@@ -284,7 +309,7 @@ export default function CandidateOnboardingPage() {
       )}
 
       {/* Step 3: Profile */}
-      {step === 3 && (
+      {authStatus === 'authenticated' && step === 3 && (
         <div className={card}>
           <h1 className={heading}>Your Professional Profile</h1>
           <p className={subtitle}>Tell us about your skills and experience</p>
@@ -312,7 +337,7 @@ export default function CandidateOnboardingPage() {
       )}
 
       {/* Step 4: Preferences */}
-      {step === 4 && (
+      {authStatus === 'authenticated' && step === 4 && (
         <div className={card}>
           <h1 className={heading}>Job Preferences</h1>
           <p className={subtitle}>Help us find the right opportunities for you</p>
@@ -361,7 +386,7 @@ export default function CandidateOnboardingPage() {
       )}
 
       {/* Step 5: Review & Launch */}
-      {step === 5 && (
+      {authStatus === 'authenticated' && step === 5 && (
         <div className={card}>
           <h1 className={heading}>You&apos;re All Set! 🎉</h1>
           <p className={subtitle}>Here&apos;s a summary of your profile</p>

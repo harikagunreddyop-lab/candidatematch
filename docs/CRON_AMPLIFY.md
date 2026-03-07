@@ -147,4 +147,5 @@ Admin users can view cron run history at: **Admin Dashboard → Cron History** (
 | `NEXT_PUBLIC_APP_URL` | ✅ | Your Amplify app URL (used for auth redirects) |
 | `AUTOFILL_ALLOWED_ORIGINS` | ✅ prod | Comma-separated allowed origins for `/api/autofill-profile`. Falls back to `*` if unset. |
 | `APIFY_API_TOKEN` | Optional | Only needed if using Apify-based scraping |
+| `REDIS_URL` | Optional | When unset, BullMQ queues are disabled; matching and ingest run synchronously in API handlers. Set to enable async job processing and JD extraction queue. |
 | `USE_ELITE_ATS` | Optional | Set `1` to enable Elite ATS engine (Claude Sonnet) |

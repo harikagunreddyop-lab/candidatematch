@@ -2,6 +2,108 @@
 // Orion CMOS — Type Definitions
 // ============================================================================
 
+// ── Multi-tenant RBAC types ──────────────────────────────────────────────────
+
+export type EffectiveRole = 'platform_admin' | 'company_admin' | 'recruiter' | 'candidate';
+
+export interface Company {
+  id: string;
+  name: string;
+  slug?: string;
+  logo_url?: string;
+  website?: string;
+  industry?: string;
+  size_range?: string;
+  subscription_plan: 'starter' | 'growth' | 'enterprise' | 'unlimited';
+  subscription_status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'paused';
+  subscription_period_end?: string;
+  max_recruiters: number;
+  max_active_jobs: number;
+  max_candidates_viewed: number;
+  max_ai_calls_per_day: number;
+  avg_time_to_hire_days?: number;
+  total_hires: number;
+  total_applications: number;
+  owner_id?: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProfileWithRole extends Profile {
+  effective_role: EffectiveRole;
+  company_id?: string;
+  company?: Company;
+  permissions?: Record<string, boolean>;
+}
+
+export interface CompanyInvitation {
+  id: string;
+  company_id: string;
+  invited_by: string;
+  email: string;
+  role: 'company_admin' | 'recruiter';
+  token: string;
+  status: 'pending' | 'accepted' | 'expired' | 'revoked';
+  expires_at: string;
+  accepted_at?: string;
+  created_at: string;
+  company?: Company;
+}
+
+export interface CompanyAnalytics {
+  company_id: string;
+  total_jobs_posted: number;
+  total_applications: number;
+  total_interviews: number;
+  total_offers: number;
+  total_hires: number;
+  avg_fit_score?: number;
+  avg_time_to_hire_days?: number;
+  top_skills_needed: string[];
+  funnel_drop_rates: Record<string, number>;
+  best_performing_roles: string[];
+  updated_at: string;
+}
+
+export interface RecruiterPerformance {
+  recruiter_id: string;
+  company_id: string;
+  total_candidates: number;
+  total_applications: number;
+  interviews_secured: number;
+  offers_received: number;
+  hires_completed: number;
+  avg_time_to_interview?: number;
+  quality_score?: number;
+  updated_at: string;
+}
+
+export interface CandidateActivity {
+  id: string;
+  candidate_id: string;
+  actor_id?: string;
+  company_id?: string;
+  job_id?: string;
+  event_type: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface PlatformMetrics {
+  metric_date: string;
+  total_companies: number;
+  active_companies: number;
+  total_candidates: number;
+  total_jobs: number;
+  applications_today: number;
+  autofill_uses_today: number;
+  ai_calls_today: number;
+  new_signups_today: number;
+  mrr_cents: number;
+}
+
+// Keep 'admin' for backwards compatibility — maps to 'platform_admin' in DB view
 export type Role = 'admin' | 'recruiter' | 'candidate';
 
 export interface Profile {

@@ -39,7 +39,9 @@ function buildAutofillData(candidate: any, fallbackEmail?: string) {
   const firstName = names[0] || '';
   const lastName = names.slice(1).join(' ') || '';
   const latestExp = Array.isArray(candidate.experience) ? candidate.experience[0] : null;
-  const totalYears = Array.isArray(candidate.experience) ? candidate.experience.length : 0;
+  const totalYears = candidate.years_of_experience != null
+    ? candidate.years_of_experience
+    : (Array.isArray(candidate.experience) ? candidate.experience.length : 0);
   const latestEdu = Array.isArray(candidate.education) ? candidate.education[0] : null;
 
   // Derive GitHub URL: check portfolio_url for github.com, or dedicated github_url field if it exists
@@ -102,11 +104,11 @@ function buildAutofillData(candidate: any, fallbackEmail?: string) {
     salaryExpectation: salaryMidpoint,
     availability: candidate.availability || '',
     openToRemote: candidate.open_to_remote ?? true,
-    openToRelocate: candidate.open_to_relocate ?? false,
+    openToRelocate: candidate.open_to_relocation ?? false,
   };
 }
 
-const CANDIDATE_FIELDS = 'id, full_name, email, phone, location, visa_status, primary_title, secondary_titles, skills, summary, default_pitch, linkedin_url, portfolio_url, github_url, experience, education, certifications, salary_min, salary_max, availability, open_to_remote, open_to_relocate';
+const CANDIDATE_FIELDS = 'id, full_name, email, phone, location, visa_status, primary_title, secondary_titles, skills, summary, default_pitch, linkedin_url, portfolio_url, github_url, experience, education, certifications, salary_min, salary_max, availability, open_to_remote, open_to_relocation, years_of_experience';
 
 export async function GET(req: NextRequest) {
   const rl = await rateLimitResponse(req, 'api');

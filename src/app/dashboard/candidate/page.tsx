@@ -147,6 +147,9 @@ export default function CandidateDashboard() {
   const [newMatchesCount, setNewMatchesCount] = useState(0);
   // Application usage (rate limit display)
   const [applicationUsage, setApplicationUsage] = useState<{ used_today: number; limit: number } | null>(null);
+  /** Free tier: 10 matches/week limit reached; show upgrade CTA */
+  const [matchLimitReached, setMatchLimitReached] = useState(false);
+  const [matchLimitInfo, setMatchLimitInfo] = useState<{ usedThisWeek: number; limit: number; upgradeMessage?: string } | null>(null);
   const { toasts, toast, dismiss } = useToast();
   const { flags } = useFeatureFlags();
   const tailorResumeAllowed = flags.candidate_tailor_resume !== false;
@@ -202,12 +205,8 @@ export default function CandidateDashboard() {
         open_to_remote: cand.open_to_remote ?? true,
       });
 
-      const [mch, apps, resumes, savedRes, remindersRes] = await Promise.all([
-        supabase.from('candidate_job_matches')
-          .select('*, job:jobs(id, title, company, location, url, remote_type, job_type, salary_min, salary_max, created_at)')
-          .eq('candidate_id', cand.id)
-          .order('fit_score', { ascending: false })
-          .limit(50),
+      const [matchRes, apps, resumes, savedRes, remindersRes] = await Promise.all([
+        fetch('/api/candidate/matches').then(r => r.json()),
         supabase.from('applications')
           .select('*, job:jobs(title, company, location, url)')
           .eq('candidate_id', cand.id)
@@ -217,9 +216,11 @@ export default function CandidateDashboard() {
         supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', cand.id).gte('remind_at', new Date().toISOString()).order('remind_at'),
       ]);
 
-      const mchData = mch.data || [];
-      const appsData = apps.data || [];
+      const mchData = matchRes.matches || [];
       setMatches(mchData);
+      setMatchLimitReached(!!matchRes.limitReached);
+      setMatchLimitInfo(matchRes.limit != null ? { usedThisWeek: matchRes.usedThisWeek ?? 0, limit: matchRes.limit, upgradeMessage: matchRes.upgradeMessage } : null);
+      const appsData = apps.data || [];
       setApplications(appsData);
       setUploadedResumes(resumes.resumes || []);
       setSavedJobIds(new Set((savedRes.data || []).map((s: any) => s.job_id)));
@@ -1253,6 +1254,16 @@ export default function CandidateDashboard() {
       {/* ── MATCHES ── */}
       {tab === 'matches' && (
         <div className="space-y-4">
+          {matchLimitReached && matchLimitInfo && (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/10 p-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                {matchLimitInfo.upgradeMessage ?? `You've used all ${matchLimitInfo.limit} job matches for this week.`} Resets next week.
+              </p>
+              <a href="/pricing" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold transition">
+                Upgrade to Pro for unlimited matches
+              </a>
+            </div>
+          )}
           <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 shadow-sm space-y-3">
             {/* Search and filters */}
             <div className="flex flex-wrap items-center gap-3">

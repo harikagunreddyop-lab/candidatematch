@@ -86,7 +86,7 @@ export default function HomePage() {
     });
 
     if (err) {
-      if (err.message.includes('already registered')) setError('This email is already registered. Sign in instead.');
+      if (err.message.includes('already registered')) setError('That email is already registered. Sign in instead.');
       else setError(err.message);
       setLoading(false);
       return;
@@ -134,51 +134,29 @@ export default function HomePage() {
   return (
     <div className="min-h-screen flex bg-surface-50 dark:bg-surface-900">
       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-screen">
-        {/* Left half — Matte black with Orion-path gradient */}
+        {/* Left half — Brand and value statement */}
         <div
           className="relative flex items-center justify-center px-6 py-12 overflow-hidden min-h-[50vh] md:min-h-0"
           style={{
-            background: 'linear-gradient(140deg, #0a0a0a 0%, #0f0f0f 35%, #0c0c0c 50%, #080808 70%, #0a0a0a 100%)',
+            background: 'linear-gradient(140deg, #0a0a0a 0%, #0f0f0f 50%, #0a0a0a 100%)',
           }}
         >
-          <div className="absolute inset-0 pointer-events-none" aria-hidden>
-            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/60 shadow-[0_0_6px_0_rgba(255,255,255,0.15),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.08)] top-[18%] left-[22%]" />
-            <div className="absolute w-2 h-2 rounded-full bg-neutral-900 border border-neutral-500/50 shadow-[0_0_8px_0_rgba(255,255,255,0.2),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.1)] top-[28%] right-[28%]" />
-            <div className="absolute w-1 h-1 rounded-full bg-black border border-neutral-600/50 shadow-[0_0_4px_0_rgba(255,255,255,0.12)] top-[12%] right-[18%]" />
-            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/50 shadow-[0_0_5px_0_rgba(255,255,255,0.12),inset_0_0_1px_0_rgba(255,255,255,0.1)] bottom-[32%] left-[15%]" />
-            <div className="absolute w-2 h-2 rounded-full bg-neutral-900 border border-neutral-500/60 shadow-[0_0_7px_0_rgba(255,255,255,0.18),inset_-0.5px_-0.5px_0_0_rgba(255,255,255,0.08)] bottom-[22%] right-[20%]" />
-            <div className="absolute w-1 h-1 rounded-full bg-black shadow-[0_0_4px_0_rgba(255,255,255,0.1)] bottom-[38%] right-[32%]" />
-            <div className="absolute w-1.5 h-1.5 rounded-full bg-neutral-900 border border-neutral-600/40 shadow-[0_0_5px_0_rgba(255,255,255,0.1)] top-[42%] left-[12%]" />
-            <div className="absolute w-1 h-1 rounded-full bg-neutral-900 shadow-[0_0_4px_0_rgba(255,255,255,0.08)] top-[55%] right-[14%]" />
-            <div className="absolute w-2.5 h-2.5 rotate-45 bg-gradient-to-br from-neutral-700/80 to-neutral-900 border border-neutral-600/50 shadow-[0_0_4px_0_rgba(255,255,255,0.06)] top-[24%] left-[35%]" />
-            <div className="absolute w-2 h-2 rotate-[30deg] bg-gradient-to-br from-neutral-600/70 to-neutral-900 border border-neutral-500/40 top-[35%] right-[38%]" />
-            <div className="absolute w-2 h-2 -rotate-12 bg-gradient-to-br from-neutral-700/60 to-neutral-900 border border-neutral-600/40 bottom-[45%] right-[25%]" />
-            <div className="absolute w-2 h-2 rotate-45 bg-gradient-to-br from-neutral-600/80 to-neutral-900 border border-neutral-500/50 bottom-[28%] left-[28%]" />
-            <div className="absolute w-1.5 h-1.5 rotate-12 bg-gradient-to-br from-neutral-600/70 to-neutral-900 border border-neutral-600/50 top-[60%] left-[20%]" />
-          </div>
-
           <div className="relative flex flex-col items-center justify-center text-center max-w-sm">
-            <div
-              className="relative flex items-center justify-center rounded-2xl p-1"
-              style={{
-                boxShadow: '0 0 32px rgba(96, 165, 250, 0.35), 0 0 64px rgba(96, 165, 250, 0.2), 0 0 0 1px rgba(96, 165, 250, 0.2)',
-              }}
-            >
+            <div className="relative flex items-center justify-center rounded-2xl">
               <Image
                 src="/logo.png"
-                alt="Orion CMOS"
-                width={280}
-                height={280}
+                alt="CandidateMatch"
+                width={200}
+                height={200}
                 priority
-                className="object-contain w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-2xl"
+                className="object-contain w-32 h-32 sm:w-40 sm:h-40 md:w-44 md:h-44 rounded-2xl"
               />
             </div>
-            <h1 className="mt-5 text-2xl sm:text-3xl font-bold text-white font-display tracking-tight">
-              Orion CMOS
+            <h1 className="mt-6 text-2xl sm:text-3xl font-bold text-white font-display tracking-tight">
+              CandidateMatch
             </h1>
-            <p className="mt-1 text-sm text-neutral-500 font-medium">AI-powered recruitment platform</p>
-            <p className="mt-6 text-xs text-neutral-600 leading-relaxed">
-              <span className="text-neutral-500 font-medium">Orion path</span> — like the constellation that guides the way: we light the path between talent and the right opportunity.
+            <p className="mt-3 text-sm text-neutral-400 leading-relaxed">
+              Match to the right jobs. One profile. One place.
             </p>
           </div>
         </div>
@@ -193,12 +171,12 @@ export default function HomePage() {
           <div className="w-full max-w-md">
             <div className="card p-5 sm:p-8 dark:bg-surface-800 dark:border-surface-600 dark:text-surface-100 shadow-xl border border-surface-200 dark:border-surface-700">
               <h2 className="text-lg sm:text-xl font-bold text-surface-900 dark:text-white text-center mb-1 font-display">
-                {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
+                {mode === 'login' ? 'Sign in' : mode === 'signup' ? 'Create your account' : 'Reset password'}
               </h2>
               <p className="text-xs sm:text-sm text-surface-500 dark:text-surface-300 text-center mb-5">
-                {mode === 'login' ? 'Sign in to continue to your dashboard'
-                : mode === 'signup' ? 'Join as a recruiter'
-                : "We'll send you a secure reset link"}
+                {mode === 'login' ? 'Use your CandidateMatch account to continue.'
+                : mode === 'signup' ? 'Recruiters and hiring teams: start matching and managing candidates.'
+                : "We'll send a secure link to your email."}
               </p>
 
               {error && (
@@ -277,7 +255,7 @@ export default function HomePage() {
                       </div>
                       <p className="mt-2 text-[11px] text-surface-500 dark:text-surface-400 flex items-center gap-1.5">
                         <User size={12} className="shrink-0" />
-                        Candidates join by invite only. Contact your admin to receive an invite.
+                        I&apos;m a candidate — I need an invite from my recruiter or admin.
                       </p>
                     </div>
 

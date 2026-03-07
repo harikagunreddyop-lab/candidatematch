@@ -142,6 +142,15 @@ export async function GET(req: NextRequest) {
 
   const role = profile?.role || 'candidate';
   const candidateId = req.nextUrl.searchParams.get('candidate_id');
+
+  // Extension "my profile" flow: only candidates may use GET without candidate_id
+  if (!candidateId && role !== 'candidate') {
+    return NextResponse.json(
+      { error: 'Extension is for candidates only' },
+      { status: 403, headers: corsHeaders(req) },
+    );
+  }
+
   if (candidateId && !isValidUuid(candidateId)) {
     return NextResponse.json({ error: 'Invalid candidate_id' }, { status: 400, headers: corsHeaders(req) });
   }

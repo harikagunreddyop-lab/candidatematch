@@ -40,12 +40,16 @@ export default function AuthCompletePage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-surface-50 dark:bg-surface-900 px-4">
       {status === 'loading' && (
         <>
+          <p className="text-lg font-bold text-surface-900 dark:text-white font-display tracking-tight mb-6">CandidateMatch</p>
           <Spinner size={32} className="text-brand-500 mb-4" />
           <p className="text-sm text-surface-500 dark:text-surface-400">Completing sign in…</p>
         </>
       )}
       {status === 'error' && (
-        <p className="text-sm text-surface-500 dark:text-surface-400">Sign-in failed. Redirecting…</p>
+        <>
+          <p className="text-lg font-bold text-surface-900 dark:text-white font-display tracking-tight mb-4">CandidateMatch</p>
+          <p className="text-sm text-surface-500 dark:text-surface-400">Sign-in failed. Redirecting…</p>
+        </>
       )}
     </div>
   );

@@ -1,5 +1,6 @@
 /**
  * POST /api/billing/checkout — Create Stripe Checkout session for Pro plan
+ * Body: { interval?: 'monthly' | 'yearly' } — defaults to monthly
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
@@ -14,10 +15,17 @@ export async function POST(req: NextRequest) {
     const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
     const STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID;
+    const STRIPE_PRO_ANNUAL_PRICE_ID = process.env.STRIPE_PRO_ANNUAL_PRICE_ID;
 
     if (!STRIPE_SECRET || !STRIPE_PRO_PRICE_ID) {
         return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
     }
+
+    const body = await req.json().catch(() => ({}));
+    const interval = (body.interval === 'yearly' ? 'yearly' : 'monthly') as 'monthly' | 'yearly';
+    const priceId = interval === 'yearly' && STRIPE_PRO_ANNUAL_PRICE_ID
+        ? STRIPE_PRO_ANNUAL_PRICE_ID
+        : STRIPE_PRO_PRICE_ID;
 
     const supabase = createServiceClient();
     const userId = authResult.user.id;
@@ -61,7 +69,7 @@ export async function POST(req: NextRequest) {
     const params = new URLSearchParams({
         'mode': 'subscription',
         'customer': customerId!,
-        'line_items[0][price]': STRIPE_PRO_PRICE_ID,
+        'line_items[0][price]': priceId,
         'line_items[0][quantity]': '1',
         'success_url': `${APP_URL}/dashboard?upgraded=true`,
         'cancel_url': `${APP_URL}/pricing`,

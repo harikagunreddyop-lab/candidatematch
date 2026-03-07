@@ -68,6 +68,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth', request.url));
   }
 
+  // ── Connect extension: candidates only (logged-in non-candidates → their dashboard) ──
+  if (pathname === '/connect-extension' && user) {
+    const { data: profile } = await supabase
+      .from('profile_roles')
+      .select('legacy_role, effective_role')
+      .eq('id', user.id)
+      .single();
+    const role = profile?.legacy_role as string | undefined;
+    const effectiveRole = profile?.effective_role as string | undefined;
+    const activeRole = effectiveRole || role;
+    if (activeRole && activeRole !== 'candidate') {
+      const dest = getDestination(effectiveRole, role);
+      return NextResponse.redirect(new URL(dest, request.url));
+    }
+  }
+
   // ── Logged in Logic ──────────────────────────────────────────────────────
   if (user) {
     // Fetch role once (use profile_roles for effective_role)
@@ -219,5 +235,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/auth', '/dashboard/:path*', '/pending-approval'],
+  matcher: ['/auth', '/dashboard/:path*', '/pending-approval', '/connect-extension'],
 };

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authedClient } from '../../_auth';
+import { authedCandidateClient } from '../../_auth';
 
 const BUCKET = 'resumes';
 const SIGNED_URL_EXPIRY_SECONDS = 60; // short-lived — user must explicitly request
@@ -26,7 +26,7 @@ export async function OPTIONS() {
  * Returns a 60-second signed URL for the resume PDF.
  */
 export async function POST(req: NextRequest) {
-    const auth = await authedClient(req);
+    const auth = await authedCandidateClient(req);
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS });
 
     let body: any;

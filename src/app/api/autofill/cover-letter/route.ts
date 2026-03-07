@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authedClient } from '../_auth';
+import { authedCandidateClient } from '../_auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ const CANDIDATE_FIELDS =
   'full_name, primary_title, skills, summary, experience, education';
 
 export async function POST(req: NextRequest) {
-  const auth = await authedClient(req);
+  const auth = await authedCandidateClient(req);
   if (!auth) {
     return NextResponse.json(
       { error: 'Unauthorized' },

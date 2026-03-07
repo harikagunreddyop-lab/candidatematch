@@ -4,12 +4,12 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { RegisterSW } from '@/components/RegisterSW';
 
 export const metadata: Metadata = {
-  title: 'Orion CMOS',
-  description: 'AI-powered resume generation and job matching platform',
+  title: 'CandidateMatch',
+  description: 'Match to the right jobs. One profile. One place. Tailored resumes and applications from a single dashboard.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    title: 'Orion CMOS',
+    title: 'CandidateMatch',
     statusBarStyle: 'black-translucent',
   },
 };

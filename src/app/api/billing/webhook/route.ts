@@ -3,9 +3,11 @@
  *
  * Listens for: checkout.session.completed, customer.subscription.updated,
  * customer.subscription.deleted
+ * Supports both profile (candidate Pro) and company subscriptions via metadata.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getCompanyPlanLimits, isCompanyPlanId } from '@/lib/plan-limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     // In production, verify Stripe signature
     // For now, we trust the event (add signature verification with stripe SDK later)
-    let event: any;
+    let event: { type: string; data?: { object?: any } };
     try {
         event = await req.json();
     } catch {
@@ -31,14 +33,45 @@ export async function POST(req: NextRequest) {
 
     switch (event.type) {
         case 'checkout.session.completed': {
-            const session = event.data.object;
-            const userId = session.metadata?.user_id;
-            const subscriptionId = session.subscription;
+            const session = event.data?.object;
+            const userId = session?.metadata?.user_id;
+            const companyId = session?.metadata?.company_id;
+            const subscriptionId = session?.subscription;
+            const successFeeEventId = session?.metadata?.success_fee_event_id;
 
-            if (userId && subscriptionId) {
-                // Fetch subscription details
+            if (successFeeEventId && session?.mode === 'payment') {
+                await supabase
+                    .from('success_fee_events')
+                    .update({ status: 'paid', updated_at: new Date().toISOString() })
+                    .eq('id', successFeeEventId);
+            } else if (companyId && subscriptionId) {
+                const plan = session?.metadata?.plan;
+                const planKey = plan && isCompanyPlanId(plan) ? plan : 'starter';
+                const limits = getCompanyPlanLimits(planKey);
+
                 const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
-                    headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+                    headers: { Authorization: `Bearer ${STRIPE_SECRET}` },
+                });
+                const sub = await subRes.json();
+
+                await supabase
+                    .from('companies')
+                    .update({
+                        subscription_plan: planKey,
+                        subscription_status: 'active',
+                        subscription_period_end: sub.current_period_end
+                            ? new Date(sub.current_period_end * 1000).toISOString()
+                            : null,
+                        max_recruiters: limits.max_recruiters,
+                        max_active_jobs: limits.max_active_jobs,
+                        max_candidates_viewed: limits.max_candidates_viewed === -1 ? 999 : limits.max_candidates_viewed,
+                        max_ai_calls_per_day: limits.max_ai_calls_per_day,
+                    })
+                    .eq('id', companyId);
+            } else if (userId && subscriptionId) {
+                // Candidate Pro
+                const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
+                    headers: { Authorization: `Bearer ${STRIPE_SECRET}` },
                 });
                 const sub = await subRes.json();
 
@@ -55,20 +88,31 @@ export async function POST(req: NextRequest) {
         }
 
         case 'customer.subscription.updated': {
-            const sub = event.data.object;
-            const customerId = sub.customer;
+            const sub = event.data?.object;
+            const customerId = sub?.customer;
 
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('stripe_customer_id', customerId)
-                .single();
+            const [{ data: profile }, { data: company }] = await Promise.all([
+                supabase.from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+                supabase.from('companies').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+            ]);
 
-            if (profile) {
+            if (company) {
                 const status = sub.status === 'active' ? 'active'
                     : sub.status === 'past_due' ? 'past_due'
                         : 'canceled';
-
+                await supabase
+                    .from('companies')
+                    .update({
+                        subscription_status: status,
+                        subscription_period_end: sub.current_period_end
+                            ? new Date(sub.current_period_end * 1000).toISOString()
+                            : null,
+                    })
+                    .eq('id', company.id);
+            } else if (profile) {
+                const status = sub.status === 'active' ? 'active'
+                    : sub.status === 'past_due' ? 'past_due'
+                        : 'canceled';
                 await supabase.from('profiles').update({
                     subscription_status: status,
                     subscription_period_end: sub.current_period_end
@@ -80,15 +124,23 @@ export async function POST(req: NextRequest) {
         }
 
         case 'customer.subscription.deleted': {
-            const sub = event.data.object;
-            const customerId = sub.customer;
+            const sub = event.data?.object;
+            const customerId = sub?.customer;
 
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('stripe_customer_id', customerId)
-                .single();
+            const [{ data: profile }, { data: company }] = await Promise.all([
+                supabase.from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+                supabase.from('companies').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+            ]);
 
+            if (company) {
+                await supabase
+                    .from('companies')
+                    .update({
+                        subscription_status: 'canceled',
+                        subscription_period_end: null,
+                    })
+                    .eq('id', company.id);
+            }
             if (profile) {
                 await supabase.from('profiles').update({
                     subscription_tier: 'free',

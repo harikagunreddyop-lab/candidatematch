@@ -102,3 +102,43 @@ export async function checkDailyLimit(
             : `Daily limit reached: ${used}/${limit} ${eventType.replace(/_/g, ' ')} today. Resets at midnight UTC.`,
     };
 }
+
+/** Free tier: max job matches a candidate can see per week (UTC week) */
+export const FREE_TIER_WEEKLY_MATCH_LIMIT = 10;
+
+/** Start of current week (Monday 00:00 UTC) */
+function getWeekStartUtc(now: Date): string {
+    const d = new Date(now);
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    d.setUTCDate(diff);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.toISOString();
+}
+
+/** Next Monday 00:00 UTC (for limit reset display) */
+export function getWeeklyMatchResetAt(): string {
+    const d = new Date();
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    d.setUTCDate(diff + 7);
+    d.setUTCHours(0, 0, 0, 0);
+    return d.toISOString();
+}
+
+/**
+ * Count how many candidate_job_matches the candidate has in the current week (by matched_at).
+ * Used to enforce free-tier "10 matches per week" limit.
+ */
+export async function getWeeklyMatchCount(
+    supabase: { from: (table: string) => any },
+    candidateId: string,
+): Promise<number> {
+    const weekStart = getWeekStartUtc(new Date());
+    const { count } = await supabase
+        .from('candidate_job_matches')
+        .select('id', { count: 'exact', head: true })
+        .eq('candidate_id', candidateId)
+        .gte('matched_at', weekStart);
+    return count ?? 0;
+}

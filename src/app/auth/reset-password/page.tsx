@@ -15,7 +15,7 @@ function ResetPasswordFallback() {
           <Image src="/logo.png" alt="Logo" width={48} height={48} className="object-contain" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">Orion CMOS</h1>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">CandidateMatch</h1>
           <p className="text-xs text-surface-500 dark:text-surface-300 font-medium tracking-wide uppercase">Set new password</p>
         </div>
       </div>
@@ -218,7 +218,7 @@ function ResetPasswordContent() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">
-            Orion CMOS
+            CandidateMatch
           </h1>
           <p className="text-xs text-surface-500 dark:text-surface-300 font-medium tracking-wide uppercase">
             Set new password
@@ -262,10 +262,10 @@ function ResetPasswordContent() {
             <p className="text-xs text-surface-500 dark:text-surface-400 leading-relaxed">
               Invite links can only be used once and expire after 24 hours.
               Ask your admin to send a new invite, or use <strong>Forgot password</strong> on the
-              login page if you already have an account.
+              sign-in page if you already have an account.
             </p>
-            <Link href="/" className="btn-secondary text-sm inline-block mt-2">
-              Back to login
+            <Link href="/auth" className="btn-secondary text-sm inline-block mt-2">
+              Back to sign in
             </Link>
           </div>
         )}
@@ -278,10 +278,10 @@ function ResetPasswordContent() {
               Session not found
             </p>
             <p className="text-xs text-surface-500 dark:text-surface-400 leading-relaxed">
-              Please use the link from your invitation email, or go back to the login page.
+              Please use the link from your invitation email, or go back to the sign-in page.
             </p>
-            <Link href="/" className="btn-secondary text-sm inline-block mt-2">
-              Back to login
+            <Link href="/auth" className="btn-secondary text-sm inline-block mt-2">
+              Back to sign in
             </Link>
           </div>
         )}
@@ -361,8 +361,8 @@ function ResetPasswordContent() {
             </form>
 
             <p className="text-center mt-4">
-              <Link href="/" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
-                Back to login
+              <Link href="/auth" className="text-xs text-brand-600 dark:text-brand-400 hover:underline">
+                Back to sign in
               </Link>
             </p>
           </>

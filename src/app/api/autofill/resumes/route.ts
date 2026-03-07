@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authedClient } from '../_auth';
+import { authedCandidateClient } from '../_auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ export async function OPTIONS() {
  * Extension uses this to show a "pick resume to attach" list.
  */
 export async function GET(req: NextRequest) {
-    const auth = await authedClient(req);
+    const auth = await authedCandidateClient(req);
     if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: CORS });
 
     // Resolve candidate_id from user_id

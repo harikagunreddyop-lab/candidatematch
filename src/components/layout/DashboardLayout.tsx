@@ -56,6 +56,7 @@ const recruiterNav: NavItem[] = [
 
 const candidateNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/candidate', icon: <LayoutDashboard size={18} /> },
+  { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
   { label: 'Job search', href: '/dashboard/candidate/jobs', icon: <Briefcase size={18} /> },
   { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
   { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
@@ -138,21 +139,23 @@ export default function DashboardLayout({ children, profile }: { children: React
   };
 
   const isActive = (href: string) => {
-    if (href === '/dashboard/admin' || href === '/dashboard/recruiter' || href === '/dashboard/candidate') {
+    if (href === '/dashboard/admin' || href === '/dashboard/company' || href === '/dashboard/recruiter' || href === '/dashboard/candidate') {
       return pathname === href;
     }
     return pathname.startsWith(href);
   };
 
-  const role = profile.role as 'candidate' | 'recruiter' | 'admin';
+  const effectiveRoleForNav = (profile as { effective_role?: string }).effective_role || profile.role;
   const dashboardHref =
-    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? '/dashboard/admin' :
-    effectiveRole === 'company_admin' ? '/dashboard/company' :
-    role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
+    (effectiveRoleForNav === 'platform_admin' || effectiveRoleForNav === 'admin') ? '/dashboard/admin' :
+    effectiveRoleForNav === 'company_admin' ? '/dashboard/company' :
+    effectiveRoleForNav === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
   const messagesHref =
-    (effectiveRole === 'platform_admin' || effectiveRole === 'admin') ? '/dashboard/admin/messages' :
-    effectiveRole === 'company_admin' ? '/dashboard/company/messages' :
-    role === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
+    (effectiveRoleForNav === 'platform_admin' || effectiveRoleForNav === 'admin') ? '/dashboard/admin/messages' :
+    effectiveRoleForNav === 'company_admin' ? '/dashboard/company/messages' :
+    effectiveRoleForNav === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
+
+  const role = profile.role as 'candidate' | 'recruiter' | 'admin';
 
   return (
     <div className="min-h-screen flex" data-role={role} style={{ backgroundColor: 'var(--role-main-bg)' }}>

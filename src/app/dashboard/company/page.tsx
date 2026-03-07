@@ -19,7 +19,13 @@ export default function CompanyDashboard() {
       const { data: profile } = await supabase
         .from('profile_roles').select('name, company_id, effective_role').eq('id', session.user.id).single();
 
-      if (!profile?.company_id) { setLoading(false); return; }
+      if (!profile) { setLoading(false); return; }
+
+      if (!profile.company_id) {
+        setData({ profile, company: null, analytics: null, team: [], jobs: [], activity: [] });
+        setLoading(false);
+        return;
+      }
 
       const [companyRes, analyticsRes, teamRes, jobsRes, activityRes] = await Promise.all([
         supabase.from('companies').select('*').eq('id', profile.company_id).single(),
@@ -51,10 +57,35 @@ export default function CompanyDashboard() {
     </div>
   );
 
-  const { company, analytics, team, jobs, activity } = data as {
-    company: Company; analytics: CompanyAnalytics | null;
+  const { profile: profileData, company, analytics, team, jobs, activity } = data as {
+    profile: { effective_role?: string }; company: Company | null; analytics: CompanyAnalytics | null;
     team: any[]; jobs: any[]; activity: any[];
   };
+
+  if (!company) {
+    const isPlatformAdmin = profileData?.effective_role === 'platform_admin';
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <Building2 className="w-12 h-12 text-surface-500 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-white mb-2">
+          {isPlatformAdmin ? 'No company selected' : 'No company linked'}
+        </h2>
+        <p className="text-surface-400 mb-4">
+          {isPlatformAdmin
+            ? 'You are viewing as platform admin. To see a company dashboard, open a company from Admin → Companies.'
+            : 'Contact your platform administrator to link your account to a company.'}
+        </p>
+        {isPlatformAdmin && (
+          <Link
+            href="/dashboard/admin/companies"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold transition-colors"
+          >
+            Open Companies
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   const kpis = [
     { label: 'Jobs Posted',   value: analytics?.total_jobs_posted   ?? 0, icon: Briefcase,  color: 'text-violet-400', bg: 'bg-violet-500/10' },
@@ -84,7 +115,7 @@ export default function CompanyDashboard() {
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold transition-colors">
             <UserPlus className="w-4 h-4" />Invite Recruiter
           </Link>
-          <Link href="/dashboard/company/jobs/new"
+          <Link href="/dashboard/company/jobs"
             className="flex items-center gap-2 px-4 py-2 bg-surface-100 dark:bg-surface-700 text-surface-700 dark:text-surface-200 rounded-xl text-sm font-semibold transition-colors">
             <Briefcase className="w-4 h-4" />Post Job
           </Link>

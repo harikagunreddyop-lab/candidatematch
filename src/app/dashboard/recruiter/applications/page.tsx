@@ -40,21 +40,34 @@ export default function RecruiterApplicationsPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLoading(false); return; }
 
-    // Step 1: get assigned candidate IDs
-    const { data: assignments } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', session.user.id);
+    const { data: profile } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', session.user.id)
+      .single();
 
-    const ids = (assignments || []).map((a: any) => a.candidate_id as string);
+    if (!profile?.company_id) {
+      setApplications([]);
+      setLoading(false);
+      return;
+    }
 
-    if (ids.length === 0) { setApplications([]); setLoading(false); return; }
+    const { data: companyJobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('company_id', profile.company_id);
 
-    // Step 2: get all applications for those candidates (include interview_notes for schedule modal)
+    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    if (jobIds.length === 0) {
+      setApplications([]);
+      setLoading(false);
+      return;
+    }
+
     const { data } = await supabase
       .from('applications')
       .select('*, job:jobs(title, company, location, url), candidate:candidates(full_name, primary_title)')
-      .in('candidate_id', ids)
+      .in('job_id', jobIds)
       .order('updated_at', { ascending: false });
 
     setApplications(data || []);
@@ -66,7 +79,7 @@ export default function RecruiterApplicationsPage() {
   useEffect(() => {
     const channel = supabase.channel('recruiter-applications')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
     subscribeWithLog(channel, 'recruiter-applications');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
@@ -181,7 +194,7 @@ export default function RecruiterApplicationsPage() {
       <div>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Applications</h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-          Track and update status for all your candidates&apos; applications
+          Applications to your company&apos;s jobs
         </p>
       </div>
 
@@ -226,7 +239,7 @@ export default function RecruiterApplicationsPage() {
           title={applications.length === 0 ? 'No applications yet' : 'No results'}
           description={
             applications.length === 0
-              ? 'Mark candidates as applied from their profile or pipeline board'
+              ? 'Applications to your company\'s jobs will appear here when candidates apply.'
               : 'Try adjusting your search or status filter'
           }
         />

@@ -44,22 +44,13 @@ export default function PipelinePage() {
       return;
     }
 
-    // Get all assigned candidate IDs
-    const { data: assignments, error: assignErr } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', session.user.id);
+    const { data: profile } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', session.user.id)
+      .single();
 
-    if (assignErr) {
-      setLoadError(assignErr.message || 'Failed to load assignments');
-      setCards({});
-      setLoading(false);
-      return;
-    }
-
-    const ids = (assignments || []).map((a: any) => a.candidate_id as string);
-
-    if (ids.length === 0) {
+    if (!profile?.company_id) {
       const empty: Record<string, any[]> = {};
       STAGES.forEach(s => empty[s.key] = []);
       setCards(empty);
@@ -67,15 +58,29 @@ export default function PipelinePage() {
       return;
     }
 
-    // Fetch applications and top matches in parallel
+    const { data: companyJobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('company_id', profile.company_id);
+
+    const jobIds = (companyJobs || []).map((j: any) => j.id);
+
+    if (jobIds.length === 0) {
+      const empty: Record<string, any[]> = {};
+      STAGES.forEach(s => empty[s.key] = []);
+      setCards(empty);
+      setLoading(false);
+      return;
+    }
+
     const [appRes, matchRes] = await Promise.all([
       supabase.from('applications')
         .select('*, candidate:candidates(id, full_name, primary_title, location, rating), job:jobs(id, title, company, location, url)')
-        .in('candidate_id', ids)
+        .in('job_id', jobIds)
         .order('updated_at', { ascending: false }),
       supabase.from('candidate_job_matches')
         .select('*, candidate:candidates(id, full_name, primary_title, location, rating), job:jobs(id, title, company, location, url)')
-        .in('candidate_id', ids)
+        .in('job_id', jobIds)
         .gte('fit_score', 50)
         .order('fit_score', { ascending: false })
         .limit(50),
@@ -118,7 +123,7 @@ export default function PipelinePage() {
     const channel = supabase.channel('recruiter-pipeline')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
     subscribeWithLog(channel, 'recruiter-pipeline');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
@@ -190,9 +195,9 @@ export default function PipelinePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Pipeline Board</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-            {totalCards} active positions · drag cards to update status
-          </p>
+        <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+          {totalCards} applications to your company&apos;s jobs · drag cards to update status
+        </p>
         </div>
       </div>
 

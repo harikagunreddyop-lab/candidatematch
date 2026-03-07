@@ -1,510 +1,291 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Spinner, StatusBadge } from '@/components/ui';
 import {
-  Users,
-  Briefcase,
-  FileText,
-  ClipboardList,
-  TrendingUp,
-  RefreshCw,
-  ChevronRight,
-  Link2,
-  Zap,
-  Activity,
-  Sparkles,
+  Building2, DollarSign, Activity, Briefcase, Users,
+  TrendingUp, CheckCircle, Clock, Zap, AlertCircle,
 } from 'lucide-react';
-import { formatRelative, cn } from '@/utils/helpers';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
+interface PlatformStats {
+  companies: { total: number; active: number; trialing: number; past_due: number };
+  revenue: { mrr: number; arr: number };
+  jobs: { total: number; active: number };
+  candidates: { total: number; active: number };
+  system: { health: 'healthy' | 'degraded' | 'unhealthy'; last_ingestion: string; dbStatus?: string };
 }
 
-const STAT_CONFIG = [
-  {
-    key: 'candidates',
-    label: 'Candidates',
-    href: '/dashboard/admin/candidates',
-    icon: Users,
-    gradient: 'from-emerald-500 to-teal-600',
-    lightBg: 'bg-emerald-500/10 dark:bg-emerald-500/15',
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-  },
-  {
-    key: 'jobs',
-    label: 'Jobs',
-    href: '/dashboard/admin/jobs',
-    icon: Briefcase,
-    gradient: 'from-violet-500 to-purple-600',
-    lightBg: 'bg-violet-500/10 dark:bg-violet-500/15',
-    iconColor: 'text-violet-600 dark:text-violet-400',
-  },
-  {
-    key: 'applications',
-    label: 'Applications',
-    href: '/dashboard/admin/applications',
-    icon: ClipboardList,
-    gradient: 'from-blue-500 to-indigo-600',
-    lightBg: 'bg-blue-500/10 dark:bg-blue-500/15',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-  },
-  {
-    key: 'resumes',
-    label: 'Resumes generated',
-    href: '/dashboard/admin/candidates',
-    icon: FileText,
-    gradient: 'from-amber-500 to-orange-600',
-    lightBg: 'bg-amber-500/10 dark:bg-amber-500/15',
-    iconColor: 'text-amber-600 dark:text-amber-400',
-  },
-  {
-    key: 'recruiters',
-    label: 'Recruiters',
-    href: '/dashboard/admin/users',
-    icon: TrendingUp,
-    gradient: 'from-rose-500 to-pink-600',
-    lightBg: 'bg-rose-500/10 dark:bg-rose-500/15',
-    iconColor: 'text-rose-600 dark:text-rose-400',
-  },
-  {
-    key: 'assignments',
-    label: 'Assignments',
-    href: '/dashboard/admin/assignments',
-    icon: Link2,
-    gradient: 'from-cyan-500 to-sky-600',
-    lightBg: 'bg-cyan-500/10 dark:bg-cyan-500/15',
-    iconColor: 'text-cyan-600 dark:text-cyan-400',
-  },
-];
+const PLAN_PRICING: Record<string, number> = { starter: 299, growth: 599, enterprise: 2499, unlimited: 4999 };
 
-function StatCard({
-  label,
-  value,
-  href,
-  lightBg,
-  iconColor,
-  gradient,
-  Icon,
-}: {
+export default function PlatformAdminDashboard() {
+  const [stats, setStats] = useState<PlatformStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  async function loadStats() {
+    const [
+      totalRes,
+      activeRes,
+      trialingRes,
+      pastDueRes,
+      paidCompaniesRes,
+      jobsRes,
+      jobsActiveRes,
+      candidatesRes,
+      cronRes,
+    ] = await Promise.all([
+      supabase.from('companies').select('*', { count: 'exact', head: true }),
+      supabase.from('companies').select('*', { count: 'exact', head: true }).eq('is_active', true).eq('subscription_status', 'active'),
+      supabase.from('companies').select('*', { count: 'exact', head: true }).eq('subscription_status', 'trialing'),
+      supabase.from('companies').select('*', { count: 'exact', head: true }).eq('subscription_status', 'past_due'),
+      supabase.from('companies').select('subscription_plan').eq('is_active', true).in('subscription_status', ['active', 'trialing']),
+      supabase.from('jobs').select('*', { count: 'exact', head: true }),
+      supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('is_active', true),
+      supabase.from('candidates').select('*', { count: 'exact', head: true }),
+      supabase.from('cron_run_history').select('started_at, status').or('mode.eq.cron_ingest,mode.eq.ingest').order('started_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+
+    const mrr = (paidCompaniesRes.data || []).reduce(
+      (sum, c) => sum + (PLAN_PRICING[c.subscription_plan] || 0),
+      0
+    );
+
+    let health: 'healthy' | 'degraded' | 'unhealthy' = 'unhealthy';
+    let dbStatus: string | undefined;
+    try {
+      const healthRes = await fetch('/api/health').then(r => r.json()).catch(() => ({}));
+      health = healthRes.status === 'healthy' ? 'healthy' : healthRes.status === 'degraded' ? 'degraded' : 'unhealthy';
+      dbStatus = healthRes.checks?.database;
+    } catch {
+      health = 'unhealthy';
+    }
+
+    const lastIngestion = cronRes.data?.started_at
+      ? formatLastRun(cronRes.data.started_at)
+      : 'N/A';
+
+    setStats({
+      companies: {
+        total: totalRes.count ?? 0,
+        active: activeRes.count ?? 0,
+        trialing: trialingRes.count ?? 0,
+        past_due: pastDueRes.count ?? 0,
+      },
+      revenue: { mrr, arr: mrr * 12 },
+      jobs: { total: jobsRes.count ?? 0, active: jobsActiveRes.count ?? 0 },
+      candidates: { total: candidatesRes.count ?? 0, active: candidatesRes.count ?? 0 },
+      system: { health, last_ingestion: lastIngestion, dbStatus },
+    });
+    setLoading(false);
+  }
+
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+      </div>
+    );
+
+  if (!stats) return null;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Platform Dashboard</h1>
+          <p className="text-surface-400 mt-1">Multi-tenant SaaS management</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <SystemHealthBadge status={stats.system.health} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          label="Monthly Recurring Revenue"
+          value={`$${stats.revenue.mrr.toLocaleString()}`}
+          subtext={`$${stats.revenue.arr.toLocaleString()} ARR`}
+          icon={<DollarSign className="w-5 h-5" />}
+          gradient="from-emerald-500 to-teal-600"
+          href="/dashboard/admin/companies?filter=active"
+        />
+        <MetricCard
+          label="Active Companies"
+          value={stats.companies.active}
+          subtext={`${stats.companies.trialing} trialing`}
+          icon={<Building2 className="w-5 h-5" />}
+          gradient="from-violet-500 to-purple-600"
+          href="/dashboard/admin/companies?filter=active"
+        />
+        <MetricCard
+          label="Total Companies"
+          value={stats.companies.total}
+          subtext={stats.companies.past_due > 0 ? `${stats.companies.past_due} past due` : 'All healthy'}
+          icon={<Building2 className="w-5 h-5" />}
+          gradient="from-blue-500 to-indigo-600"
+          href="/dashboard/admin/companies"
+        />
+        <MetricCard
+          label="Platform Jobs"
+          value={stats.jobs.total.toLocaleString()}
+          subtext="Across all companies"
+          icon={<Briefcase className="w-5 h-5" />}
+          gradient="from-amber-500 to-orange-600"
+          href="/dashboard/admin/jobs"
+        />
+      </div>
+
+      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-white">System Health</h2>
+          <Link
+            href="/dashboard/admin/system/health"
+            className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            View Details →
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <HealthCard
+            label="Overall Status"
+            status={stats.system.health}
+            icon={<Activity className="w-5 h-5" />}
+          />
+          <HealthCard
+            label="Database"
+            status={(stats.system.dbStatus === 'healthy' ? 'healthy' : stats.system.dbStatus ? 'unhealthy' : 'healthy') as 'healthy' | 'unhealthy'}
+            icon={<CheckCircle className="w-5 h-5" />}
+          />
+          <HealthCard
+            label="Job Ingestion"
+            status="healthy"
+            icon={<Clock className="w-5 h-5" />}
+            subtext={`Last run: ${stats.system.last_ingestion}`}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <ActionCard
+          title="Manage Connectors"
+          description="Configure job board integrations"
+          href="/dashboard/admin/system/connectors"
+          icon={<Zap className="w-5 h-5" />}
+        />
+        <ActionCard
+          title="View Companies"
+          description="Manage customer companies"
+          href="/dashboard/admin/companies"
+          icon={<Building2 className="w-5 h-5" />}
+        />
+        <ActionCard
+          title="Platform Analytics"
+          description="Business metrics and trends"
+          href="/dashboard/admin/reports"
+          icon={<TrendingUp className="w-5 h-5" />}
+        />
+      </div>
+    </div>
+  );
+}
+
+function formatLastRun(iso: string): string {
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (days > 0) return `${days}d ago`;
+  if (hours > 0) return `${hours}h ago`;
+  if (mins > 0) return `${mins}m ago`;
+  return 'Just now';
+}
+
+function MetricCard({ label, value, subtext, icon, gradient, href }: {
   label: string;
   value: number | string;
-  href: string;
+  subtext?: string;
+  icon: React.ReactNode;
   gradient: string;
-  lightBg: string;
-  iconColor: string;
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  href: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="group relative tile flex flex-col items-center text-center gap-3 overflow-hidden"
-    >
-      <div className={cn('relative w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-105', lightBg)}>
-        <Icon size={22} className={iconColor} />
-      </div>
-      <div className="relative">
-        <p className="text-3xl font-extrabold text-surface-100 tabular-nums font-display tracking-tight">
-          {typeof value === 'number' ? value.toLocaleString() : value}
-        </p>
-        <p className="text-[11px] font-semibold text-surface-400 uppercase tracking-widest mt-1">
-          {label}
-        </p>
+    <Link href={href} className="group">
+      <div className={`relative overflow-hidden bg-gradient-to-br ${gradient} p-[1px] rounded-xl transition-all hover:scale-[1.02]`}>
+        <div className="bg-surface-900 rounded-xl p-5 h-full">
+          <div className="flex items-center justify-between mb-3">
+            <div className={`bg-gradient-to-br ${gradient} bg-opacity-20 p-2 rounded-lg text-white`}>
+              {icon}
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-white mb-1">{value}</div>
+          <div className="text-sm font-medium text-surface-300">{label}</div>
+          {subtext && <div className="text-xs text-surface-500 mt-1">{subtext}</div>}
+        </div>
       </div>
     </Link>
   );
 }
 
-function PanelCard({
-  title,
-  subtitle,
-  viewAllHref,
-  viewAllLabel,
-  icon,
-  iconBg,
-  children,
-  emptyMessage,
-  isEmpty,
-}: {
-  title: string;
-  subtitle?: string;
-  viewAllHref: string;
-  viewAllLabel: string;
+function SystemHealthBadge({ status }: { status: string }) {
+  const colors: Record<string, string> = {
+    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    degraded: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    unhealthy: 'bg-red-500/10 text-red-400 border-red-500/20',
+  };
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${colors[status] || 'bg-surface-500/10 text-surface-400 border-surface-500/20'}`}>
+      <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
+      <span className="text-xs font-semibold uppercase">{status}</span>
+    </div>
+  );
+}
+
+function HealthCard({ label, status, icon, subtext }: {
+  label: string;
+  status: string;
   icon: React.ReactNode;
-  iconBg: string;
-  children: React.ReactNode;
-  emptyMessage: React.ReactNode;
-  isEmpty: boolean;
+  subtext?: string;
+}) {
+  const statusColors: Record<string, string> = {
+    healthy: 'text-emerald-400',
+    degraded: 'text-amber-400',
+    unhealthy: 'text-red-400',
+  };
+  return (
+    <div className="flex items-center gap-3 bg-surface-900/50 rounded-lg p-4">
+      <div className={statusColors[status] || 'text-surface-400'}>{icon}</div>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-white">{label}</div>
+        <div className={`text-xs font-semibold uppercase ${statusColors[status] || 'text-surface-500'}`}>
+          {status}
+        </div>
+        {subtext && <div className="text-xs text-surface-500 mt-0.5 truncate">{subtext}</div>}
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({ title, description, href, icon }: {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ReactNode;
 }) {
   return (
-    <div className="card overflow-hidden">
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/[0.06] flex items-center justify-between bg-white/[0.02]">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <span className={cn('w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0', iconBg)}>
-            {icon}
-          </span>
-          <div>
-            <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display tracking-tight">
-              {title}
-            </h3>
-            {subtitle && (
-              <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{subtitle}</p>
-            )}
-          </div>
+    <Link href={href} className="group">
+      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-5 hover:border-violet-500/50 transition-all">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-violet-500/10 text-violet-400 rounded-lg">{icon}</div>
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
         </div>
-        <Link
-          href={viewAllHref}
-          className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors"
-        >
-          {viewAllLabel}
-          <ChevronRight size={14} />
-        </Link>
+        <p className="text-sm text-surface-400">{description}</p>
       </div>
-      {isEmpty ? (
-        <div className="px-4 sm:px-6 py-8 sm:py-10 text-center">
-          <p className="text-sm text-surface-500 dark:text-surface-400">{emptyMessage}</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-surface-100 dark:divide-surface-700">{children}</div>
-      )}
-    </div>
-  );
-}
-
-function AvatarInitial({ name, className }: { name: string; className?: string }) {
-  return (
-    <div
-      className={cn(
-        'w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ring-1 ring-surface-200/50 dark:ring-surface-600/50',
-        'bg-gradient-to-br from-brand-500/20 to-brand-600/20 dark:from-brand-500/30 dark:to-brand-600/30',
-        'text-brand-700 dark:text-brand-300',
-        className
-      )}
-    >
-      {name?.[0]?.toUpperCase() || '?'}
-    </div>
-  );
-}
-
-export default function AdminDashboard() {
-  const supabase = createClient();
-  const [stats, setStats] = useState({
-    candidates: 0,
-    jobs: 0,
-    resumes: 0,
-    applications: 0,
-    recruiters: 0,
-    assignments: 0,
-  });
-  const [recentApps, setRecentApps] = useState<any[]>([]);
-  const [recentJobs, setRecentJobs] = useState<any[]>([]);
-  const [recentCandidates, setRecentCandidates] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-
-  const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-
-    const { data: cProfiles } = await supabase.from('profiles').select('id').eq('role', 'candidate');
-    const validIds = (cProfiles || []).map((p: any) => p.id);
-    const safeIds = validIds.length > 0 ? validIds : ['00000000-0000-0000-0000-000000000000'];
-
-    const [
-      candidates,
-      jobs,
-      resumes,
-      applications,
-      recruiters,
-      assignments,
-      apps,
-      jobsList,
-      candList,
-    ] = await Promise.all([
-      supabase.from('candidates').select('id', { count: 'exact', head: true }).not('invite_accepted_at', 'is', null).in('user_id', safeIds),
-      supabase.from('jobs').select('id', { count: 'exact', head: true }),
-      supabase
-        .from('resume_versions')
-        .select('id', { count: 'exact', head: true })
-        .eq('generation_status', 'completed'),
-      supabase.from('applications').select('id', { count: 'exact', head: true }),
-      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'recruiter'),
-      supabase
-        .from('recruiter_candidate_assignments')
-        .select('recruiter_id', { count: 'exact', head: true }),
-      supabase
-        .from('applications')
-        .select('*, job:jobs(title, company), candidate:candidates(full_name)')
-        .order('created_at', { ascending: false })
-        .limit(6),
-      supabase.from('jobs').select('*').order('scraped_at', { ascending: false }).limit(6),
-      supabase
-        .from('candidates')
-        .select('id, full_name, primary_title, email, created_at, active')
-        .not('invite_accepted_at', 'is', null)
-        .in('user_id', safeIds)
-        .order('created_at', { ascending: false })
-        .limit(6),
-    ]);
-
-    setStats({
-      candidates: candidates.count || 0,
-      jobs: jobs.count || 0,
-      resumes: resumes.count || 0,
-      applications: applications.count || 0,
-      recruiters: recruiters.count || 0,
-      assignments: assignments.count || 0,
-    });
-    setRecentApps(apps.data || []);
-    setRecentJobs(jobsList.data || []);
-    setRecentCandidates(candList.data || []);
-    setLastRefreshed(new Date());
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  // Realtime subscription for live updates across all key tables
-  useEffect(() => {
-    const channel = supabase.channel('admin-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load(true));
-    subscribeWithLog(channel, 'admin-dashboard');
-    return () => { supabase.removeChannel(channel); };
-  }, [load, supabase]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <Spinner size={32} />
-        <p className="text-sm text-surface-500 dark:text-surface-400 font-medium">
-          Loading dashboard…
-        </p>
-      </div>
-    );
-  }
-
-  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-
-  return (
-    <div className="relative min-h-full">
-      <div className="pointer-events-none absolute inset-0 -top-8 -left-8 -right-8 bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.07),transparent)] dark:bg-[radial-gradient(ellipse_70%_50%_at_50%_-10%,rgba(120,80,220,0.12),transparent)]" aria-hidden />
-      <div className="relative space-y-8">
-        {/* Hero — modern, animated greeting */}
-        <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
-            <div className="min-w-0 flex-1">
-              <p className="hero-date text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] mb-2 sm:mb-3" style={{ color: 'var(--role-accent)' }}>
-                {dateStr}
-              </p>
-              <h1 className="hero-title text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-[2.5rem] font-bold font-display tracking-tight text-white">
-                {getGreeting()}
-              </h1>
-              <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
-                Pipeline overview
-                {lastRefreshed && (
-                  <span className="text-white/40"> · {lastRefreshed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
-                )}
-              </p>
-              <div className="hero-stats mt-4 sm:mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
-                <span><span className="font-semibold text-white">{stats.candidates}</span> candidates</span>
-                <span className="text-white/30 hidden sm:inline">·</span>
-                <span><span className="font-semibold text-white">{stats.applications}</span> in pipeline</span>
-              </div>
-            </div>
-            <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-              <button onClick={() => load()} className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Refresh">
-                <RefreshCw size={18} className="sm:w-5 sm:h-5" />
-              </button>
-              <Link href="/dashboard/admin/jobs" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
-                <Briefcase size={16} /> Jobs
-              </Link>
-              <Link href="/dashboard/admin/reports" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
-                Reports
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Key metrics — stat cards elite style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
-          {STAT_CONFIG.map((s) => (
-            <StatCard
-              key={s.key}
-              label={s.label}
-              value={(stats as Record<string, number>)[s.key] ?? 0}
-              href={s.href}
-              gradient={s.gradient}
-              lightBg={s.lightBg}
-              iconColor={s.iconColor}
-              Icon={s.icon as React.ComponentType<{ size?: number; className?: string }>}
-            />
-          ))}
-        </div>
-
-        {/* Activity panels */}
-        <div>
-          <h2 className="text-xs font-bold text-surface-500 dark:text-surface-400 uppercase tracking-widest mb-4">
-            Activity
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <PanelCard
-              title="Recent applications"
-              subtitle="Latest candidate applications"
-              viewAllHref="/dashboard/admin/applications"
-              viewAllLabel="View all"
-              iconBg="bg-blue-500/10 dark:bg-blue-500/20"
-              icon={<ClipboardList size={18} className="text-blue-600 dark:text-blue-400" />}
-              emptyMessage="No applications yet"
-              isEmpty={recentApps.length === 0}
-            >
-              {recentApps.map((app) => (
-                <div
-                  key={app.id}
-                  className="px-4 sm:px-6 py-3 sm:py-4 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <AvatarInitial name={(app.candidate as any)?.full_name} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate">
-                        {(app.candidate as any)?.full_name}
-                      </p>
-                      <p className="text-xs text-surface-500 dark:text-surface-400 truncate">
-                        {app.job?.title} at {app.job?.company}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <StatusBadge status={app.status} />
-                      <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-1">
-                        {formatRelative(app.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </PanelCard>
-
-            <PanelCard
-              title="Latest jobs"
-              subtitle="Most recently ingested"
-              viewAllHref="/dashboard/admin/jobs"
-              viewAllLabel="View all"
-              iconBg="bg-violet-500/10 dark:bg-violet-500/20"
-              icon={<Briefcase size={18} className="text-violet-600 dark:text-violet-400" />}
-              emptyMessage="No jobs yet. Use the Jobs page to add or upload roles."
-              isEmpty={recentJobs.length === 0}
-            >
-              {recentJobs.map((job) => (
-                <Link
-                  key={job.id}
-                  href="/dashboard/admin/jobs"
-                  className="px-4 sm:px-6 py-3 sm:py-4 block hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/20 flex items-center justify-center shrink-0">
-                      <Briefcase size={18} className="text-violet-600 dark:text-violet-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                        {job.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs text-surface-500 dark:text-surface-400">{job.company}</span>
-                        {job.source && (
-                          <span className="px-1.5 py-0.5 rounded-md bg-surface-100 dark:bg-surface-700 text-[10px] font-medium text-surface-600 dark:text-surface-300">
-                            {job.source}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-surface-400 dark:text-surface-500">
-                          {formatRelative(job.scraped_at || job.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
-                  </div>
-                </Link>
-              ))}
-            </PanelCard>
-
-            <PanelCard
-              title="New candidates"
-              subtitle="Recently added to pipeline"
-              viewAllHref="/dashboard/admin/candidates"
-              viewAllLabel="View all"
-              iconBg="bg-emerald-500/10 dark:bg-emerald-500/20"
-              icon={<Users size={18} className="text-emerald-600 dark:text-emerald-400" />}
-              emptyMessage="No candidates yet"
-              isEmpty={recentCandidates.length === 0}
-            >
-              {recentCandidates.map((c) => (
-                <Link
-                  key={c.id}
-                  href={`/dashboard/admin/candidates/${c.id}`}
-                  className="px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 hover:bg-surface-50/80 dark:hover:bg-surface-700/30 transition-colors group"
-                >
-                  <AvatarInitial name={c.full_name} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
-                        {c.full_name}
-                      </p>
-                      <span
-                        className={cn(
-                          'shrink-0 px-1.5 py-0.5 rounded-md text-[10px] font-semibold',
-                          c.active
-                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-surface-200 dark:bg-surface-600 text-surface-600 dark:text-surface-400'
-                        )}
-                      >
-                        {c.active ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                    <p className="text-xs text-surface-500 dark:text-surface-400 truncate mt-0.5">
-                      {c.primary_title || 'No title'} · {formatRelative(c.created_at)}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 shrink-0" />
-                </Link>
-              ))}
-            </PanelCard>
-          </div>
-        </div>
-
-        {/* Quick actions — elite strip like candidate recommended step */}
-        <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-gradient-to-r from-brand-50 to-white dark:from-brand-500/10 dark:to-surface-800 px-4 sm:px-5 py-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-brand-500/20 dark:bg-brand-500/30 flex items-center justify-center shrink-0">
-              <Sparkles size={20} className="text-brand-600 dark:text-brand-400" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">Quick actions</p>
-              <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 hidden sm:block">Invite users, assign recruiters, view pipeline & reports</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
-            <Link href="/dashboard/admin/users" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-              Invite user
-            </Link>
-            <Link href="/dashboard/admin/assignments" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-              Assign recruiters
-            </Link>
-            <Link href="/dashboard/admin/pipeline" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm font-medium text-surface-700 dark:text-surface-200 hover:border-brand-400 dark:hover:border-brand-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors shadow-sm">
-              Pipeline
-            </Link>
-            <Link href="/dashboard/admin/reports" className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 transition-all">
-              Reports
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Link>
   );
 }

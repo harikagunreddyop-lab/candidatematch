@@ -1,5 +1,5 @@
 'use client';
-// src/app/dashboard/recruiter/page.tsx — Elite recruiter dashboard
+// B2B SaaS model: recruiter sees candidates matched to THEIR COMPANY'S jobs (no recruiter_candidate_assignments)
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
@@ -28,58 +28,82 @@ export default function RecruiterDashboard() {
   const load = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLoading(false); return; }
-    const rid = session.user.id;
 
     const { data: profile } = await supabase
-      .from('profiles').select('name').eq('id', rid).single();
+      .from('profile_roles')
+      .select('name, company_id')
+      .eq('id', session.user.id)
+      .single();
 
-    const { data: assignments } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', rid);
-
-    const allIds = (assignments || []).map((a: any) => a.candidate_id as string);
-
-    if (allIds.length === 0) {
-      setPageData({ profile, candList: [], newMatches: [], newMatchesTotal: 0, todayInterviews: [], pipeline: {}, totalAssigned: 0 });
+    if (!profile?.company_id) {
+      setPageData({
+        profile: { name: profile?.name },
+        noCompany: true,
+        companyJobsCount: 0,
+        candList: [],
+        newMatches: [],
+        newMatchesTotal: 0,
+        todayInterviews: [],
+        pipeline: {},
+        totalCandidates: 0,
+      });
       setLoading(false);
       return;
     }
 
-    const { data: allCands } = await supabase
-      .from('candidates')
-      .select('id, full_name, primary_title, rating')
-      .in('id', allIds)
-      .order('full_name');
-    const cands = (allCands || []).slice(0, 6);
+    const { data: companyJobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('company_id', profile.company_id)
+      .eq('is_active', true);
+
+    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    if (jobIds.length === 0) {
+      setPageData({
+        profile: { name: profile.name, company_id: profile.company_id },
+        noCompany: false,
+        companyJobsCount: 0,
+        candList: [],
+        newMatches: [],
+        newMatchesTotal: 0,
+        todayInterviews: [],
+        pipeline: { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 },
+        totalCandidates: 0,
+      });
+      setLoading(false);
+      return;
+    }
 
     const yesterday = new Date(Date.now() - 86400000).toISOString();
-
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const [newMatchCountRes, newMatchListRes, interviewRes, appRes] = await Promise.all([
+    const [newMatchCountRes, newMatchListRes, interviewRes, appRes, matchCandRes] = await Promise.all([
       supabase.from('candidate_job_matches')
         .select('id', { count: 'exact', head: true })
-        .in('candidate_id', allIds)
+        .in('job_id', jobIds)
         .gte('matched_at', yesterday),
       supabase.from('candidate_job_matches')
         .select('id, fit_score, candidate_id, matched_at, job:jobs(title, company), candidate:candidates(full_name)')
-        .in('candidate_id', allIds)
+        .in('job_id', jobIds)
         .gte('matched_at', yesterday)
         .order('fit_score', { ascending: false })
         .limit(5),
       supabase.from('applications')
         .select('id, candidate_id, interview_date, candidate:candidates(full_name), job:jobs(title, company)')
-        .in('candidate_id', allIds)
+        .in('job_id', jobIds)
         .eq('status', 'interview')
         .gte('interview_date', todayStart.toISOString())
         .lt('interview_date', todayEnd.toISOString()),
       supabase.from('applications')
         .select('status')
-        .in('candidate_id', allIds),
+        .in('job_id', jobIds),
+      supabase.from('candidate_job_matches')
+        .select('candidate_id')
+        .in('job_id', jobIds)
+        .limit(500),
     ]);
 
     const pipeline: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
@@ -87,28 +111,42 @@ export default function RecruiterDashboard() {
       pipeline[app.status] = (pipeline[app.status] || 0) + 1;
     }
 
+    const candidateIdsFromMatches = new Set((matchCandRes.data || []).map((m: any) => m.candidate_id));
+    const candidateIdsFromApps = new Set((appRes.data || []).map((a: any) => a.candidate_id));
+    const allCandidateIds = Array.from(new Set([...Array.from(candidateIdsFromMatches), ...Array.from(candidateIdsFromApps)]));
+
+    let candList: any[] = [];
+    if (allCandidateIds.length > 0) {
+      const { data: cands } = await supabase
+        .from('candidates')
+        .select('id, full_name, primary_title, rating')
+        .in('id', allCandidateIds.slice(0, 50))
+        .order('full_name');
+      candList = (cands || []).slice(0, 6);
+    }
+
     const newMatchesTotal = newMatchCountRes.count ?? 0;
     setPageData({
-      profile,
-      candList: cands || [],
+      profile: { name: profile.name, company_id: profile.company_id },
+      noCompany: false,
+      companyJobsCount: jobIds.length,
+      candList,
       newMatches: newMatchListRes.data || [],
       newMatchesTotal,
       todayInterviews: interviewRes.data || [],
       pipeline,
-      totalAssigned: allIds.length,
+      totalCandidates: allCandidateIds.length,
     });
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [supabase]);
 
   useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     const channel = supabase.channel('recruiter-dashboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load());
     subscribeWithLog(channel, 'recruiter-dashboard');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
@@ -123,7 +161,20 @@ export default function RecruiterDashboard() {
   }
   if (!pageData) return null;
 
-  const { profile, candList, newMatches, newMatchesTotal, todayInterviews, pipeline, totalAssigned } = pageData;
+  if (pageData.noCompany) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/10 p-8 text-center">
+        <Briefcase className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold text-surface-900 dark:text-surface-100">No company linked</h2>
+        <p className="text-surface-500 dark:text-surface-400 mt-2 text-sm">
+          Your account is not linked to a company. Ask your company admin to invite you or add you to the team.
+        </p>
+        <Link href="/dashboard/company" className="inline-block mt-4 text-brand-600 dark:text-brand-400 font-medium text-sm hover:underline">Go to Company dashboard</Link>
+      </div>
+    );
+  }
+
+  const { profile, companyJobsCount, candList, newMatches, newMatchesTotal, todayInterviews, pipeline, totalCandidates } = pageData;
   const totalApps = Object.values(pipeline).reduce((a: any, b: any) => a + b, 0) as number;
   const firstName = profile?.name?.split(' ')[0] || 'Recruiter';
   const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -145,7 +196,6 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Hero — modern, animated greeting */}
       <div className="hero-greeting px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8">
           <div className="min-w-0 flex-1">
@@ -157,16 +207,16 @@ export default function RecruiterDashboard() {
             </h1>
             <p className="hero-subtitle text-sm text-white/60 mt-1.5 sm:mt-2">
               {newMatchesTotal > 0
-                ? `${newMatchesTotal} new match${newMatchesTotal !== 1 ? 'es' : ''} · ${totalAssigned} assigned`
-                : `${totalAssigned} candidates · ${totalApps} in pipeline`}
+                ? `${newMatchesTotal} new match${newMatchesTotal !== 1 ? 'es' : ''} to your jobs · ${companyJobsCount} active jobs`
+                : `${totalCandidates} candidates for your jobs · ${totalApps} in pipeline`}
             </p>
           </div>
           <div className="hero-actions flex flex-wrap items-center gap-2 sm:gap-3 shrink-0">
-            <Link href="/dashboard/recruiter/reports" className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Talent report">
+            <Link href="/dashboard/recruiter/reports" className="hero-btn-icon p-2.5 sm:p-3 rounded-xl border border-white/10 text-white/70" title="Reports">
               <TrendingUp size={18} className="sm:w-5 sm:h-5" />
             </Link>
-            <Link href="/dashboard/recruiter/applications" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
-              Applications
+            <Link href="/dashboard/recruiter/jobs" className="hero-btn btn-secondary text-sm py-2.5 px-4 sm:px-5 rounded-xl">
+              My Jobs
             </Link>
             <Link href="/dashboard/recruiter/pipeline" className="hero-btn btn-primary text-sm py-2.5 px-4 sm:px-5 flex items-center gap-2 rounded-xl">
               <Briefcase size={16} /> Pipeline
@@ -175,10 +225,9 @@ export default function RecruiterDashboard() {
         </div>
       </div>
 
-      {/* Quick stats — floating stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { value: totalAssigned, label: 'Candidates', Icon: Users, bg: 'bg-brand-500/10 dark:bg-brand-500/20', color: 'text-brand-600 dark:text-brand-400' },
+          { value: companyJobsCount, label: 'Active jobs', Icon: Briefcase, bg: 'bg-brand-500/10 dark:bg-brand-500/20', color: 'text-brand-600 dark:text-brand-400' },
           { value: newMatchesTotal, label: 'New matches', Icon: Sparkles, bg: 'bg-emerald-500/10 dark:bg-emerald-500/20', color: 'text-emerald-600 dark:text-emerald-400' },
           { value: totalApps, label: 'In pipeline', Icon: Zap, bg: 'bg-violet-500/10 dark:bg-violet-500/20', color: 'text-violet-600 dark:text-violet-400' },
           { value: todayInterviews.length, label: 'Interviews today', Icon: Calendar, bg: 'bg-amber-500/10 dark:bg-amber-500/20', color: 'text-amber-600 dark:text-amber-400' },
@@ -198,7 +247,6 @@ export default function RecruiterDashboard() {
         ))}
       </div>
 
-      {/* Alert banners — elite recommended-step style */}
       {(newMatchesTotal > 0 || todayInterviews.length > 0) && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {newMatchesTotal > 0 && (
@@ -212,9 +260,9 @@ export default function RecruiterDashboard() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide">New matches</p>
                 <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">
-                  {newMatchesTotal} new job match{newMatchesTotal !== 1 ? 'es' : ''} since yesterday
+                  {newMatchesTotal} new match{newMatchesTotal !== 1 ? 'es' : ''} to your jobs since yesterday
                 </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Review and share with candidates</p>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Review candidates matched to your open roles</p>
               </div>
               <ChevronRight size={18} className="text-brand-500 dark:text-brand-400 shrink-0 group-hover:translate-x-1 transition-transform" />
             </Link>
@@ -238,7 +286,6 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
-      {/* Pipeline snapshot — elite card with icon header */}
       {totalApps > 0 && (
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
           <div className="mb-4">
@@ -249,13 +296,10 @@ export default function RecruiterDashboard() {
                 </span>
                 <div>
                   <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">Pipeline snapshot</h3>
-                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Applications by stage</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Applications to your company&apos;s jobs</p>
                 </div>
               </div>
-              <Link
-                href="/dashboard/recruiter/pipeline"
-                className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors"
-              >
+              <Link href="/dashboard/recruiter/pipeline" className="text-xs font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors">
                 Full board <ChevronRight size={14} />
               </Link>
             </div>
@@ -271,17 +315,13 @@ export default function RecruiterDashboard() {
           <div className="mt-5 flex rounded-full overflow-hidden h-2.5 bg-surface-100 dark:bg-surface-700">
             {['applied', 'screening', 'interview', 'offer'].map(stage => {
               const pct = totalApps > 0 ? ((pipeline[stage] || 0) / totalApps) * 100 : 0;
-              return pct > 0
-                ? <div key={stage} style={{ width: `${pct}%` }} className={cn('h-full transition-all duration-300', BAR_COLORS[stage])} />
-                : null;
+              return pct > 0 ? <div key={stage} style={{ width: `${pct}%` }} className={cn('h-full transition-all duration-300', BAR_COLORS[stage])} /> : null;
             })}
           </div>
         </div>
       )}
 
-      {/* Widgets row — elite section cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* New Matches */}
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden shadow-sm">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -290,13 +330,10 @@ export default function RecruiterDashboard() {
               </span>
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">New matches</h3>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Since yesterday · by fit score</p>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">Candidates matched to your jobs · since yesterday</p>
               </div>
             </div>
-            <Link
-              href="/dashboard/recruiter/candidates"
-              className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors"
-            >
+            <Link href="/dashboard/recruiter/candidates" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors">
               All candidates <ChevronRight size={12} />
             </Link>
           </div>
@@ -306,7 +343,7 @@ export default function RecruiterDashboard() {
                 <TrendingUp size={24} className="text-surface-400 dark:text-surface-500" />
               </div>
               <p className="text-sm font-medium text-surface-600 dark:text-surface-300">No new matches since yesterday</p>
-              <p className="text-xs text-surface-400 dark:text-surface-400 mt-1">New fits will appear here after the next run</p>
+              <p className="text-xs text-surface-400 dark:text-surface-400 mt-1">Post jobs and run matching to see candidates here</p>
             </div>
           ) : (
             <div className="divide-y divide-surface-100 dark:divide-surface-700">
@@ -330,7 +367,6 @@ export default function RecruiterDashboard() {
           )}
         </div>
 
-        {/* My Candidates */}
         <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden shadow-sm">
           <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-surface-100 dark:border-surface-700 flex items-center justify-between bg-surface-50/50 dark:bg-surface-700/30">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -338,24 +374,21 @@ export default function RecruiterDashboard() {
                 <Users size={18} className="text-emerald-600 dark:text-emerald-400" />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">My candidates</h3>
-                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{totalAssigned} assigned to you</p>
+                <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">Candidates for your jobs</h3>
+                <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{totalCandidates} matched or applied to your roles</p>
               </div>
             </div>
-            <Link
-              href="/dashboard/recruiter/candidates"
-              className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors"
-            >
+            <Link href="/dashboard/recruiter/candidates" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 flex items-center gap-1 transition-colors">
               View all <ChevronRight size={12} />
             </Link>
           </div>
-          {totalAssigned === 0 ? (
+          {totalCandidates === 0 ? (
             <div className="p-10 text-center">
               <div className="w-12 h-12 rounded-xl bg-surface-100 dark:bg-surface-700 flex items-center justify-center mx-auto mb-3">
                 <Users size={24} className="text-surface-400 dark:text-surface-500" />
               </div>
-              <p className="text-sm font-medium text-surface-600 dark:text-surface-300">No candidates assigned yet</p>
-              <p className="text-xs text-surface-400 dark:text-surface-400 mt-1">Ask your admin to assign candidates to you</p>
+              <p className="text-sm font-medium text-surface-600 dark:text-surface-300">No candidates yet</p>
+              <p className="text-xs text-surface-400 dark:text-surface-400 mt-1">Post jobs and run matching to see candidates here</p>
             </div>
           ) : (
             <div className="divide-y divide-surface-100 dark:divide-surface-700">
@@ -365,7 +398,7 @@ export default function RecruiterDashboard() {
                   href={`/dashboard/recruiter/candidates/${c.id}`}
                   className="flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 sm:py-3.5 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0 group-hover:bg-brand-500/20 dark:group-hover:bg-brand-500/30 transition-colors">
+                  <div className="w-10 h-10 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0">
                     {c.full_name?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -382,12 +415,9 @@ export default function RecruiterDashboard() {
                   <ChevronRight size={16} className="text-surface-300 dark:text-surface-500 group-hover:text-brand-500 dark:group-hover:text-brand-400 group-hover:translate-x-0.5 transition-all shrink-0" />
                 </Link>
               ))}
-              {totalAssigned > 6 && (
-                <Link
-                  href="/dashboard/recruiter/candidates"
-                  className="flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors"
-                >
-                  +{totalAssigned - 6} more <ChevronRight size={14} />
+              {totalCandidates > 6 && (
+                <Link href="/dashboard/recruiter/candidates" className="flex items-center justify-center gap-1.5 px-5 py-3 text-sm font-medium text-brand-600 dark:text-brand-400 hover:bg-surface-50/80 dark:hover:bg-surface-700/50 transition-colors">
+                  +{totalCandidates - 6} more <ChevronRight size={14} />
                 </Link>
               )}
             </div>

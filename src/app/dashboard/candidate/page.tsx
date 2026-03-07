@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { CardSkeleton, Skeleton, MatchCardSkeleton, ApplicationRowSkeleton, EmptyState, SearchInput, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
@@ -82,6 +83,7 @@ function SendPasswordReset() {
 }
 
 export default function CandidateDashboard() {
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [candidate, setCandidate] = useState<any>(null);
   const [matches, setMatches] = useState<any[]>([]);
@@ -97,6 +99,12 @@ export default function CandidateDashboard() {
   const [applicationStatusFilter, setApplicationStatusFilter] = useState<string>('all');
   const [notLinked, setNotLinked] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Sync tab from URL (e.g. /dashboard/candidate?tab=matches)
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t === 'matches' || t === 'applications' || t === 'resumes' || t === 'saved' || t === 'reminders' || t === 'overview') setTab(t);
+  }, [searchParams]);
 
   // Per-job AI brief (like recruiter)
   const [briefJobId, setBriefJobId] = useState<string | null>(null);

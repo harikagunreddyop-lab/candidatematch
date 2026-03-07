@@ -11,60 +11,70 @@ import {
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
   Zap, Menu, Link2, Plug, MessageCircle,
   BarChart3, Settings, Calendar, FileText, Shield, Building2,
+  Activity, Clock, GitBranch, CreditCard, Sparkles,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
 
+// B2B SaaS: Dashboard, Companies, System, Analytics, Settings; Jobs/Candidates for platform-wide view
 const adminNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/admin', icon: <LayoutDashboard size={18} /> },
-  { label: 'Candidates', href: '/dashboard/admin/candidates', icon: <Users size={18} /> },
-  { label: 'Applications', href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
-  { label: 'Pipeline', href: '/dashboard/admin/pipeline', icon: <Cpu size={18} /> },
-  { label: 'Jobs', href: '/dashboard/admin/jobs', icon: <Briefcase size={18} /> },
-  { label: 'Assignments', href: '/dashboard/admin/assignments', icon: <Link2 size={18} /> },
-  { label: 'Users', href: '/dashboard/admin/users', icon: <UserCircle size={18} /> },
   { label: 'Companies', href: '/dashboard/admin/companies', icon: <Building2 size={18} /> },
-  { label: 'Reports', href: '/dashboard/admin/reports', icon: <BarChart3 size={18} /> },
+  { label: 'Candidates', href: '/dashboard/admin/candidates', icon: <Users size={18} /> },
+  { label: 'Jobs', href: '/dashboard/admin/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Applications', href: '/dashboard/admin/applications', icon: <ClipboardList size={18} /> },
+  { label: 'Users', href: '/dashboard/admin/users', icon: <UserCircle size={18} /> },
+  { label: 'Health', href: '/dashboard/admin/system/health', icon: <Activity size={18} /> },
+  { label: 'Connectors', href: '/dashboard/admin/system/connectors', icon: <Link2 size={18} /> },
+  { label: 'Cron', href: '/dashboard/admin/system/cron', icon: <Clock size={18} /> },
+  { label: 'Analytics', href: '/dashboard/admin/reports', icon: <BarChart3 size={18} /> },
   { label: 'Audit log', href: '/dashboard/admin/audit', icon: <FileText size={18} /> },
-  { label: 'Interviews', href: '/dashboard/admin/interviews', icon: <Calendar size={18} /> },
   { label: 'Messages', href: '/dashboard/admin/messages', icon: <MessageCircle size={18} /> },
   { label: 'Compliance', href: '/dashboard/admin/compliance', icon: <Shield size={18} /> },
   { label: 'Settings', href: '/dashboard/admin/settings', icon: <Settings size={18} /> },
 ];
 
+// Blueprint: Dashboard, Jobs, Candidates, Pipeline, Team, Activity, Analytics, Messages, Settings, Billing
 const companyAdminNav: NavItem[] = [
-  { label: 'Dashboard',   href: '/dashboard/company',             icon: <LayoutDashboard size={18} /> },
-  { label: 'Team',        href: '/dashboard/company/team',        icon: <Users size={18} /> },
-  { label: 'Jobs',        href: '/dashboard/company/jobs',        icon: <Briefcase size={18} /> },
-  { label: 'Analytics',   href: '/dashboard/company/analytics',   icon: <BarChart3 size={18} /> },
-  { label: 'Activity',    href: '/dashboard/company/activity',    icon: <FileText size={18} /> },
-  { label: 'Messages',    href: '/dashboard/company/messages',    icon: <MessageCircle size={18} /> },
-  { label: 'Settings',    href: '/dashboard/company/settings',    icon: <Settings size={18} /> },
+  { label: 'Dashboard',   href: '/dashboard/company',                  icon: <LayoutDashboard size={18} /> },
+  { label: 'Jobs',        href: '/dashboard/company/jobs',             icon: <Briefcase size={18} /> },
+  { label: 'Candidates',  href: '/dashboard/company/candidates',      icon: <Users size={18} /> },
+  { label: 'Pipeline',    href: '/dashboard/company/pipeline',        icon: <GitBranch size={18} /> },
+  { label: 'Team',        href: '/dashboard/company/team',             icon: <Users size={18} /> },
+  { label: 'Activity',    href: '/dashboard/company/activity',         icon: <Activity size={18} /> },
+  { label: 'Analytics',   href: '/dashboard/company/analytics',       icon: <BarChart3 size={18} /> },
+  { label: 'Messages',    href: '/dashboard/company/messages',        icon: <MessageCircle size={18} /> },
+  { label: 'Settings',    href: '/dashboard/company/settings',        icon: <Settings size={18} /> },
+  { label: 'Billing',     href: '/dashboard/company/settings/billing', icon: <CreditCard size={18} /> },
 ];
 
+// Blueprint: Dashboard, Jobs, Candidates, Applications, Pipeline, Reports, Integrations, Messages
 const recruiterNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/recruiter', icon: <LayoutDashboard size={18} /> },
-  { label: 'Job search', href: '/dashboard/recruiter/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Jobs', href: '/dashboard/recruiter/jobs', icon: <Briefcase size={18} /> },
   { label: 'Candidates', href: '/dashboard/recruiter/candidates', icon: <Users size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
-  { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <Cpu size={18} /> },
-  { label: 'Activity', href: '/dashboard/company/activity', icon: <FileText size={18} /> },
-  { label: 'Talent report', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
+  { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <GitBranch size={18} /> },
+  { label: 'Reports', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
   { label: 'Integrations', href: '/dashboard/recruiter/integrations', icon: <Plug size={18} /> },
   { label: 'Messages', href: '/dashboard/recruiter/messages', icon: <MessageCircle size={18} /> },
 ];
 
+// Blueprint: Dashboard, Matches, Job search, Applications, Profile, Resume, Skill report, Interviews, Extension, Messages, Settings
 const candidateNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/candidate', icon: <LayoutDashboard size={18} /> },
-  { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
+  { label: 'Matches', href: '/dashboard/candidate/matches', icon: <Sparkles size={18} /> },
   { label: 'Job search', href: '/dashboard/candidate/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Applications', href: '/dashboard/candidate/applications', icon: <ClipboardList size={18} /> },
+  { label: 'My profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
+  { label: 'Resume', href: '/dashboard/candidate/profile/resume', icon: <FileText size={18} /> },
   { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
   { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
-  { label: 'My profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
-  { label: 'Settings', href: '/dashboard/candidate/settings', icon: <Settings size={18} /> },
+  { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
+  { label: 'Settings', href: '/dashboard/candidate/settings', icon: <Settings size={18} /> },
 ];
 
 export default function DashboardLayout({ children, profile }: { children: React.ReactNode; profile: DashboardProfile }) {

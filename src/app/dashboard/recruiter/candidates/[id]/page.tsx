@@ -198,17 +198,45 @@ export default function RecruiterCandidateDetail() {
 
   const load = useCallback(async (reinitForm = true) => {
     setLoading(true);
+    setNotAssigned(false);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
 
-    const { data: assignment } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', user.id)
-      .eq('candidate_id', id)
+    const { data: profile } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', user.id)
       .single();
 
-    if (!assignment) { setNotAssigned(true); setLoading(false); return; }
+    if (!profile?.company_id) {
+      setNotAssigned(true);
+      setLoading(false);
+      return;
+    }
+
+    const { data: companyJobs } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('company_id', profile.company_id);
+
+    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    if (jobIds.length === 0) {
+      setNotAssigned(true);
+      setLoading(false);
+      return;
+    }
+
+    const [matchCheck, appCheck] = await Promise.all([
+      supabase.from('candidate_job_matches').select('id').eq('candidate_id', id).in('job_id', jobIds).limit(1),
+      supabase.from('applications').select('id').eq('candidate_id', id).in('job_id', jobIds).limit(1),
+    ]);
+
+    const hasAccess = (matchCheck.data?.length ?? 0) > 0 || (appCheck.data?.length ?? 0) > 0;
+    if (!hasAccess) {
+      setNotAssigned(true);
+      setLoading(false);
+      return;
+    }
 
     const { data: myProfile } = await supabase.from('profiles').select('resume_generation_allowed').eq('id', user.id).single();
     setResumeGenerationAllowed(myProfile?.resume_generation_allowed === true);
@@ -600,7 +628,7 @@ export default function RecruiterCandidateDetail() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (notAssigned) return (
     <div className="text-center py-20 space-y-3">
-      <p className="text-surface-500 text-sm">This candidate is not assigned to you.</p>
+      <p className="text-surface-500 text-sm">This candidate is not matched or applied to any of your company&apos;s jobs.</p>
       <button onClick={() => router.back()} className="btn-secondary text-sm">Go Back</button>
     </div>
   );

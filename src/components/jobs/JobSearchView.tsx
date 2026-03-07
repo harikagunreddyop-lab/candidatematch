@@ -19,9 +19,11 @@ const SOURCES = [
 
 interface JobSearchViewProps {
   role: 'candidate' | 'recruiter';
+  /** When set (e.g. recruiter), only show jobs for this company. */
+  companyId?: string | null;
 }
 
-export function JobSearchView({ role }: JobSearchViewProps) {
+export function JobSearchView({ role, companyId }: JobSearchViewProps) {
   const supabase = createClient();
   const [jobs, setJobs] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -45,6 +47,9 @@ export function JobSearchView({ role }: JobSearchViewProps) {
       .eq('is_active', true)
       .order('scraped_at', { ascending: false });
 
+    if (companyId) {
+      listQ = listQ.eq('company_id', companyId);
+    }
     if (sourceFilter !== 'all') listQ = listQ.eq('source', sourceFilter);
     if (debouncedQuery.trim()) {
       const q = `%${debouncedQuery.trim()}%`;
@@ -63,7 +68,7 @@ export function JobSearchView({ role }: JobSearchViewProps) {
       setTotal(count ?? 0);
     }
     setLoading(false);
-  }, [supabase, page, debouncedQuery, locationFilter, sourceFilter]);
+  }, [supabase, page, debouncedQuery, locationFilter, sourceFilter, companyId]);
 
   useEffect(() => {
     load();
@@ -87,10 +92,10 @@ export function JobSearchView({ role }: JobSearchViewProps) {
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--role-accent)]/8 via-transparent to-transparent" />
         <div className="relative px-4 sm:px-6 py-10">
           <h1 className="text-2xl sm:text-3xl font-bold text-surface-100 font-display tracking-tight">
-            {role === 'candidate' ? 'Find your next role' : 'Browse jobs'}
+            {role === 'candidate' ? 'Find your next role' : companyId ? "Your company's jobs" : 'Browse jobs'}
           </h1>
           <p className="text-surface-400 mt-1 text-sm">
-            {total > 0 ? `${total.toLocaleString()} active jobs` : 'Search across all job boards'}
+            {total > 0 ? `${total.toLocaleString()} active jobs` : companyId ? 'Post jobs from Company dashboard' : 'Search across all job boards'}
           </p>
 
           <div className="mt-6 space-y-3">

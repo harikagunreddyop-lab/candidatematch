@@ -32,13 +32,18 @@ export async function getProfileWithRole(): Promise<ProfileWithRole | null> {
       .single();
     if (!data) return null;
 
+    // Normalize: profile_roles view exposes legacy_role, but Profile/ProfileWithRole expect role
+    const raw = data as Record<string, unknown>;
+    const role = (raw.legacy_role ?? raw.role ?? 'candidate') as Role;
+    const profileWithRole = { ...raw, role, company: undefined as Company | undefined } as ProfileWithRole;
+
     let company: Company | undefined;
-    if (data.company_id) {
+    if (raw.company_id) {
       const { data: co } = await supabase
-        .from('companies').select('*').eq('id', data.company_id).single();
+        .from('companies').select('*').eq('id', raw.company_id).single();
       company = co || undefined;
     }
-    return { ...data, company } as ProfileWithRole;
+    return { ...profileWithRole, company } as ProfileWithRole;
   } catch { return null; }
 }
 

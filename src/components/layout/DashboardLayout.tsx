@@ -4,17 +4,18 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
-import { cn } from '@/utils/helpers';
 import type { DashboardProfile } from '@/types';
 import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
   Zap, Menu, Link2, Plug, MessageCircle,
   BarChart3, Settings, Calendar, FileText, Shield, Building2,
-  Activity, Clock, GitBranch, CreditCard, Sparkles,
+  Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { DashboardContent } from '@/components/layout/DashboardContent';
+import { cn } from '@/utils/helpers';
 
 interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
 
@@ -71,6 +72,7 @@ const candidateNav: NavItem[] = [
   { label: 'My profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
   { label: 'Resume', href: '/dashboard/candidate/profile/resume', icon: <FileText size={18} /> },
   { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
+  { label: 'ATS checker', href: '/dashboard/candidate/tools/ats-checker', icon: <FileSearch size={18} /> },
   { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
   { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
@@ -351,7 +353,7 @@ export default function DashboardLayout({ children, profile }: { children: React
         </header>
 
         <main className="relative flex-1 p-4 sm:p-5 lg:p-8 overflow-x-hidden min-w-0 w-full">
-          {children}
+          <DashboardContent>{children}</DashboardContent>
         </main>
       </div>
     </div>

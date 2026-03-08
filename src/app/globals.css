@@ -5,6 +5,7 @@
 @tailwind components;
 @tailwind utilities;
 
+@import '../styles/design-tokens.css';
 @import '../styles/role-themes.css';
 
 :root {
@@ -616,4 +617,40 @@ input:focus, textarea:focus, select:focus {
 }
 .animate-float {
   animation: float 4s ease-in-out infinite;
+}
+
+/* =============================================================================
+   PRODUCT POLISH — micro-interactions (Linear/Notion/Vercel-grade)
+   ============================================================================= */
+@layer components {
+  /* Card hover: subtle scale and shadow */
+  .card-hover-policy {
+    @apply transition-all duration-200 ease-out;
+  }
+  .card-hover-policy:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.25);
+  }
+  .card-hover-policy:active {
+    transform: translateY(0);
+  }
+
+  /* Button press feedback */
+  .btn-press-policy:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Interactive element border glow on focus/hover */
+  .focus-border-glow:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--surface-bg, #0a0a0f), 0 0 0 4px var(--role-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-hover-policy:hover,
+  .card-hover-policy:active,
+  .btn-press-policy:active {
+    transform: none;
+  }
 }

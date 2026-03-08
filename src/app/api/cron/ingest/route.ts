@@ -19,6 +19,9 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { structuredLog } from '@/lib/logger';
 import { validateCronAuth } from '@/lib/security';
 import { syncAllConnectors } from '@/ingest/sync-v2';
+import { syncAllConnectorsV3, type SyncV3Result } from '@/ingest/sync-v3';
+
+const USE_V3 = process.env.INGEST_USE_V3 === 'true';
 
 export const maxDuration = 300;
 
@@ -38,7 +41,7 @@ export async function GET(req: NextRequest) {
   }
 
   const startedAt = Date.now();
-  structuredLog('info', 'cron ingest run started (v2 engine)');
+  structuredLog('info', USE_V3 ? 'cron ingest run started (v3 engine)' : 'cron ingest run started (v2 engine)');
 
   const supabase = createServiceClient();
 
@@ -60,18 +63,27 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const results = await syncAllConnectors();
+    const results = USE_V3 ? await syncAllConnectorsV3() : await syncAllConnectors();
 
     const elapsed = Date.now() - startedAt;
 
     const totals = results.reduce(
-      (acc, r) => ({
-        fetched: acc.fetched + r.fetched,
-        upserted: acc.upserted + r.upserted,
-        promoted: acc.promoted + r.promoted,
-        skipped: acc.skipped + r.skipped,
-      }),
-      { fetched: 0, upserted: 0, promoted: 0, skipped: 0 }
+      (acc, r) => {
+        const v3 = r as SyncV3Result;
+        const rev = typeof v3.rejectedInvalid === 'number' ? v3.rejectedInvalid : 0;
+        const rsp = typeof v3.rejectedSpam === 'number' ? v3.rejectedSpam : 0;
+        const rlq = typeof v3.rejectedLowQuality === 'number' ? v3.rejectedLowQuality : 0;
+        return {
+          fetched: acc.fetched + r.fetched,
+          upserted: acc.upserted + r.upserted,
+          promoted: acc.promoted + r.promoted,
+          skipped: acc.skipped + r.skipped,
+          rejectedInvalid: acc.rejectedInvalid + rev,
+          rejectedSpam: acc.rejectedSpam + rsp,
+          rejectedLowQuality: acc.rejectedLowQuality + rlq,
+        };
+      },
+      { fetched: 0, upserted: 0, promoted: 0, skipped: 0, rejectedInvalid: 0, rejectedSpam: 0, rejectedLowQuality: 0 }
     );
 
     if (runId) {

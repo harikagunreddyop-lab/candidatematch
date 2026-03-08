@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
     const canApply = await hasFeature(supabase, authResult.user.id, profile.role, 'candidate_apply_jobs', true);
     if (!canApply) return NextResponse.json({ error: 'Apply access is restricted' }, { status: 403 });
   } else if (profile.role === 'recruiter') {
-    const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', profile.id).single();
-    if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { data: job } = await supabase.from('jobs').select('id').eq('id', jobId).eq('posted_by', profile.id).single();
+    if (!job) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { data: match } = await supabase
@@ -203,8 +203,8 @@ export async function PATCH(req: NextRequest) {
   const { data: app } = await supabase.from('applications').select('candidate_id, job_id, status').eq('id', appId).single();
   if (!app) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   if (profile.role === 'recruiter') {
-    const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', app.candidate_id).eq('recruiter_id', profile.id).single();
-    if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { data: job } = await supabase.from('jobs').select('id').eq('id', app.job_id).eq('posted_by', profile.id).single();
+    if (!job) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const fromStatus = app.status;

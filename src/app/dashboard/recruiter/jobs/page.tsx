@@ -7,14 +7,14 @@ import Link from 'next/link';
 import { Briefcase } from 'lucide-react';
 
 export default function RecruiterJobsPage() {
-  const [companyId, setCompanyId] = useState<string | null | undefined>(undefined);
+  const [userId, setUserId] = useState<string | null | undefined>(undefined);
   const supabase = createClient();
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setCompanyId(null);
+        setUserId(null);
         return;
       }
       const { data: profile } = await supabase
@@ -22,11 +22,15 @@ export default function RecruiterJobsPage() {
         .select('company_id')
         .eq('id', user.id)
         .single();
-      setCompanyId(profile?.company_id ?? null);
+      if (!profile?.company_id) {
+        setUserId(null);
+        return;
+      }
+      setUserId(user.id);
     })();
   }, [supabase]);
 
-  if (companyId === undefined) {
+  if (userId === undefined) {
     return (
       <div className="flex justify-center py-20">
         <div className="animate-spin w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full" />
@@ -34,7 +38,7 @@ export default function RecruiterJobsPage() {
     );
   }
 
-  if (companyId === null) {
+  if (userId === null) {
     return (
       <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
         <Briefcase className="w-12 h-12 text-amber-500 mx-auto mb-4" />
@@ -47,5 +51,5 @@ export default function RecruiterJobsPage() {
     );
   }
 
-  return <JobSearchView role="recruiter" companyId={companyId} />;
+  return <JobSearchView role="recruiter" postedByUserId={userId} />;
 }

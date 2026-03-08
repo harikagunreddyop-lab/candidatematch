@@ -189,20 +189,26 @@ export async function GET(req: NextRequest) {
         .order('full_name');
       candidateRows = data || [];
     } else {
-      // Recruiter: only their assigned candidates
-      const { data: assignments } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('candidate_id')
-        .eq('recruiter_id', user.id);
-
-      const ids = (assignments || []).map((a: any) => a.candidate_id);
-      if (ids.length > 0) {
-        const { data } = await supabase
-          .from('candidates')
-          .select('id, full_name, email, primary_title, active')
-          .in('id', ids)
-          .order('full_name');
-        candidateRows = data || [];
+      // Recruiter: candidates matched to or applied to MY jobs (posted_by = me)
+      const { data: myJobs } = await supabase.from('jobs').select('id').eq('posted_by', user.id);
+      const jobIds = (myJobs || []).map((j: any) => j.id);
+      if (jobIds.length > 0) {
+        const [matchRes, appRes] = await Promise.all([
+          supabase.from('candidate_job_matches').select('candidate_id').in('job_id', jobIds),
+          supabase.from('applications').select('candidate_id').in('job_id', jobIds),
+        ]);
+        const ids = Array.from(new Set([
+          ...(matchRes.data || []).map((m: any) => m.candidate_id),
+          ...(appRes.data || []).map((a: any) => a.candidate_id),
+        ]));
+        if (ids.length > 0) {
+          const { data } = await supabase
+            .from('candidates')
+            .select('id, full_name, email, primary_title, active')
+            .in('id', ids)
+            .order('full_name');
+          candidateRows = data || [];
+        }
       }
     }
 
@@ -224,16 +230,21 @@ export async function GET(req: NextRequest) {
 
   // Fetch the specific candidate
   if (role === 'recruiter') {
-    const { data: assignment } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', user.id)
-      .eq('candidate_id', candidateId)
-      .maybeSingle();
-
-    if (!assignment) {
+    const { data: myJobs } = await supabase.from('jobs').select('id').eq('posted_by', user.id);
+    const jobIds = (myJobs || []).map((j: any) => j.id);
+    if (jobIds.length === 0) {
       return NextResponse.json(
-        { error: 'Candidate not assigned to you' },
+        { error: 'Candidate not in your jobs' },
+        { status: 403, headers: corsHeaders(req) },
+      );
+    }
+    const [matchRow, appRow] = await Promise.all([
+      supabase.from('candidate_job_matches').select('id').eq('candidate_id', candidateId).in('job_id', jobIds).limit(1).maybeSingle(),
+      supabase.from('applications').select('id').eq('candidate_id', candidateId).in('job_id', jobIds).limit(1).maybeSingle(),
+    ]);
+    if (!matchRow.data && !appRow.data) {
+      return NextResponse.json(
+        { error: 'Candidate not matched or applied to your jobs' },
         { status: 403, headers: corsHeaders(req) },
       );
     }

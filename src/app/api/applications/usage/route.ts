@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireApiAuth } from '@/lib/api-auth';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,13 +51,10 @@ export async function GET(req: NextRequest) {
 
   if (profile.role === 'recruiter' || profile.role === 'admin') {
     if (!candidateId) return NextResponse.json({ error: 'candidate_id required for recruiter/admin' }, { status: 400 });
-    const { data: a } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('recruiter_id')
-      .eq('candidate_id', candidateId)
-      .eq('recruiter_id', profile.id)
-      .single();
-    if (!a && profile.role === 'recruiter') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (profile.role === 'recruiter') {
+      const ok = await canAccessCandidate(authResult, candidateId, supabase);
+      if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
     const { count } = await supabase
       .from('applications')
       .select('id', { count: 'exact', head: true })

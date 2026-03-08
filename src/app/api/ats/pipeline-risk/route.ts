@@ -3,7 +3,7 @@
  * Elite Part 3 — Pipeline risk detection
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRecruiterOrAdmin } from '@/lib/api-auth';
+import { requireRecruiterOrAdmin, canAccessCandidate } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { detectPipelineRisks } from '@/lib/ai';
 
@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
 
   const service = createServiceClient();
   if (auth.profile.role === 'recruiter') {
-    const { data: a } = await service.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', auth.profile.id).single();
-    if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const ok = await canAccessCandidate(auth, candidateId, service);
+    if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const { data: candidate } = await service.from('candidates').select('full_name').eq('id', candidateId).single();

@@ -3,6 +3,28 @@ import { useEffect, useRef } from 'react';
 import { cn, statusColor, fitScoreColor } from '@/utils/helpers';
 import { X, Check, AlertCircle, Info, Loader2 } from 'lucide-react';
 
+// Design system components (Linear/Notion/Vercel-grade)
+export { Button } from './Button';
+export { Card, CardHeader, CardTitle, CardContent } from './Card';
+export { Input } from './Input';
+export { MetricCard } from './MetricCard';
+export { FadeIn, SlideIn, StaggerChildren, staggerItem } from './animations';
+export { ErrorState } from './ErrorState';
+export {
+  EmptyJobsState,
+  EmptyMatchesState,
+  EmptyApplicationsState,
+  EmptyTeamState,
+  EmptyActivityState,
+  EmptyCompaniesState,
+  EmptyMessagesState,
+  EmptyResumesState,
+  EmptySavedJobsState,
+  EmptyCandidatesState,
+  EmptySkillReportState,
+} from './EmptyStates';
+export { Toaster } from './Toast';
+
 // ─── Modal ───────────────────────────────────────────────────────────────────
 export function Modal({ open, onClose, title, children, size = 'md' }: {
   open: boolean; onClose: () => void; title: string; children: React.ReactNode;
@@ -33,7 +55,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-5">
           <h2 id="modal-title" className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 dark:text-surface-300 hover:text-surface-600 dark:hover:text-surface-100 transition-colors">
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 dark:text-surface-300 hover:text-surface-600 dark:hover:text-surface-100 transition-colors" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
@@ -85,6 +107,41 @@ export function PageLoader() {
         <Spinner size={32} />
         <p className="text-sm text-surface-500 dark:text-surface-300">Loading...</p>
       </div>
+    </div>
+  );
+}
+
+/** Skeleton-based page loader for list/dashboard views */
+export function PageLoaderSkeleton({ type = 'cards' }: { type?: 'cards' | 'list' | 'table' }) {
+  if (type === 'cards') {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <CardSkeleton key={i} />
+        ))}
+      </div>
+    );
+  }
+  if (type === 'list') {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-surface-700 bg-surface-100/50">
+            <Skeleton className="h-10 w-10 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2 min-w-0">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-0">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <ApplicationRowSkeleton key={i} />
+      ))}
     </div>
   );
 }

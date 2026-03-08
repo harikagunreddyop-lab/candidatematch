@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireApiAuth } from '@/lib/api-auth';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { hasFeature } from '@/lib/feature-flags-server';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { isValidUuid } from '@/lib/security';
@@ -88,15 +88,10 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServiceClient();
 
-    // Access control: recruiter must be assigned; candidate must own the candidate record; admins always allowed.
+    // Access control: recruiter must have candidate in their jobs (match/application); candidate must own the candidate record; admins always allowed.
     if (authResult.profile.role === 'recruiter') {
-      const { data: a } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('recruiter_id')
-        .eq('candidate_id', candidate_id)
-        .eq('recruiter_id', authResult.profile.id)
-        .maybeSingle();
-      if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      const ok = await canAccessCandidate(authResult, candidate_id, supabase);
+      if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     } else if (authResult.profile.role === 'candidate') {
       const { data: c } = await supabase
         .from('candidates')

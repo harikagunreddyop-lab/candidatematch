@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, Spinner, EmptyState } from '@/components/ui';
+import Link from 'next/link';
 import { Briefcase, MapPin, Building2, ExternalLink, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
@@ -21,9 +22,11 @@ interface JobSearchViewProps {
   role: 'candidate' | 'recruiter';
   /** When set (e.g. recruiter), only show jobs for this company. */
   companyId?: string | null;
+  /** When set (recruiter), only show jobs posted by this user (B2B: "my jobs"). Takes precedence over companyId for recruiter. */
+  postedByUserId?: string | null;
 }
 
-export function JobSearchView({ role, companyId }: JobSearchViewProps) {
+export function JobSearchView({ role, companyId, postedByUserId }: JobSearchViewProps) {
   const supabase = createClient();
   const [jobs, setJobs] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -47,7 +50,9 @@ export function JobSearchView({ role, companyId }: JobSearchViewProps) {
       .eq('is_active', true)
       .order('scraped_at', { ascending: false });
 
-    if (companyId) {
+    if (postedByUserId) {
+      listQ = listQ.eq('posted_by', postedByUserId);
+    } else if (companyId) {
       listQ = listQ.eq('company_id', companyId);
     }
     if (sourceFilter !== 'all') listQ = listQ.eq('source', sourceFilter);
@@ -68,7 +73,7 @@ export function JobSearchView({ role, companyId }: JobSearchViewProps) {
       setTotal(count ?? 0);
     }
     setLoading(false);
-  }, [supabase, page, debouncedQuery, locationFilter, sourceFilter, companyId]);
+  }, [supabase, page, debouncedQuery, locationFilter, sourceFilter, companyId, postedByUserId]);
 
   useEffect(() => {
     load();
@@ -92,10 +97,10 @@ export function JobSearchView({ role, companyId }: JobSearchViewProps) {
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--role-accent)]/8 via-transparent to-transparent" />
         <div className="relative px-4 sm:px-6 py-10">
           <h1 className="text-2xl sm:text-3xl font-bold text-surface-100 font-display tracking-tight">
-            {role === 'candidate' ? 'Find your next role' : companyId ? "Your company's jobs" : 'Browse jobs'}
+            {role === 'candidate' ? 'Find your next role' : postedByUserId ? 'My jobs' : companyId ? "Your company's jobs" : 'Browse jobs'}
           </h1>
           <p className="text-surface-400 mt-1 text-sm">
-            {total > 0 ? `${total.toLocaleString()} active jobs` : companyId ? 'Post jobs from Company dashboard' : 'Search across all job boards'}
+            {total > 0 ? `${total.toLocaleString()} active jobs` : postedByUserId ? 'Post a job to see it here' : companyId ? 'Post jobs from Company dashboard' : 'Search across all job boards'}
           </p>
 
           <div className="mt-6 space-y-3">
@@ -155,7 +160,7 @@ export function JobSearchView({ role, companyId }: JobSearchViewProps) {
           <>
             <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
               {jobs.map((job) => (
-                <JobCard key={job.id} job={job} />
+                <JobCard key={job.id} job={job} role={role} />
               ))}
             </div>
 
@@ -189,9 +194,55 @@ export function JobSearchView({ role, companyId }: JobSearchViewProps) {
   );
 }
 
-function JobCard({ job }: { job: any }) {
+function JobCard({ job, role }: { job: any; role: 'candidate' | 'recruiter' }) {
   const applyUrl = job.url || '#';
   const isExternal = applyUrl.startsWith('http');
+
+  if (role === 'recruiter') {
+    return (
+      <Link
+        href={`/dashboard/recruiter/jobs/${job.id}`}
+        className={cn(
+          'group block rounded-2xl border border-surface-700/60 bg-surface-800/50 p-5',
+          'hover:border-[var(--role-accent)]/40 hover:bg-surface-800/80 transition-all duration-200'
+        )}
+      >
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-surface-100 truncate group-hover:text-[var(--role-accent)] transition-colors">
+              {job.title || 'Untitled'}
+            </h3>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-surface-400">
+              <span className="flex items-center gap-1">
+                <Building2 size={12} />
+                {job.company || '—'}
+              </span>
+              {job.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin size={12} />
+                  {job.location}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-[10px] px-2 py-0.5 rounded-md bg-surface-700/80 text-surface-400 uppercase font-medium">
+                {job.source || 'unknown'}
+              </span>
+              {job.remote_type && (
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-surface-700/80 text-surface-400">
+                  {job.remote_type}
+                </span>
+              )}
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-[var(--role-accent)] text-white shrink-0">
+            View candidates
+            <ChevronRight size={14} />
+          </span>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <article

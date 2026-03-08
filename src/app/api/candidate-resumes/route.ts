@@ -3,7 +3,7 @@
 // =============================================================================
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireApiAuth } from '@/lib/api-auth';
+import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { runMatching } from '@/lib/matching';
 
 export const dynamic = 'force-dynamic';
@@ -22,8 +22,11 @@ async function assertCanAccessCandidate(req: NextRequest, candidateId: string): 
     if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     return null;
   }
-  const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', authResult.profile.id).single();
-  if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (authResult.profile.role === 'recruiter') {
+    const ok = await canAccessCandidate(authResult, candidateId, supabase);
+    if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return null;
+  }
   return null;
 }
 

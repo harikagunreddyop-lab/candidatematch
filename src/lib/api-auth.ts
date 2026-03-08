@@ -109,10 +109,29 @@ export async function canAccessCandidate(
     return !!c;
   }
   if (role === 'recruiter') {
-    const { data } = await serviceSupabase
-      .from('recruiter_candidate_assignments')
-      .select('recruiter_id').eq('candidate_id', candidateId).eq('recruiter_id', auth.profile.id).single();
-    return !!data;
+    // B2B: recruiter can access candidate if candidate has match or application for a job they posted
+    const { data: myJobs } = await serviceSupabase
+      .from('jobs')
+      .select('id')
+      .eq('posted_by', auth.profile.id);
+    const jobIds = (myJobs || []).map((j: { id: string }) => j.id);
+    if (jobIds.length === 0) return false;
+    const { data: match } = await serviceSupabase
+      .from('candidate_job_matches')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .in('job_id', jobIds)
+      .limit(1)
+      .maybeSingle();
+    if (match) return true;
+    const { data: app } = await serviceSupabase
+      .from('applications')
+      .select('id')
+      .eq('candidate_id', candidateId)
+      .in('job_id', jobIds)
+      .limit(1)
+      .maybeSingle();
+    return !!app;
   }
   return false;
 }

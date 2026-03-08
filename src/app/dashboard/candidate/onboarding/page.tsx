@@ -389,7 +389,7 @@ export default function CandidateOnboardingPage() {
       {authStatus === 'authenticated' && step === 5 && (
         <div className={card}>
           <h1 className={heading}>You&apos;re All Set! 🎉</h1>
-          <p className={subtitle}>Here&apos;s a summary of your profile</p>
+          <p className={subtitle}>Here&apos;s a summary of your profile. Complete onboarding to see your first job matches.</p>
           <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4">
             <div className="flex justify-between"><span className="text-neutral-500">Name</span><span className="font-medium">{fullName}</span></div>
             <div className="flex justify-between"><span className="text-neutral-500">Title</span><span className="font-medium">{primaryTitle || '—'}</span></div>
@@ -399,11 +399,16 @@ export default function CandidateOnboardingPage() {
             <div className="flex justify-between"><span className="text-neutral-500">Remote</span><span className="font-medium">{remote ? 'Yes' : 'No'}</span></div>
             <div className="flex justify-between"><span className="text-neutral-500">Resume</span><span className="font-medium">{resumeUploaded ? '✅ Uploaded' : 'Not uploaded'}</span></div>
           </div>
-          <div className="flex justify-between mt-6">
-            <button className={btnSecondary} onClick={back}>← Back</button>
-            <button className={btnPrimary} onClick={complete} disabled={saving}>
-              {saving ? 'Launching...' : 'Complete & Go to Dashboard →'}
-            </button>
+          <div className="flex flex-col sm:flex-row justify-between gap-4 mt-6">
+            <a href="/dashboard/candidate/matches" className={`${btn} bg-emerald-600 hover:bg-emerald-700 text-white text-center`}>
+              View your matches →
+            </a>
+            <div className="flex gap-3">
+              <button className={btnSecondary} onClick={back}>← Back</button>
+              <button className={btnPrimary} onClick={complete} disabled={saving}>
+                {saving ? 'Launching...' : 'Complete & Go to Dashboard →'}
+              </button>
+            </div>
           </div>
         </div>
       )}

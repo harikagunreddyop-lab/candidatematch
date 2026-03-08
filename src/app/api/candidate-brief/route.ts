@@ -1,7 +1,7 @@
 // src/app/api/candidate-brief/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
-import { requireRecruiterOrAdmin } from '@/lib/api-auth';
+import { requireRecruiterOrAdmin, canAccessCandidate } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient();
   if (profile.role === 'recruiter') {
-    const { data: a } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidate_id).eq('recruiter_id', profile.id).single();
-    if (!a) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const ok = await canAccessCandidate(authResult, candidate_id, supabase);
+    if (!ok) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();

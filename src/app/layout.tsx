@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { RegisterSW } from '@/components/RegisterSW';
 import { PostHogProvider } from '@/components/PostHogProvider';
+import { Toaster } from '@/components/ui/Toast';
 
 export const metadata: Metadata = {
   title: 'CandidateMatch',
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <PostHogProvider>
           <RegisterSW />
+          <Toaster />
           <ThemeProvider>{children}</ThemeProvider>
         </PostHogProvider>
       </body>

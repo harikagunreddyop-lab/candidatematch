@@ -214,12 +214,13 @@ export default function RecruiterCandidateDetail() {
       return;
     }
 
-    const { data: companyJobs } = await supabase
+    // B2B: only MY jobs (posted_by = me)
+    const { data: myJobs } = await supabase
       .from('jobs')
       .select('id')
-      .eq('company_id', profile.company_id);
+      .eq('posted_by', user.id);
 
-    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    const jobIds = (myJobs || []).map((j: any) => j.id);
     if (jobIds.length === 0) {
       setNotAssigned(true);
       setLoading(false);
@@ -256,8 +257,8 @@ export default function RecruiterCandidateDetail() {
       merged = { ...cand, full_name: profile?.name ?? cand.full_name, email: profile?.email ?? cand.email, phone: profile?.phone ?? cand.phone };
     }
     setCandidate(merged);
-    setMatches(matchRes.data || []);
-    setApplications(appRes.data || []);
+    setMatches((matchRes.data || []).filter((m: any) => jobIds.includes(m.job_id)));
+    setApplications((appRes.data || []).filter((a: any) => jobIds.includes(a.job_id)));
     setResumes(resumeRes.data || []);
     setCandidateResumes(candResumeRes.data || []);
     if (merged && reinitForm) initForm(merged);

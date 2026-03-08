@@ -42,12 +42,14 @@ export default function RecruiterCandidatesPage() {
     }
     setNoCompany(false);
 
-    const { data: companyJobs } = await supabase
+    // B2B: only MY jobs (posted_by = me)
+    const { data: myJobs } = await supabase
       .from('jobs')
       .select('id')
-      .eq('company_id', profile.company_id);
+      .eq('posted_by', user.id)
+      .eq('is_active', true);
 
-    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    const jobIds = (myJobs || []).map((j: any) => j.id);
     if (jobIds.length === 0) {
       setCandidates([]);
       setLoading(false);

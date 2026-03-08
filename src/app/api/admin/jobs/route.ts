@@ -21,7 +21,8 @@ export async function GET(req: NextRequest) {
   let listQ = supabase
     .from('jobs')
     .select('*')
-    .order('scraped_at', { ascending: false });
+    .order('scraped_at', { ascending: false })
+    .order('id', { ascending: false });
 
   let countQ = supabase
     .from('jobs')

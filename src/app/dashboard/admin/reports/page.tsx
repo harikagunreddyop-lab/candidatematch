@@ -130,12 +130,12 @@ export default function AdminReportsPage() {
         .select('*, candidate:candidates(id, full_name, primary_title, updated_at), job:jobs(id, title, company, remote_type, job_type)')
         .order('updated_at', { ascending: false }),
       // Matches for avg score and talent/fit analysis (job_id, missing_keywords)
-      supabase.from('candidate_job_matches').select('fit_score, candidate_id, job_id, missing_keywords'),
+      supabase.from('candidate_job_matches').select('fit_score, ats_score, candidate_id, job_id, missing_keywords', { count: 'exact' }).order('fit_score', { ascending: false }).limit(5000),
       // Assignments with recruiter info
       supabase.from('recruiter_candidate_assignments')
         .select('recruiter_id, candidate_id, recruiter:profiles!recruiter_id(id, name, email)'),
-      // Jobs for heatmap
-      supabase.from('jobs').select('id, title, company, remote_type, job_type, salary_min, salary_max, is_active').eq('is_active', true),
+      // Jobs for heatmap (count for KPI, enough rows for breakdowns)
+      supabase.from('jobs').select('id, title, company, remote_type, job_type, salary_min, salary_max, is_active', { count: 'exact' }).eq('is_active', true).limit(10000),
       // Recruiters
       supabase.from('profiles').select('id, name, email').eq('role', 'recruiter'),
     ]);
@@ -149,10 +149,25 @@ export default function AdminReportsPage() {
 
     const allApps = appRes.data || [];
     setAllApplications(allApps);
-    const allMatches = matchRes.data || [];
+    let allMatches = matchRes.data || [];
+    const matchCount = matchRes.count ?? allMatches.length;
     const allAssignments = assignRes.data || [];
-    const allJobs = jobRes.data || [];
+    let allJobs = jobRes.data || [];
+    const jobCount = jobRes.count ?? allJobs.length;
     const allRecruiters = profileRes.data || [];
+
+    // Paginate past PostgREST 1000-row limit so heatmap and strong-fit use full data
+    const PAGE = 1000;
+    while (allJobs.length < (jobCount ?? 0)) {
+      const { data: nextJobs } = await supabase.from('jobs').select('id, title, company, remote_type, job_type, salary_min, salary_max, is_active').eq('is_active', true).range(allJobs.length, allJobs.length + PAGE - 1);
+      if (!nextJobs?.length) break;
+      allJobs = allJobs.concat(nextJobs);
+    }
+    while (allMatches.length < (matchCount ?? 0)) {
+      const { data: nextMatches } = await supabase.from('candidate_job_matches').select('fit_score, ats_score, candidate_id, job_id, missing_keywords').order('fit_score', { ascending: false }).range(allMatches.length, allMatches.length + PAGE - 1);
+      if (!nextMatches?.length) break;
+      allMatches = allMatches.concat(nextMatches);
+    }
 
     const periodApps = allApps.filter(a => a.updated_at >= since);
 
@@ -161,15 +176,20 @@ export default function AdminReportsPage() {
     const totalInterviews = allApps.filter(a => ['interview', 'offer'].includes(a.status)).length;
     const totalOffers = allApps.filter(a => a.status === 'offer').length;
     const offerRate = allApps.length > 0 ? parseFloat(((totalOffers / allApps.length) * 100).toFixed(1)) : 0;
-    const avgScore = allMatches.length > 0
-      ? Math.round(allMatches.reduce((s, m) => s + m.fit_score, 0) / allMatches.length)
+    const scoresForAvg = allMatches.map((m: any) => {
+      const v = typeof m.ats_score === 'number' ? m.ats_score : m.fit_score;
+      return typeof v === 'number' ? v : null;
+    }).filter((v): v is number => v !== null);
+    const avgScore = scoresForAvg.length > 0
+      ? Math.round(scoresForAvg.reduce((s, v) => s + v, 0) / scoresForAvg.length)
       : 0;
-    setKpis({ totalApps, totalInterviews, totalOffers, offerRate, avgScore, activeJobs: allJobs.length });
+    setKpis({ totalApps, totalInterviews, totalOffers, offerRate, avgScore, activeJobs: typeof jobCount === 'number' ? jobCount : allJobs.length });
 
     // ── Talent & fit analysis (platform-wide) ──────────────────────────────────
     const SCORE_STRONG = 82;
-    const totalMatches = allMatches.length;
-    const strongMatchCount = allMatches.filter((m: any) => m.fit_score >= SCORE_STRONG).length;
+    const totalMatches = typeof matchCount === 'number' ? matchCount : allMatches.length;
+    const scoreFor = (m: any) => (typeof m.ats_score === 'number' ? m.ats_score : m.fit_score) as number;
+    const strongMatchCount = allMatches.filter((m: any) => scoreFor(m) >= SCORE_STRONG).length;
     const jobMatchCount: Record<string, { count: number; strong: number }> = {};
     for (const j of allJobs) {
       jobMatchCount[j.id] = { count: 0, strong: 0 };
@@ -178,7 +198,7 @@ export default function AdminReportsPage() {
       const jid = m.job_id;
       if (jobMatchCount[jid]) {
         jobMatchCount[jid].count++;
-        if (m.fit_score >= SCORE_STRONG) jobMatchCount[jid].strong++;
+        if (scoreFor(m) >= SCORE_STRONG) jobMatchCount[jid].strong++;
       }
     }
     const jobsNeedingAttention = allJobs

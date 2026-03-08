@@ -28,6 +28,12 @@ const nextConfig = {
       // pdf-parse uses 'canvas' optionally — tell webpack to ignore it
       config.externals = [...(config.externals || []), 'canvas'];
     }
+    // unpdf/pdfjs triggers "Critical dependency: the request of a dependency is an expression"
+    config.ignoreWarnings = [
+      ...(Array.isArray(config.ignoreWarnings) ? config.ignoreWarnings : []),
+      { module: /node_modules\/unpdf/ },
+      /Critical dependency: the request of a dependency is an expression/,
+    ];
     return config;
   },
 };

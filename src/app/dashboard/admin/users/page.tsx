@@ -1011,9 +1011,10 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
 
   const handleSave = async () => {
     setSaving(true); setSaveError(null);
+    const effective_role = form.role === 'admin' ? 'platform_admin' : form.role === 'candidate' ? 'candidate' : ((user as any)?.effective_role === 'company_admin' ? 'company_admin' : 'recruiter');
     if (isCandidate) {
       const { error } = await supabase.from('profiles').update({
-        name: form.name, phone: form.phone || null, is_active: form.is_active, role: form.role,
+        name: form.name, phone: form.phone || null, is_active: form.is_active, role: form.role, effective_role,
       }).eq('id', user.id);
       if (error) { setSaveError(error.message); setSaving(false); return; }
       const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', user.id).maybeSingle();
@@ -1031,7 +1032,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
         company: form.company || null, linkedin_url: form.linkedin_url || null,
         specializations: form.specializations, timezone: form.timezone || null,
         bio: form.bio || null, internal_notes: form.internal_notes || null,
-        is_active: form.is_active, role: form.role,
+        is_active: form.is_active, role: form.role, effective_role,
         resume_generation_allowed: form.role === 'recruiter' ? form.resume_generation_allowed : false,
       }).eq('id', user.id);
       if (error) { setSaveError(error.message); setSaving(false); return; }

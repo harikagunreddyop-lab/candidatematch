@@ -64,9 +64,10 @@ export default function RecruiterReportsPage() {
     const [candsRes, matchesRes, appsRes, jobsRes] = await Promise.all([
       supabase.from('candidates').select('id, full_name, primary_title').in('id', candidateIds),
       supabase.from('candidate_job_matches')
-        .select('id, candidate_id, job_id, fit_score, matched_at, job:jobs(id, title, company), candidate:candidates(full_name, primary_title)')
+        .select('id, candidate_id, job_id, fit_score, ats_score, matched_at, job:jobs(id, title, company), candidate:candidates(full_name, primary_title)', { count: 'exact' })
         .in('candidate_id', candidateIds)
-        .order('fit_score', { ascending: false }),
+        .order('fit_score', { ascending: false })
+        .limit(2000),
       supabase.from('applications').select('status').in('candidate_id', candidateIds),
       supabase.from('jobs').select('id, title, company').eq('is_active', true),
     ]);
@@ -74,6 +75,7 @@ export default function RecruiterReportsPage() {
     const cands = candsRes.data || [];
 
     const allMatches = matchesRes.data || [];
+    const matchCount = matchesRes.count ?? allMatches.length;
     const allApps = appsRes.data || [];
     const allJobs = jobsRes.data || [];
 
@@ -123,8 +125,12 @@ export default function RecruiterReportsPage() {
 
     setTopMatches(allMatches.slice(0, 15));
 
-    const totalMatches = allMatches.length;
-    const avgScore = totalMatches > 0 ? Math.round(allMatches.reduce((s: number, m: any) => s + m.fit_score, 0) / totalMatches) : 0;
+    const totalMatches = typeof matchCount === 'number' ? matchCount : allMatches.length;
+    const scoresForAvg = allMatches.map((m: { ats_score?: number | null; fit_score?: number }) => {
+      const v = typeof m.ats_score === 'number' ? m.ats_score : m.fit_score;
+      return typeof v === 'number' ? v : null;
+    }).filter((v): v is number => v !== null);
+    const avgScore = scoresForAvg.length > 0 ? Math.round(scoresForAvg.reduce((s, v) => s + v, 0) / scoresForAvg.length) : 0;
     setStats({
       totalCandidates: cands.length,
       totalMatches,

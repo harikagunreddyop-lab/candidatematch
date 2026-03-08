@@ -385,29 +385,11 @@ function canonicalTerm(s: string): string {
 
 
 // ── Resume extraction ────────────────────────────────────────────────────────
+// Delegated to resume-pdf-text.ts so unpdf is not in the /api/matches bundle path.
 
 async function getResumeTextFromStorage(supabase: any, pdfPath: string): Promise<string> {
-  try {
-    const { data, error } = await supabase.storage.from('resumes').download(pdfPath);
-    if (error || !data) return '';
-    const arrayBuffer = await data.arrayBuffer();
-    const { extractText } = await import('unpdf');
-    const origWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      const msg = args[0];
-      if (typeof msg === 'string' && (msg.includes('TT:') || msg.includes('undefined function') || msg.includes('invalid function id'))) return;
-      origWarn.apply(console, args);
-    };
-    try {
-      const { text } = await extractText(new Uint8Array(arrayBuffer), { mergePages: true });
-      return (text || '').slice(0, MAX_RESUME_TEXT_LEN);
-    } finally {
-      console.warn = origWarn;
-    }
-  } catch (e) {
-    logError('[matching] PDF extraction failed', e);
-    return '';
-  }
+  const { extractResumeTextFromStorage } = await import('@/lib/resume-pdf-text');
+  return extractResumeTextFromStorage(supabase, pdfPath);
 }
 
 

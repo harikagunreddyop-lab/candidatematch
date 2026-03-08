@@ -45,7 +45,7 @@ function formatTime(iso: string | null) {
   return d.toLocaleString();
 }
 
-export function JobBoardsPanel() {
+export function JobBoardsPanel({ onSyncComplete }: { onSyncComplete?: () => void } = {}) {
   const supabase = createClient();
   const [connectors, setConnectors] = useState<ConnectorRow[]>([]);
   const [discoveries, setDiscoveries] = useState<DiscoveryRow[]>([]);
@@ -110,6 +110,7 @@ export function JobBoardsPanel() {
       setSyncMsg(
         `Synced ${data.provider}/${data.sourceOrg} – fetched ${data.fetched ?? 0}, upserted ${data.upserted ?? 0}, closed ${data.closed ?? 0}, promoted ${data.promoted ?? 0} to jobs`
       );
+      onSyncComplete?.();
       await load();
     } catch (err: any) {
       setSyncMsg(`Sync failed: ${err?.message || String(err)}`);
@@ -133,6 +134,7 @@ export function JobBoardsPanel() {
       setSyncMsg(
         `Synced ${successCount} connector(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''} – ${totalPromoted} jobs promoted to listings`
       );
+      onSyncComplete?.();
       await load();
     } catch (err: any) {
       setSyncMsg(`Sync all failed: ${err?.message || String(err)}`);

@@ -24,6 +24,7 @@ export default function JobsPage() {
   const [page, setPage] = useState(0);
   const [matching, setMatching] = useState(false);
   const [matchMsg, setMatchMsg] = useState<string | null>(null);
+  const [liveMatchCount, setLiveMatchCount] = useState<number | null>(null);
   const [sourceFilter, setSourceFilter] = useState('all');
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const supabase = createClient();
@@ -33,6 +34,17 @@ export default function JobsPage() {
 
   const sourceFilterRef = useRef(sourceFilter);
   useEffect(() => { sourceFilterRef.current = sourceFilter; setPage(0); }, [sourceFilter]);
+
+  // Live match count (in sync with Reports & Analytics) — defined before load so load can call it
+  const fetchMatchStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/match-stats', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && typeof data.totalMatches === 'number') setLiveMatchCount(data.totalMatches);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const loadingRef = useRef(false);
   const load = useCallback(async (silent = false) => {
@@ -55,12 +67,17 @@ export default function JobsPage() {
         setJobs(data.jobs || []);
         setTotalCount(data.totalCount || 0);
         setLastRefreshed(new Date());
+        // When there are 0 jobs, clear stale run message so banner shows live match count (0 after CASCADE)
+        if ((data.totalCount ?? 0) === 0) {
+          setMatchMsg(null);
+          fetchMatchStats();
+        }
       }
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, []);
+  }, [fetchMatchStats]);
 
   useEffect(() => {
     // Keep state in sync if user lands on a tab via URL.
@@ -79,6 +96,12 @@ export default function JobsPage() {
     const interval = setInterval(() => load(true), 10000);
     return () => clearInterval(interval);
   }, [load, tab]);
+
+  // Fetch live match count when Jobs tab is shown
+  useEffect(() => {
+    if (tab !== 'jobs') return;
+    fetchMatchStats();
+  }, [tab, fetchMatchStats]);
 
   // Realtime: stay in sync when jobs are ingested or updated
   useEffect(() => {
@@ -133,6 +156,7 @@ export default function JobsPage() {
               setMatchMsg(
                 `✅ ${r.total_matches_upserted ?? r.total_matches ?? 0} matches across ${r.candidates_processed ?? 0} candidates`
               );
+              fetchMatchStats();
             } else if (event.type === 'error') {
               throw new Error(event.message || 'Matching failed');
             }
@@ -206,15 +230,16 @@ export default function JobsPage() {
       </div>
 
       {tab === 'boards' ? (
-        <JobBoardsPanel />
+        <JobBoardsPanel onSyncComplete={() => load()} />
       ) : (
         <>
-          {matchMsg && (
-            <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${matchMsg.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
-                : matchMsg.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-                  : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
+          {(matchMsg || liveMatchCount !== null) && (
+            <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${matchMsg?.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
+                : matchMsg?.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
+                  : matchMsg ? 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
+                    : 'border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800/80 text-surface-700 dark:text-surface-300'
               }`}>
-              {matchMsg}
+              {matchMsg ?? (liveMatchCount !== null ? `${liveMatchCount.toLocaleString()} total matches (same as Reports & Analytics)` : null)}
             </div>
           )}
 
@@ -255,7 +280,7 @@ export default function JobsPage() {
             <EmptyState
               icon={<Briefcase size={24} />}
               title="No jobs yet"
-              description='Go to the Scraping page to pull jobs, or click "Add Job" to add manually'
+              description="Switch to the Job boards tab and run Sync all to pull jobs from Lever/Greenhouse, or click Add Job to add manually. Then click Refresh to see them here."
             />
           ) : (
             <div className="table-container">

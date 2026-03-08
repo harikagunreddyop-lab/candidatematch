@@ -60,7 +60,7 @@ export const adzuna: PublicJobsAdapter = {
     return items;
   },
 
-  async detail(conn: Connector, item: ListItem): Promise<Record<string, unknown>> {
+  async detail(_conn: Connector, item: ListItem): Promise<Record<string, unknown>> {
     if (item.raw && typeof item.raw === 'object') return item.raw;
     // Adzuna search returns full job objects; no separate detail call
     return {};
@@ -68,8 +68,6 @@ export const adzuna: PublicJobsAdapter = {
 
   normalize(conn: Connector, raw: Record<string, unknown>): CanonicalJob {
     const title = (String(raw.title ?? '').trim()) || 'Untitled';
-    const company = raw.company as { display_name?: string } | undefined;
-    const companyName = company?.display_name ? String(company.display_name).trim() : conn.source_org;
     const location = raw.location as { display_name?: string } | undefined;
     const location_raw = location?.display_name ? String(location.display_name).trim() : null;
     const description = String(raw.description ?? '').trim();

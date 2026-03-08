@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Briefcase, Users, TrendingUp, Plus, Sparkles } from 'lucide-react';
+import { Briefcase, Users, Plus, Sparkles } from 'lucide-react';
 
 export default function RecruiterDashboard() {
   const [data, setData] = useState<{
@@ -102,11 +102,10 @@ export default function RecruiterDashboard() {
     );
   }
 
-  const { jobCount, myJobs, newMatches, applications, totalApplicationsCount } = data || {
+  const { jobCount, myJobs, newMatches, totalApplicationsCount } = data || {
     jobCount: 0,
     myJobs: [],
     newMatches: [],
-    applications: [],
     totalApplicationsCount: 0,
   };
 

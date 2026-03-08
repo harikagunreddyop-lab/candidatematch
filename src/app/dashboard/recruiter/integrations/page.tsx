@@ -1,12 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import { Mail, RefreshCw, Trash2, Link2 } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 
 export default function RecruiterIntegrationsPage() {
-  const supabase = createClient();
   const [status, setStatus] = useState<{ connected: boolean; email?: string; connected_at?: string; last_sync_at?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);

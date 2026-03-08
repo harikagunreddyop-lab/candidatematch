@@ -1,6 +1,6 @@
 'use client';
 // src/app/dashboard/admin/candidates/page.tsx
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal, ToastContainer } from '@/components/ui';
@@ -35,7 +35,6 @@ function CandidatesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const highlightId = searchParams.get('highlight');
-  const highlightRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   const [candidates, setCandidates] = useState<any[]>([]);

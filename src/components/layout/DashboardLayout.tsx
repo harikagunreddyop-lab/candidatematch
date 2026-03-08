@@ -7,7 +7,7 @@ import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import type { DashboardProfile } from '@/types';
 import {
   LayoutDashboard, Users, Briefcase, LogOut,
-  ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
+  ChevronLeft, ChevronRight, UserCircle, ClipboardList,
   Zap, Menu, Link2, Plug, MessageCircle,
   BarChart3, Settings, FileText, Shield, Building2,
   Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,

@@ -13,6 +13,8 @@
     "lint": "next lint",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
+    "db:delete-seed-companies": "npx tsx scripts/delete-seed-companies.ts",
+    "db:ingest-company": "npx tsx scripts/ingest-company.ts",
     "worker:dev": "node worker/index.js",
     "worker:jd-extract": "npx tsx scripts/run-jd-extract-worker.ts",
     "ingest:run": "npx tsx scripts/dev/ingest-runner.ts",

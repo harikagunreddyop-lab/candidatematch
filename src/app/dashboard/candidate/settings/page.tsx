@@ -221,7 +221,7 @@ function SendPasswordReset() {
 }
 
 export default function CandidateSettingsPage() {
-  const [candidate, setCandidate] = useState<any>(null);
+  const [_candidate, setCandidate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
   const supabase = createClient();

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft, Briefcase } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 
 export default function AdminCompanyJobsPage() {

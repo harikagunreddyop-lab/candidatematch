@@ -1,4 +1,4 @@
-﻿import { callClaude } from './anthropic';
+import { callClaude } from './anthropic';
 import type { ATSScoreResult } from '@/lib/ats-engine';
 
 export interface HumanReadableExplanation {
@@ -7,7 +7,7 @@ export interface HumanReadableExplanation {
   audit_summary: string;
 }
 
-export async function explainATSScore(result: ATSScoreResult, jobTitle: string, candidateTitle?: string): Promise<HumanReadableExplanation | null> {
+export async function explainATSScore(result: ATSScoreResult, jobTitle: string, _candidateTitle?: string): Promise<HumanReadableExplanation | null> {
   try {
     const dims = result.dimensions || {};
     const dimSummary = Object.entries(dims).map(([k, v]) => k + ': ' + ((v as any).score ?? 0)).join(', ');

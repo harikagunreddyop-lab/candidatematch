@@ -2,11 +2,6 @@
 
 import { Toaster as SonnerToaster } from 'sonner';
 
-const toastTheme = {
-  light: 'dark',
-  dark: 'dark',
-} as const;
-
 export function Toaster() {
   return (
     <SonnerToaster

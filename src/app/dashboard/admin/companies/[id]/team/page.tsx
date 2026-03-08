@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft, Users } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export default function AdminCompanyTeamPage() {
   const params = useParams();

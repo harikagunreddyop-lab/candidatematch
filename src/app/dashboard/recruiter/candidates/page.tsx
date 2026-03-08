@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner } from '@/components/ui';
 import { Users, MapPin, Star, ChevronRight } from 'lucide-react';
-import { cn } from '@/utils/helpers';
-
 function safeArray(val: any): any[] {
   if (!val) return [];
   if (Array.isArray(val)) return val;

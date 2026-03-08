@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
-import { SearchInput, Spinner, EmptyState } from '@/components/ui';
+import { Spinner, EmptyState } from '@/components/ui';
 import Link from 'next/link';
 import { Briefcase, MapPin, Building2, ExternalLink, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/helpers';

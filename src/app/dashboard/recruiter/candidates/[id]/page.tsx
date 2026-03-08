@@ -33,13 +33,6 @@ function safeArray(val: any): any[] {
   return [];
 }
 
-function scoreColor(score: number) {
-  if (score >= 85) return 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200';
-  if (score >= 70) return 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-200';
-  if (score >= 50) return 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200';
-  return 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300';
-}
-
 function TagInput({ value, onChange, placeholder }: {
   value: string[];
   onChange: (v: string[]) => void;
@@ -102,7 +95,7 @@ export default function RecruiterCandidateDetail() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [_saveSuccess, setSaveSuccess] = useState(false);
   const [profileForm, setProfileForm] = useState<any>({});
 
   // AI tools

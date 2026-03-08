@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeATSScoreV2, ATS_V2, W_V2, _test, type ScorerInput } from '@/lib/ats-scorer-v2';
+import { computeATSScoreV2, W_V2, _test, type ScorerInput } from '@/lib/ats-scorer-v2';
 import type { JobRequirements } from '@/lib/ats-engine';
 
 const { evidenceStrength, keywordOverlapProxy, clip, safeDate } = _test;
@@ -459,7 +459,7 @@ describe('computeATSScoreV2', () => {
     });
 
     it('no weight is negative', () => {
-      for (const [key, val] of Object.entries(W_V2)) {
+      for (const [, val] of Object.entries(W_V2)) {
         expect(val).toBeGreaterThanOrEqual(0);
       }
     });

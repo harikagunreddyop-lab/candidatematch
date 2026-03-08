@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { MessageCircle, X, ChevronLeft, Plus } from 'lucide-react';
-import { cn } from '@/utils/helpers';
 import { Spinner } from '@/components/ui';
 import {
   ChatPanel, ConversationItem, OnlineDot,

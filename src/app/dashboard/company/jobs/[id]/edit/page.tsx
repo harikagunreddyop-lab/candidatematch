@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Building2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Spinner } from '@/components/ui';
 
 export default function CompanyJobEditPage() {
@@ -13,7 +13,7 @@ export default function CompanyJobEditPage() {
   const jobId = params?.id as string;
   const supabase = createClient();
   const [job, setJob] = useState<any>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [_companyId, setCompanyId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [location, setLocation] = useState('');

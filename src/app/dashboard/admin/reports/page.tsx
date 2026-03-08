@@ -6,13 +6,12 @@ import { Spinner, StatusBadge } from '@/components/ui';
 import { DashboardErrorBoundary } from '@/components/layout/DashboardErrorBoundary';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, FunnelChart, Funnel, LabelList,
-  Cell, PieChart, Pie, Legend,
+  ResponsiveContainer, Cell, PieChart, Pie,
 } from 'recharts';
 import {
-  TrendingUp, Users, AlertTriangle, Trophy,
+  TrendingUp, AlertTriangle, Trophy,
   Briefcase, Target, RefreshCw, Calendar,
-  ArrowRight, Clock, CheckCircle2, DollarSign, Download,
+  ArrowRight, DollarSign, Download,
   Zap, Lightbulb, BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';

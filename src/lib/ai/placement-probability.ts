@@ -3,7 +3,6 @@
  */
 
 import { lookupCalibration } from '@/lib/calibration/isotonic';
-import { callClaude } from './anthropic';
 import type { ScoringProfile } from '@/lib/policy-engine';
 
 export interface PlacementProbability {

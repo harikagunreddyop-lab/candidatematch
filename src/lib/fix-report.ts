@@ -35,18 +35,6 @@ export interface FixReportOutput {
   skills_needing_evidence: string[];
 }
 
-const DIMENSION_LABELS: Record<string, string> = {
-  must: 'Must-have skills',
-  nice: 'Nice-to-have skills',
-  parse: 'Resume structure',
-  resp: 'Responsibility alignment',
-  impact: 'Impact & metrics',
-  scope: 'Experience & scale',
-  recent: 'Skill recency',
-  domain: 'Role alignment',
-  risk: 'Risk factors',
-};
-
 export function buildFixReport(input: FixReportInput): FixReportOutput {
   const dims = input.dimensions || {};
   const missing = input.missing_keywords || dims.must?.missing || [];

@@ -27,28 +27,6 @@ function isAnalystLike(title: string): boolean {
   return /\banalyst\b/i.test(title || '');
 }
 
-const TRIVIAL_TOKENS = new Set([
-  'senior',
-  'jr',
-  'junior',
-  'lead',
-  'staff',
-  'principal',
-  'manager',
-  'associate',
-  'specialist',
-  'consultant',
-  'director',
-  'head',
-  'vp',
-  'engineer',
-  'developer',
-  'analyst',
-  'intern',
-  'internship',
-  'contractor',
-]);
-
 const DOMAIN_KEYWORD_GROUPS: string[][] = [
   // QA / testing
   ['qa', 'quality', 'testing', 'tester', 'sdet', 'automation'],

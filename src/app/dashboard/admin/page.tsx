@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import {
-  Building2, DollarSign, Activity, Briefcase, Users,
-  TrendingUp, CheckCircle, Clock, Zap, AlertCircle,
+  Building2, DollarSign, Activity, Briefcase,
+  TrendingUp, CheckCircle, Clock, Zap,
 } from 'lucide-react';
 
 interface PlatformStats {

@@ -7,8 +7,6 @@
  *
  * LLM is NEVER inside the render worker. All expensive ops happen here and are cached.
  */
-import { createServiceClient } from '@/lib/supabase-server';
-
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface ResumeContent {

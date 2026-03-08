@@ -7,8 +7,6 @@ export const dynamic = 'force-dynamic';
 
 const MAX_RESUMES_PER_CANDIDATE = 5;
 const MAX_FILE_SIZE_MB = 10;
-const raw = process.env.RESUME_WORKER_URL?.trim();
-const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.1:3001';
 
 const RESUME_GENERATION_MIN_SCORE = 61;
 const RESUME_GENERATION_MAX_SCORE = 79; // Tailor only for scores 61-79

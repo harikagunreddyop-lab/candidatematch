@@ -1,8 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-
 const FEATURES_COMPARISON = [
   { feature: 'Job applications per month', free: '5', pro: 'Unlimited', proPlus: 'Unlimited' },
   { feature: 'Basic resume builder', free: '✓', pro: '✓', proPlus: '✓' },

@@ -63,7 +63,6 @@ describe('contentHash', () => {
 
   it('truncates description to 5000 chars for hash', () => {
     const long = 'x'.repeat(10000);
-    const short = 'x'.repeat(100);
     const h1 = contentHash({ title: 'T', location_raw: null, department: null, description_text: long, apply_url: 'u', updated_at: null });
     const h2 = contentHash({ title: 'T', location_raw: null, department: null, description_text: long.slice(0, 5000), apply_url: 'u', updated_at: null });
     expect(h1).toBe(h2);

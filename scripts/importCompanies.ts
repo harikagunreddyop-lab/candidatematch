@@ -10,7 +10,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 async function main() {
   const csvPath = path.join(process.cwd(), 'data', 'companies.csv');
   const text = fs.readFileSync(csvPath, 'utf8');
-  const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
+  const [, ...lines] = text.split(/\r?\n/).filter(Boolean);
 
   const rows = lines.map((l) => {
     const [name, website] = l.split(',');

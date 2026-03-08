@@ -48,7 +48,7 @@ export function getRedis(): RedisIo | null {
         });
 
         _redis.on('connect', () => {
-            console.log('[redis] connected to', url.replace(/\/\/.*@/, '//<redacted>@'));
+            // Connection success — no log in production to avoid noise
         });
 
         // Eagerly connect so we know if it fails

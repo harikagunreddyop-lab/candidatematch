@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Spinner } from '@/components/ui';
-import { Shield, FileText, Trash2, Clock, CheckCircle, XCircle, AlertTriangle, ChevronDown, Save } from 'lucide-react';
+import { Shield, FileText, Trash2, Clock, CheckCircle, XCircle, AlertTriangle, Save } from 'lucide-react';
 import { formatDate, formatRelative } from '@/utils/helpers';
 
 type Tab = 'overview' | 'deletion' | 'retention' | 'consent';

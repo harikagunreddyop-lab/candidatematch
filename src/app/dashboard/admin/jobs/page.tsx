@@ -424,7 +424,7 @@ function AddJobForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => 
 // ─── Upload Jobs Form ─────────────────────────────────────────────────────────
 function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [stage, setStage] = useState<'pick' | 'preview' | 'uploading' | 'matching' | 'done'>('pick');
-  const [rows, setRows] = useState<any[]>([]);
+  const [_rows, setRows] = useState<any[]>([]);
   const [parsed, setParsed] = useState<any[]>([]);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);

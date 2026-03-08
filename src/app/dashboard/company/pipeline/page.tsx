@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Spinner, ToastContainer } from '@/components/ui';
 import { useToast } from '@/hooks';
-import { MapPin, Star, GripVertical, ExternalLink, Calendar } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { cn, formatDate } from '@/utils/helpers';
 import { getScoreBadgeClasses } from '@/lib/ats-score';
 

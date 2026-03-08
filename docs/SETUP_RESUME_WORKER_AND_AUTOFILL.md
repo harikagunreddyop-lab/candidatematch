@@ -33,6 +33,8 @@ The resume worker is a separate Node service. The Next.js app calls it at `RESUM
 
 ### Option A: Deploy worker on Railway (recommended)
 
+**For a detailed step-by-step guide:** see **[RAILWAY_WORKER_SETUP.md](RAILWAY_WORKER_SETUP.md)**.
+
 #### 2.1 Create Railway project
 
 1. Go to [railway.app](https://railway.app) and sign in (GitHub is fine).

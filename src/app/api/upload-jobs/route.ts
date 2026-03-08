@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
-import { runMatching, runMatchingForJobs } from '@/lib/matching';
+import { runMatchingForJobs } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
 import { isValidJobUrl } from '@/lib/job-url';
 import { rateLimitResponse } from '@/lib/rate-limit';

@@ -327,19 +327,16 @@ if (isDirectRun) {
     }
   }
   if (!csvPath) {
-    // eslint-disable-next-line no-console
-    console.error('Usage: npm run discovery:run -- --csv <path> [--limit N]');
+    logError('Usage: npm run discovery:run -- --csv <path> [--limit N]');
     process.exit(1);
   }
   runDiscovery({ csvPath, limit })
     .then((summary) => {
-      // eslint-disable-next-line no-console
-      console.log('Discovery summary:', summary);
+      log(`Discovery summary: ${JSON.stringify(summary, null, 2)}`);
       process.exit(0);
     })
     .catch((err) => {
-      // eslint-disable-next-line no-console
-      console.error('Discovery failed:', err);
+      logError('Discovery failed', err);
       process.exit(1);
     });
 }

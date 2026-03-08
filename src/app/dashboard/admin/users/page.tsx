@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
 import {
-  UserCheck, Plus, RefreshCw, AlertCircle, Edit2, Trash2,
+  UserCheck, RefreshCw, AlertCircle, Edit2, Trash2,
   X, Mail, Phone, Briefcase, Users, ChevronDown, ChevronUp,
   Send, CheckCircle2, Sliders, Shield, Eye, EyeOff, Info,
   Zap, FileText, Target, Bookmark, Bell, Download, BarChart2,

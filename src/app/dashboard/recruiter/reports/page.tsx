@@ -4,8 +4,8 @@ import Link from 'next/link';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import {
-  BarChart3, Users, Briefcase, Target, Star, AlertCircle,
-  ArrowRight, TrendingUp, UserCheck, FileText,
+  BarChart3, Target, Star, AlertCircle,
+  ArrowRight, TrendingUp,
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
@@ -31,7 +31,7 @@ function SectionCard({ title, subtitle, icon, children }: { title: string; subti
 export default function RecruiterReportsPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
+  const [_profile, setProfile] = useState<any>(null);
   const [pipeline, setPipeline] = useState<Record<string, number>>({});
   const [bestFitCandidates, setBestFitCandidates] = useState<any[]>([]);
   const [rolesNeedingAttention, setRolesNeedingAttention] = useState<any[]>([]);
@@ -161,8 +161,6 @@ export default function RecruiterReportsPage() {
       </div>
     );
   }
-
-  const firstName = profile?.name?.split(' ')[0] || 'Recruiter';
 
   return (
     <div className="space-y-8">

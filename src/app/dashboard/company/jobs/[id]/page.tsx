@@ -3,18 +3,17 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
-import { Briefcase, ChevronLeft, Users } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { ChevronLeft, Users } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 import { Spinner } from '@/components/ui';
 
 export default function CompanyJobDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const jobId = params?.id as string;
   const supabase = createClient();
   const [job, setJob] = useState<any>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [_companyId, setCompanyId] = useState<string | null>(null);
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 

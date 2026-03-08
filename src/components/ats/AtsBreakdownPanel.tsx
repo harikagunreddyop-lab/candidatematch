@@ -125,7 +125,7 @@ export function AtsBreakdownPanel({
   const matchedKw = (matchedKeywords.length > 0 ? matchedKeywords : (mustDim?.matched ?? kwDim?.matched ?? [])) as string[];
 
   const dimEntries = Object.entries(dims).filter(
-    ([k, v]) => v && typeof (v as DimensionScore).score === 'number'
+    ([, v]) => v && typeof (v as DimensionScore).score === 'number'
   ) as [string, DimensionScore][];
 
   const weakest = dimEntries

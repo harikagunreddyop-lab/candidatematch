@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
             confidence_bucket: bucket,
             threshold_used: gate.threshold_used,
             scoring_profile: scoringProfile,
-            override_reason: parsed.data.override_reason || null,
+            override_reason: overrideReason || null,
           },
         });
       } else {

@@ -7,12 +7,11 @@ export function RegisterSW() {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
     window.navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
-      .then((reg) => {
+      .catch((err) => {
         if (process.env.NODE_ENV === 'development') {
-          console.log('[PWA] Service worker registered', reg.scope);
+          console.error('[PWA] Service worker registration failed', err);
         }
-      })
-      .catch(() => {});
+      });
   }, []);
   return null;
 }

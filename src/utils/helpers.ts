@@ -1,5 +1,3 @@
-import { type ClassValue, clsx } from 'clsx';
-
 // Simple clsx implementation (no dep needed)
 export function cn(...inputs: (string | undefined | null | false | Record<string, boolean>)[]) {
   return inputs

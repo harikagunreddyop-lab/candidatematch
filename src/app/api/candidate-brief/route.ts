@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
   }
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString();
 
   const [candRes, matchRes, appRes, newMatchRes, recentAppRes] = await Promise.all([
     supabase.from('candidates').select('full_name, primary_title, skills, summary, location').eq('id', candidate_id).single(),

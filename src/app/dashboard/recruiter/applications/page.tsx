@@ -5,7 +5,7 @@ import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
 import { DashboardErrorBoundary } from '@/components/layout/DashboardErrorBoundary';
 import { useToast } from '@/hooks';
-import { ClipboardList, Calendar, UserCheck, Check, X, Brain } from 'lucide-react';
+import { ClipboardList, Calendar, Brain } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
 
 const STATUS_OPTIONS = ['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'];

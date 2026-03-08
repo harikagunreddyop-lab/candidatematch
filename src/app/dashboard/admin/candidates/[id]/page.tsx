@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
-import { Tabs, StatusBadge, Spinner, EmptyState, Modal } from '@/components/ui';
+import { Tabs, StatusBadge, Spinner, EmptyState } from '@/components/ui';
 import {
   ArrowLeft, FileText, Briefcase, Download, ExternalLink,
   CheckCircle2, Sparkles, MapPin, Trash2, Plus, Link2,

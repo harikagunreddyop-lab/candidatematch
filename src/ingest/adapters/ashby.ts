@@ -25,7 +25,7 @@ export const ashby: PublicJobsAdapter = {
     });
   },
 
-  async detail(conn: Connector, item: ListItem): Promise<Record<string, unknown>> {
+  async detail(_conn: Connector, item: ListItem): Promise<Record<string, unknown>> {
     if (item.raw && typeof item.raw === 'object') return item.raw;
     throw new Error('Ashby list returns full postings; no detail fetch needed');
   },

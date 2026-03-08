@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { cn, formatRelative } from '@/utils/helpers';
-import { Send, Paperclip, X, Download, File, Check, CheckCheck } from 'lucide-react';
+import { Send, Paperclip, Download, File } from 'lucide-react';
 import { Spinner } from '@/components/ui';
 import type { Profile } from '@/types';
 

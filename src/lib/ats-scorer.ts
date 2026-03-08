@@ -3,7 +3,7 @@
 // Deterministic ATS Scoring Engine - NO LLM, PURE MATH
 // ============================================================================
 
-import type { Candidate, Job } from '@/types';
+import type { Candidate } from '@/types';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -342,7 +342,7 @@ function calculateSemanticSimilarity(
 }
 
 function calculateSeniorityFit(
-  requiredLevel: string | null,
+  _requiredLevel: string | null,
   requiredYears: number | null,
   candidateYears: number
 ): number {
@@ -398,7 +398,7 @@ function isLocationMatch(jobLoc: string, candidateLoc: string): boolean {
 
 function generateExplanation(
   score: number,
-  decision: string,
+  _decision: string,
   matched: string[],
   missing: string[],
   penalties: number

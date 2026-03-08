@@ -24,7 +24,7 @@ export async function analyzeResumeEvidence(
   resumeText: string,
   matchedSkills: string[],
   missingSkills: string[],
-  evidenceSpans: EvidenceSpan[],
+  _evidenceSpans: EvidenceSpan[],
   jobDomain?: string
 ): Promise<ResumeEvidenceAnalysis | null> {
   try {

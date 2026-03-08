@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useCallback } from 'react';
-import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import { Play, CheckCircle2, XCircle, AlertCircle, Zap, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
@@ -22,7 +21,6 @@ export default function MatchingPanel() {
   const [error, setError] = useState<string | null>(null);
   const [candidateId, setCandidateId] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
   const addLog = (type: LogLine['type'], text: string) => {
     setLog(prev => [...prev, { type, text }]);

@@ -1,6 +1,6 @@
 import { createHash } from 'crypto';
 import { createServiceClient } from '@/lib/supabase-server';
-import { extractJobRequirements, computeATSScore, type JobRequirements, type ATSScoreResult } from '@/lib/ats-engine';
+import { extractJobRequirements, computeATSScore, type JobRequirements } from '@/lib/ats-engine';
 import { log as devLog, error as logError } from '@/lib/logger';
 import { getComputedYears } from '@/lib/experience-merger';
 import {
@@ -11,7 +11,7 @@ import {
   applyFairnessExclusions,
   type ScoringProfile,
 } from '@/lib/policy-engine';
-import { emitEvent, logAiCall } from '@/lib/telemetry';
+import { emitEvent } from '@/lib/telemetry';
 import { buildFixReport } from '@/lib/fix-report';
 import { computeSemanticSimilarity } from '@/lib/semantic-similarity';
 import { lookupCalibration } from '@/lib/calibration/isotonic';
@@ -496,7 +496,6 @@ export async function runAtsCheck(
   // Only check cache when persist !== false (batch sub-calls skip this; the batch
   // level persists the best result after comparing all resumes).
   if (options?.persist !== false) {
-    const jd = '';
     // Get jd_length cheaply without fetching the full job record yet
     const { data: jobMeta } = await supabase
       .from('jobs')

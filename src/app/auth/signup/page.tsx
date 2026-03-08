@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Sparkles, Mail, Lock, User, Briefcase } from 'lucide-react';
+import { Mail, Lock, User, Briefcase } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 import {
   FloatingInput,

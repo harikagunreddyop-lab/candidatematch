@@ -9,6 +9,7 @@ import { getQueueConnection } from '../redis';
 import { scoreQueue, type MatchJobData, type ScoreJobData } from '../queues';
 import { createServiceClient } from '@/lib/supabase-server';
 import { runMatching } from '@/lib/matching';
+import { log } from '@/lib/logger';
 
 function createMatchWorker() {
     const queueConn = getQueueConnection();
@@ -134,7 +135,7 @@ function createMatchWorker() {
     });
 
     worker.on('completed', (job) => {
-        console.log(`[match-worker] Job ${job.id} completed`);
+        log(`[match-worker] Job ${job.id} completed`);
     });
 
     return worker;

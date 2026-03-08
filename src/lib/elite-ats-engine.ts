@@ -447,7 +447,7 @@ async function collectBatchResults(batchIds: string[]): Promise<Map<string, any>
 export async function runEliteMatching(
   jobs: EliteJob[],
   candidates: EliteCandidate[],
-  onLog: (msg: string) => void = (m) => console.log(m)
+  onLog: (msg: string) => void = () => {}
 ): Promise<{
   matches: MatchResult[];
   rankingInsights: Map<string, any>;

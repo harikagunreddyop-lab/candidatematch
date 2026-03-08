@@ -41,7 +41,7 @@ export default function SkillReportTabContent() {
   const [briefLoading, setBriefLoading] = useState(false);
   const [briefError, setBriefError] = useState<string | null>(null);
   const [atsRunningByJob, setAtsRunningByJob] = useState<Record<string, boolean>>({});
-  const [atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
+  const [_atsErrorByJob, setAtsErrorByJob] = useState<Record<string, string>>({});
   const [tailoredByJob, setTailoredByJob] = useState<Record<string, { id: string }>>({});
   const autoAtsRef = useState<{ ran: boolean }>({ ran: false })[0];
 

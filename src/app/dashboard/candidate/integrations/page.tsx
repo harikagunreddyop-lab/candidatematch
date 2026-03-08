@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Spinner } from '@/components/ui';
-import { Mail, RefreshCw, Trash2, Link2, Briefcase } from 'lucide-react';
+import { Mail, RefreshCw, Link2, Briefcase } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 
 type TrackingStats = {

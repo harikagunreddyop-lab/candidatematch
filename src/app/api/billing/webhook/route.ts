@@ -14,7 +14,6 @@ export const dynamic = 'force-dynamic';
 // Stripe sends raw body — Next.js App Router handles this natively
 export async function POST(req: NextRequest) {
     const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
-    const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!STRIPE_SECRET) {
         return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });

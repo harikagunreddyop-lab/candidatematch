@@ -11,7 +11,7 @@
  * Claude is NOT used for score numbers. Deterministic scorer produces score + evidence.
  */
 
-import { canonicalize, getAliases, SYNONYM_GROUPS, SKILL_IMPLICATIONS, getRelated } from '@/lib/skill-ontology';
+import { canonicalize, getAliases, SYNONYM_GROUPS, getRelated } from '@/lib/skill-ontology';
 import { extractImpactFromExperience } from '@/lib/impact-extractor';
 import { buildKeywordEvidenceSpans } from '@/lib/evidence-spans';
 import type { JobRequirements } from '@/lib/ats-engine';
@@ -231,7 +231,6 @@ function matchQuality(jdSkillCanon: string, candSkillCanon: string): number {
   const candRelated = getRelated(candSkillCanon).map(canonicalize);
   if (jdRelated.includes(candSkillCanon) || candRelated.includes(jdSkillCanon)) return ATS_V2.related_credit_cap;
   for (const g of SYNONYM_GROUPS) {
-    const canon = g[0];
     if (g.includes(jdSkillCanon) && g.includes(candSkillCanon)) return 0.9;
   }
   return 0;
@@ -318,20 +317,6 @@ function parseSkillSections(text: string): Array<{ name: string; text: string }>
   return sections;
 }
 
-/** Skill credit for JD skill sj */
-function skillCredit(
-  jdSkillCanon: string,
-  candidateMap: Map<string, { E: number; recency: number }>,
-): number {
-  let best = 0;
-    for (const [candCanon, { E, recency }] of Array.from(candidateMap)) {
-    const Q = matchQuality(jdSkillCanon, candCanon);
-    const cred = Q * E * recency;
-    if (cred > best) best = cred;
-  }
-  return best;
-}
-
 // ── Component scores ──────────────────────────────────────────────────────────
 
 function C_parse(resumeText: string, sections: ReturnType<typeof parseResumeSections>): number {
@@ -339,7 +324,6 @@ function C_parse(resumeText: string, sections: ReturnType<typeof parseResumeSect
   const section = [sectionNames.includes('skills'), sectionNames.includes('experience'), sectionNames.includes('education'), sectionNames.includes('summary')].filter(Boolean).length / 4;
   const dateCount = (resumeText.match(/\b(20\d{2}|19\d{2})\b/g) || []).length;
   const dates = clip(dateCount / 6, 0, 1);
-  const lines = resumeText.split('\n').filter(l => l.trim());
   const bulletCount = (resumeText.match(/^[\s]*[•\-\*]\s/gm) || []).length;
   const bullets = clip(bulletCount / 15, 0, 1);
   const hasContact = /[\w.-]+@[\w.-]+\.\w+/.test(resumeText) ? 1 : 0;
@@ -434,7 +418,7 @@ function C_resp(
   return 100 * clip(adjSim - pen, 0, 1);
 }
 
-function C_impact(bullets: string[], impactResult: { totalCount: number; bulletsWithImpact: number }): number {
+function C_impact(bullets: string[], _impactResult: { totalCount: number; bulletsWithImpact: number }): number {
   const P = Math.min(ATS_V2.top_bullets_p, bullets.length);
   if (P === 0) return 50;
   const ACTION = /\b(built|created|led|managed|designed|implemented|reduced|improved|increased|deployed|scaled|automated)\b/i;
@@ -600,7 +584,7 @@ function detectNegativeSignals(
 function C_risk(
   experience: ScorerInput['experience'],
   _resumeText: string,
-  negativeSignals: NegativeSignal[],
+  _negativeSignals: NegativeSignal[],
 ): number {
   const roles = experience.length;
   const careerMonths = experience.reduce((acc, e) => {

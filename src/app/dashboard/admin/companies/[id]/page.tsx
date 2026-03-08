@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams } from 'next/navigation';
-import { Building2, Users, Briefcase, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, Users, Briefcase, ClipboardList, ChevronLeft } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 
 export default function AdminCompanyDetailPage() {

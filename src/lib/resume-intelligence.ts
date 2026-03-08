@@ -20,7 +20,7 @@ function computeCredibilityScore(resumeText: string): number {
   return Math.max(0, Math.min(100, score));
 }
 
-function computeImpactDensity(resumeText: string, experience: Array<{ responsibilities?: string[] }>): number {
+function computeImpactDensity(_resumeText: string, experience: Array<{ responsibilities?: string[] }>): number {
   const impact = extractImpactFromExperience(experience);
   const totalBullets = experience.flatMap(e => e.responsibilities || []).length || 1;
   return Math.max(0, Math.min(100, Math.round((impact.bulletsWithImpact / totalBullets) * 100)));

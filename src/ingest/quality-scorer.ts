@@ -155,7 +155,7 @@ function scoreLegitimacy(job: JobForQuality): number {
 }
 
 function identifyFlags(
-  job: JobForQuality,
+  _job: JobForQuality,
   scores: QualityScore['breakdown']
 ): string[] {
   const flags: string[] = [];

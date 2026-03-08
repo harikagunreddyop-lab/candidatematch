@@ -1,6 +1,6 @@
 # Environment Variables Reference
 
-All environment variables used by CandidateMatch. Set these in `.env` (local) or in your host’s dashboard (Amplify, Vercel, etc.).
+All environment variables used by CandidateMatch. **For a step-by-step setup, see [SETUP_GUIDE.md](SETUP_GUIDE.md).** Set these in `.env` (local) or in your host’s dashboard (Amplify, Vercel, etc.).
 
 ---
 

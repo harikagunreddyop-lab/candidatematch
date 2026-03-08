@@ -53,7 +53,6 @@ export async function POST(req: NextRequest) {
 
   const jd = (job.jd_clean || job.jd_raw || '').slice(0, 2000);
   const missing = (match?.missing_keywords as string[] | undefined) || [];
-  const breakdown = match?.ats_breakdown as { dimensions?: Record<string, { details: string }> } | null;
   const title = candidate.primary_title || 'Candidate';
   const bullets = (candidate.experience as any[])?.flatMap((e: any) => e.responsibilities || []).filter(Boolean).slice(0, 10) || [];
 

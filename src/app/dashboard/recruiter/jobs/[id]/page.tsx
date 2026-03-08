@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Briefcase, ChevronLeft, Users } from 'lucide-react';
+import { ChevronLeft, Users } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 import { Spinner } from '@/components/ui';
 

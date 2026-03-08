@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, Building2 } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Spinner } from '@/components/ui';
 
 export default function CompanyJobNewPage() {

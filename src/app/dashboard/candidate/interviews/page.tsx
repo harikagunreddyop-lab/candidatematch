@@ -12,7 +12,7 @@ type Tab = 'upcoming' | 'past' | 'analytics';
 export default function CandidateInterviewsPage() {
   const supabase = createClient();
   const [tab, setTab] = useState<Tab>('upcoming');
-  const [candidate, setCandidate] = useState<any>(null);
+  const [_candidate, setCandidate] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);

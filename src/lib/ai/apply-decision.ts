@@ -13,8 +13,8 @@ export async function getApplyDecision(
   jobTitle: string,
   company: string,
   atsScore: number,
-  missingSkills: string[],
-  matchedSkills: string[],
+  _missingSkills: string[],
+  _matchedSkills: string[],
   gatePassed: boolean
 ): Promise<ApplyDecision | null> {
   try {

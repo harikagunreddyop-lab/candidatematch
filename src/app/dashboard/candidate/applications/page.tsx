@@ -39,6 +39,7 @@ export default function CandidateApplicationsPage() {
 
   useEffect(() => {
     loadApplications();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
   async function loadApplications() {

@@ -51,6 +51,7 @@ export default function AdminApplicationsPage() {
     }
     setAssignments(map);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase from createClient() is unstable; load runs once on mount
   }, []);
 
   useEffect(() => { load(); }, [load]);

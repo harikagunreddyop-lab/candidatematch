@@ -475,6 +475,7 @@ export default function RecruiterCandidateDetail() {
         await new Promise(r => setTimeout(r, 250));
       }
     })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runAtsForJob stable; run when atsCheckAllowed or matches change
   }, [atsCheckAllowed, matches]);
 
   const runPasteJdAts = async () => {

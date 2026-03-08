@@ -9,16 +9,23 @@ import {
   LayoutDashboard, Users, Briefcase, LogOut,
   ChevronLeft, ChevronRight, Cpu, UserCircle, ClipboardList,
   Zap, Menu, Link2, Plug, MessageCircle,
-  BarChart3, Settings, Calendar, FileText, Shield, Building2,
+  BarChart3, Settings, FileText, Shield, Building2,
   Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,
-  Mic, DollarSign, Network, Target, MessageSquare,
+  Calendar, Target, ChevronDown, Mic, DollarSign, MessageSquare,
+  Search, Bell,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DashboardContent } from '@/components/layout/DashboardContent';
 import { cn } from '@/utils/helpers';
 
-interface NavItem { label: string; href: string; icon: React.ReactNode; badge?: number; }
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ReactNode;
+  badge?: number;
+  children?: { label: string; href: string; icon?: React.ReactNode }[];
+}
 
 // B2B SaaS: Dashboard, Companies, System, Analytics, Settings; Jobs/Candidates for platform-wide view
 const adminNav: NavItem[] = [
@@ -39,15 +46,15 @@ const adminNav: NavItem[] = [
   { label: 'Settings', href: '/dashboard/admin/settings', icon: <Settings size={18} /> },
 ];
 
-// Blueprint: Dashboard, Jobs, Candidates, Pipeline, Team, Activity, Analytics, Messages, Settings, Billing
+// Blueprint: Dashboard, Jobs, Candidates, Pipeline, Team, Analytics, Messages, Settings, Billing
 const companyAdminNav: NavItem[] = [
   { label: 'Dashboard',   href: '/dashboard/company',                  icon: <LayoutDashboard size={18} /> },
   { label: 'Jobs',        href: '/dashboard/company/jobs',             icon: <Briefcase size={18} /> },
   { label: 'Candidates',  href: '/dashboard/company/candidates',      icon: <Users size={18} /> },
   { label: 'Pipeline',    href: '/dashboard/company/pipeline',        icon: <GitBranch size={18} /> },
   { label: 'Team',        href: '/dashboard/company/team',             icon: <Users size={18} /> },
-  { label: 'Activity',    href: '/dashboard/company/activity',         icon: <Activity size={18} /> },
   { label: 'Analytics',   href: '/dashboard/company/analytics',       icon: <BarChart3 size={18} /> },
+  { label: 'Success Fees', href: '/dashboard/company/success-fees',   icon: <DollarSign size={18} /> },
   { label: 'Messages',    href: '/dashboard/company/messages',        icon: <MessageCircle size={18} /> },
   { label: 'Settings',    href: '/dashboard/company/settings',        icon: <Settings size={18} /> },
   { label: 'Billing',     href: '/dashboard/company/settings/billing', icon: <CreditCard size={18} /> },
@@ -58,6 +65,7 @@ const recruiterNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/recruiter', icon: <LayoutDashboard size={18} /> },
   { label: 'Jobs', href: '/dashboard/recruiter/jobs', icon: <Briefcase size={18} /> },
   { label: 'Candidates', href: '/dashboard/recruiter/candidates', icon: <Users size={18} /> },
+  { label: 'Sourcing', href: '/dashboard/recruiter/sourcing', icon: <Search size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
   { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <GitBranch size={18} /> },
   { label: 'Reports', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
@@ -65,26 +73,47 @@ const recruiterNav: NavItem[] = [
   { label: 'Messages', href: '/dashboard/recruiter/messages', icon: <MessageCircle size={18} /> },
 ];
 
-// Blueprint: Dashboard, Matches, Job search, Applications, Profile, Resume, Skill report, Interviews, Extension, Messages, Settings + elite
+// B2B SaaS: Candidate nav with dropdowns for Tools, Career, Integrations
 const candidateNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/candidate', icon: <LayoutDashboard size={18} /> },
   { label: 'Matches', href: '/dashboard/candidate/matches', icon: <Sparkles size={18} /> },
-  { label: 'Job search', href: '/dashboard/candidate/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Jobs', href: '/dashboard/candidate/jobs', icon: <Briefcase size={18} /> },
+  { label: 'Job Alerts', href: '/dashboard/candidate/alerts', icon: <Bell size={18} /> },
   { label: 'Applications', href: '/dashboard/candidate/applications', icon: <ClipboardList size={18} /> },
-  { label: 'My profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
+  { label: 'Profile', href: '/dashboard/candidate/profile', icon: <UserCircle size={18} /> },
   { label: 'Resume', href: '/dashboard/candidate/profile/resume', icon: <FileText size={18} /> },
-  { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
-  { label: 'ATS checker', href: '/dashboard/candidate/tools/ats-checker', icon: <FileSearch size={18} /> },
-  { label: 'Interview prep', href: '/dashboard/candidate/interview-prep', icon: <Mic size={18} /> },
   { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
-  { label: 'Salary', href: '/dashboard/candidate/salary', icon: <DollarSign size={18} /> },
-  { label: 'Career path', href: '/dashboard/candidate/career-path', icon: <Target size={18} /> },
-  { label: 'Skill gaps', href: '/dashboard/candidate/skills/gap-analysis', icon: <BarChart3 size={18} /> },
-  { label: 'Network', href: '/dashboard/candidate/network', icon: <Network size={18} /> },
-  { label: 'Interview analytics', href: '/dashboard/candidate/analytics/interviews', icon: <Activity size={18} /> },
-  { label: 'Career coach', href: '/dashboard/candidate/coach', icon: <MessageSquare size={18} /> },
-  { label: 'Integrations', href: '/dashboard/candidate/integrations', icon: <Plug size={18} /> },
-  { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
+  {
+    label: 'Tools',
+    href: '/dashboard/candidate/tools/ats-checker',
+    icon: <FileSearch size={18} />,
+    children: [
+      { label: 'ATS Checker', href: '/dashboard/candidate/tools/ats-checker', icon: <FileSearch size={16} /> },
+      { label: 'Interview Prep', href: '/dashboard/candidate/interview-prep', icon: <Mic size={16} /> },
+      { label: 'Salary Intel', href: '/dashboard/candidate/salary', icon: <DollarSign size={16} /> },
+      { label: 'Career Coach', href: '/dashboard/candidate/coach', icon: <MessageSquare size={16} /> },
+    ],
+  },
+  {
+    label: 'Career',
+    href: '/dashboard/candidate/career-path',
+    icon: <Target size={18} />,
+    children: [
+      { label: 'Career Path', href: '/dashboard/candidate/career-path' },
+      { label: 'Skill Gaps', href: '/dashboard/candidate/skills/gap-analysis' },
+      { label: 'Network', href: '/dashboard/candidate/network' },
+    ],
+  },
+  {
+    label: 'Integrations',
+    href: '/dashboard/candidate/integrations',
+    icon: <Plug size={18} />,
+    children: [
+      { label: 'Gmail', href: '/dashboard/candidate/integrations' },
+      { label: 'Extension', href: '/dashboard/candidate/connect-extension' },
+      { label: 'ATS Connect', href: '/dashboard/candidate/integrations' },
+    ],
+  },
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
   { label: 'Settings', href: '/dashboard/candidate/settings', icon: <Settings size={18} /> },
 ];
@@ -94,6 +123,7 @@ export default function DashboardLayout({ children, profile }: { children: React
   const [mobileOpen, setMobileOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [client, setClient] = useState<ReturnType<typeof createClient> | null>(null);
+  const [expandedNav, setExpandedNav] = useState<string | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -169,6 +199,17 @@ export default function DashboardLayout({ children, profile }: { children: React
     return pathname.startsWith(href);
   };
 
+  // Auto-expand candidate nav dropdown when on a child route
+  useEffect(() => {
+    if (effectiveRole !== 'candidate') return;
+    for (const item of candidateNav) {
+      if (item.children?.some(c => pathname.startsWith(c.href))) {
+        setExpandedNav(item.label);
+        break;
+      }
+    }
+  }, [pathname, effectiveRole]);
+
   const effectiveRoleForNav = (profile as { effective_role?: string }).effective_role || profile.role;
   const dashboardHref =
     (effectiveRoleForNav === 'platform_admin' || effectiveRoleForNav === 'admin') ? '/dashboard/admin' :
@@ -234,32 +275,88 @@ export default function DashboardLayout({ children, profile }: { children: React
         {/* Nav - role-specific active state design */}
         <nav className="flex-1 py-5 px-3 space-y-1 overflow-y-auto scrollbar-none">
           {navItems.map(item => {
-            const active = isActive(item.href);
+            const hasChildren = item.children && item.children.length > 0;
+            const isExpanded = expandedNav === item.label;
+            const isParentActive = hasChildren && item.children!.some(c => pathname.startsWith(c.href));
+            const active = isParentActive || (!hasChildren && (item.href === '/dashboard/admin' || item.href === '/dashboard/company' || item.href === '/dashboard/recruiter' || item.href === '/dashboard/candidate' ? pathname === item.href : pathname.startsWith(item.href)));
+
+            if (hasChildren) {
+              return (
+                <div key={item.href + item.label}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedNav(isExpanded ? null : item.label)}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-left',
+                      'relative',
+                      (active || isExpanded) ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
+                      !active && !isExpanded && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+                      collapsed && 'justify-center px-0'
+                    )}
+                    style={{
+                      backgroundColor: active || isExpanded ? 'var(--role-sidebar-nav-active-bg)' : undefined,
+                      ...(active && role === 'candidate' && { border: '1px solid var(--role-sidebar-nav-active-border)' }),
+                    }}
+                  >
+                    <span className={cn('relative shrink-0', (active || isExpanded) ? 'opacity-100' : 'opacity-70')} style={{ color: (active || isExpanded) ? 'var(--role-accent)' : undefined }}>
+                      {item.icon}
+                    </span>
+                    {!collapsed && (
+                      <>
+                        <span className="truncate flex-1">{item.label}</span>
+                        <ChevronDown size={14} className={cn('shrink-0 transition-transform', isExpanded && 'rotate-180')} />
+                      </>
+                    )}
+                  </button>
+                  {!collapsed && isExpanded && item.children && (
+                    <div className="pl-4 mt-0.5 space-y-0.5 border-l-2 border-surface-600 ml-4">
+                      {item.children.map(child => {
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <Link
+                            key={child.href + child.label}
+                            href={child.href}
+                            onClick={() => setMobileOpen(false)}
+                            className={cn(
+                              'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
+                              childActive ? 'text-white bg-[var(--role-sidebar-nav-active-bg)]' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]'
+                            )}
+                          >
+                            {child.icon && <span className="shrink-0 opacity-70" style={{ color: childActive ? 'var(--role-accent)' : undefined }}>{child.icon}</span>}
+                            <span className="truncate">{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const linkActive = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileOpen(false)}
+                onClick={() => { setMobileOpen(false); setExpandedNav(null); }}
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   'relative',
-                  active ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
-                  !active && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+                  linkActive ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
+                  !linkActive && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
                   collapsed && 'justify-center px-0'
                 )}
                 style={{
-                  backgroundColor: active ? 'var(--role-sidebar-nav-active-bg)' : undefined,
-                  borderLeft: active && role !== 'candidate' ? '3px solid var(--role-accent)' : undefined,
-                  marginLeft: active && role !== 'candidate' ? '-3px' : undefined,
-                  paddingLeft: active && role !== 'candidate' ? 'calc(0.75rem - 3px)' : undefined,
-                  ...(active && role === 'candidate' && {
-                    border: '1px solid var(--role-sidebar-nav-active-border)',
-                  }),
+                  backgroundColor: linkActive ? 'var(--role-sidebar-nav-active-bg)' : undefined,
+                  borderLeft: linkActive && role !== 'candidate' ? '3px solid var(--role-accent)' : undefined,
+                  marginLeft: linkActive && role !== 'candidate' ? '-3px' : undefined,
+                  paddingLeft: linkActive && role !== 'candidate' ? 'calc(0.75rem - 3px)' : undefined,
+                  ...(linkActive && role === 'candidate' && { border: '1px solid var(--role-sidebar-nav-active-border)' }),
                 }}
               >
                 <span
-                  className={cn('relative shrink-0', active ? 'opacity-100' : 'opacity-70')}
-                  style={{ color: active ? 'var(--role-accent)' : undefined }}
+                  className={cn('relative shrink-0', linkActive ? 'opacity-100' : 'opacity-70')}
+                  style={{ color: linkActive ? 'var(--role-accent)' : undefined }}
                 >
                   {item.icon}
                   {collapsed && item.badge && item.badge > 0 && (

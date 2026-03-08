@@ -141,6 +141,23 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL(dest, request.url));
       }
 
+      // ── First-time users → welcome / setup page (once per role) ──
+      const welcomeUrls: Record<string, string> = {
+        candidate: '/dashboard/candidate/welcome',
+        recruiter: '/dashboard/recruiter/welcome',
+        company_admin: '/dashboard/company/setup',
+      };
+      const welcomeUrl = welcomeUrls[activeRole as string];
+      const isFirstVisit = !request.cookies.get('welcome_shown')?.value;
+      if (isFirstVisit && welcomeUrl && pathname !== welcomeUrl) {
+        const redirectResp = NextResponse.redirect(new URL(welcomeUrl, request.url));
+        redirectResp.cookies.set('welcome_shown', 'true', {
+          path: '/',
+          maxAge: 60 * 60 * 24 * 365,
+        });
+        return redirectResp;
+      }
+
       // ── Candidate Access Gates (self-service: onboarding allowed, no recruiter required) ──
       const isCandidate = activeRole === 'candidate';
       const isCandidateDashboard = pathname.startsWith('/dashboard/candidate');
@@ -188,45 +205,42 @@ export async function middleware(request: NextRequest) {
         }
 
         // Candidate exists but hasn't completed onboarding → send to onboarding
-        if (!candidate.onboarding_completed && !isOnboardingPage && !isWaitingPage) {
+        if (!candidate.onboarding_completed && !isOnboardingPage) {
           return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
         }
       }
 
-      // If candidate is on waiting page but has recruiter assigned → send to dashboard
+      // B2B SaaS: No waiting page needed, candidates access dashboard after onboarding
       if (isCandidate && isWaitingPage) {
+        // If onboarding complete, redirect to dashboard
         let { data: candidate } = await supabase
           .from('candidates')
-          .select('id')
+          .select('id, onboarding_completed')
           .eq('user_id', user.id)
           .single();
 
-        // Auto-link by email on waiting page too
         if (!candidate && user.email) {
           const { data: orphan } = await supabase
             .from('candidates')
-            .select('id')
+            .select('id, onboarding_completed')
             .eq('email', user.email)
             .is('user_id', null)
             .order('updated_at', { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
           if (orphan) {
             await supabase.from('candidates').update({ user_id: user.id }).eq('id', orphan.id);
             candidate = orphan;
           }
         }
 
-        if (candidate) {
-          const { count } = await supabase
-            .from('recruiter_candidate_assignments')
-            .select('recruiter_id', { count: 'exact', head: true })
-            .eq('candidate_id', candidate.id);
-
-          if (count && count > 0) {
-            return NextResponse.redirect(new URL('/dashboard/candidate', request.url));
-          }
+        // If onboarding complete, send to dashboard
+        if (candidate?.onboarding_completed) {
+          return NextResponse.redirect(new URL('/dashboard/candidate', request.url));
         }
+
+        // Otherwise send to onboarding
+        return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
       }
     }
   }

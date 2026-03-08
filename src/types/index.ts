@@ -176,6 +176,7 @@ export interface Candidate {
   parsed_resume_text?: string;
   years_of_experience?: number;
   last_seen_matches_at?: string;
+  onboarding_completed?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -206,6 +207,28 @@ export interface Job {
   min_years_experience?: number;
   weighted_keywords?: Record<string, number>;
   structure_hash?: string;
+}
+
+/** Alias for match list / hook return (CandidateJobMatch with optional job & candidate). */
+export type Match = CandidateJobMatch;
+
+// Hook return types for candidate dashboard
+export interface UseCandidateReturn {
+  candidate: Candidate | null;
+  loading: boolean;
+  refresh: () => Promise<void>;
+}
+
+export interface UseMatchesReturn {
+  matches: Match[];
+  loading: boolean;
+  refresh: () => Promise<void>;
+}
+
+export interface UseApplicationsReturn {
+  applications: Application[];
+  loading: boolean;
+  refresh: () => Promise<void>;
 }
 
 export interface VariantScore {

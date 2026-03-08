@@ -72,6 +72,7 @@ export default function RecruiterApplicationsPage() {
 
     setApplications(data || []);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; load runs once and on realtime
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -82,6 +83,7 @@ export default function RecruiterApplicationsPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
     subscribeWithLog(channel, 'recruiter-applications');
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel with load
   }, [load, supabase]);
 
   const updateStatus = async (appId: string, status: string) => {

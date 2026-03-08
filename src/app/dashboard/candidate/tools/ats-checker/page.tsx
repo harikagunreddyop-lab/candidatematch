@@ -62,7 +62,8 @@ export default function CandidateAtsCheckerPage() {
         if (res?.length && !resumeId) setResumeId(res[0].id);
       }
     })();
-  }, [supabase]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; resumeId set inside
+  }, []);
 
   const runCheck = async () => {
     if (!candidateId || !jdText.trim()) {

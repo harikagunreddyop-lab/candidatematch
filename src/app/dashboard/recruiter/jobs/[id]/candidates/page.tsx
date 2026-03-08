@@ -19,6 +19,7 @@ export default function RecruiterJobCandidatesPage() {
   useEffect(() => {
     if (!jobId) return;
     loadMatches();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMatches keyed by jobId only
   }, [jobId]);
 
   async function loadMatches() {

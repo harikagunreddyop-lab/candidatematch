@@ -86,6 +86,7 @@ export default function CandidateDetailPage() {
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; load keyed by id
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
@@ -100,6 +101,7 @@ export default function CandidateDetailPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_resumes', filter: `candidate_id=eq.${id}` }, () => load());
     subscribeWithLog(channel, `candidate-detail-${id}`);
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel keyed by id
   }, [id, load]);
 
   const generateResume = async (jobId: string) => {

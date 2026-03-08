@@ -57,6 +57,7 @@ export default function CandidateMessagesPage() {
     });
     setConversations(convs);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; loadConversations keyed by profile
   }, [profile]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
@@ -77,6 +78,7 @@ export default function CandidateMessagesPage() {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel keyed by profile and loadConversations
   }, [profile, loadConversations]);
 
   const loadAvailableUsers = async () => {

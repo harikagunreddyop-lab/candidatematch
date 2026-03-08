@@ -48,7 +48,7 @@ export default function CandidateProfilePage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount
 
   const handleAutofillWithAI = async () => {
     setAutofillError(null);
@@ -150,7 +150,7 @@ export default function CandidateProfilePage() {
         <div className="flex items-center gap-2 flex-wrap">
           {atsReportAllowed && (
             <Link
-              href="/dashboard/candidate/skill-report"
+              href="/dashboard/candidate/skills/gap-analysis"
               className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
               title="View ATS fix report and run on-demand ATS checks"
             >

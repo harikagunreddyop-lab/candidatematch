@@ -115,6 +115,7 @@ export default function PipelinePage() {
 
     setCards(grouped);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; load runs on mount and realtime
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -126,6 +127,7 @@ export default function PipelinePage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
     subscribeWithLog(channel, 'recruiter-pipeline');
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel with load
   }, [load, supabase]);
 
   const moveCard = async (card: any, toStage: string) => {

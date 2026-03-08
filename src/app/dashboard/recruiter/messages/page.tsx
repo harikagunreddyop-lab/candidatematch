@@ -62,6 +62,7 @@ export default function RecruiterMessagesPage() {
     });
     setConversations(convs);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; loadConversations keyed by profile
   }, [profile]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
@@ -81,6 +82,7 @@ export default function RecruiterMessagesPage() {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel keyed by profile and loadConversations
   }, [profile, loadConversations]);
 
   const loadAvailableUsers = useCallback(async () => {
@@ -163,6 +165,7 @@ export default function RecruiterMessagesPage() {
     } finally {
       setLoadingUsers(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; loadAvailableUsers keyed by profile
   }, [profile]);
 
   const createConversation = async () => {

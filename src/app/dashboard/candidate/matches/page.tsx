@@ -13,6 +13,7 @@ export default function CandidateMatchesPage() {
 
   useEffect(() => {
     loadMatches();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMatches keyed by minScore only
   }, [minScore]);
 
   async function loadMatches() {

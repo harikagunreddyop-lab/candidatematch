@@ -3,6 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import type { Profile } from '@/types';
 
+export { useCandidate } from './useCandidate';
+export { useMatches } from './useMatches';
+export { useApplications } from './useApplications';
+
 export function useProfile() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,8 +37,8 @@ export function useProfile() {
 }
 
 export function useSupabaseQuery<T>(
-  queryFn: (supabase: ReturnType<typeof createClient>) => Promise<{ data: T | null; error: any }>,
-  deps: any[] = []
+  queryFn: (supabase: ReturnType<typeof createClient>) => Promise<{ data: T | null; error: { message?: string } | null }>,
+  deps: unknown[] = []
 ) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +57,7 @@ export function useSupabaseQuery<T>(
     setLoading(true);
     setError(null);
     const result = await memoizedQueryFn(c);
-    if (result.error) setError(result.error.message);
+    if (result.error) setError(result.error.message ?? 'Unknown error');
     else setData(result.data);
     setLoading(false);
   }, [client, memoizedQueryFn]);

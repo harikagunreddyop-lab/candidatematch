@@ -98,8 +98,9 @@ export default function AdminDashboard() {
     setLastRefreshed(new Date());
     } finally {
       loadingRef.current = false;
-      setLoading(false);
-    }
+    setLoading(false);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; run once on mount and on interval
   }, []);
 
   useEffect(() => { load(); }, [load]);

@@ -78,6 +78,7 @@ export default function CompanyPipelinePage() {
     }
     setCards(grouped);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; load runs on mount and realtime
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -88,6 +89,7 @@ export default function CompanyPipelinePage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load());
     subscribeWithLog(ch, 'company-pipeline');
     return () => { supabase.removeChannel(ch); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; channel subscribes with load
   }, [load, supabase]);
 
   const moveCard = async (card: any, toStage: string) => {

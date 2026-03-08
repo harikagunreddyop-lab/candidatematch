@@ -637,6 +637,7 @@ export default function UsersPage() {
     }
     setAssignmentCounts(counts);
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; run once on mount
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -648,6 +649,7 @@ export default function UsersPage() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
     subscribeWithLog(channel, 'users-page-realtime');
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- supabase unstable; run once with load
   }, [load]);
 
   const updateRole = async (id: string, role: string) => {

@@ -16,6 +16,7 @@ export default function CompaniesPage() {
 
   useEffect(() => {
     loadCompanies();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadCompanies keyed by filter only
   }, [filter]);
 
   async function loadCompanies() {

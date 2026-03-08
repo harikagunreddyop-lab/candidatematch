@@ -375,6 +375,7 @@ export default function AdminReportsPage() {
     });
 
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- periodStart/supabase intentional; load keyed by period
   }, [period]);
 
   useEffect(() => { load(); }, [load]);

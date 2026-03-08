@@ -7,8 +7,11 @@ frontend:
         - npm ci
     build:
       commands:
+        # Avoid stale Next.js cache causing "Cannot find module for page" during Collecting page data
+        - rm -rf .next
         # EventBridge: see infrastructure/eventbridge-rules.json and docs/CRON_AMPLIFY.md for scheduler setup.
-        # Optional: write selected env vars into .env.production for Next.js
+        # Write selected env vars into .env.production for Next.js (overwrite first to avoid stale cache)
+        - echo "" > .env.production
         - env | grep -e NEXT_PUBLIC_ >> .env.production || true
         - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production || true
         - env | grep -e ANTHROPIC_API_KEY >> .env.production || true
@@ -18,6 +21,8 @@ frontend:
         - env | grep -e AUTOFILL_ALLOWED_ORIGINS >> .env.production || true
         - env | grep -e NEXT_PUBLIC_APP_URL >> .env.production || true
         - env | grep -e GMAIL_ >> .env.production || true
+        # Increase Node heap for Next.js build (helps avoid OOM on Amplify)
+        - export NODE_OPTIONS="--max-old-space-size=4096"
         - npm run build
   artifacts:
     baseDirectory: .next
@@ -26,4 +31,3 @@ frontend:
   cache:
     paths:
       - node_modules/**/*
-      - .next/cache/**/*

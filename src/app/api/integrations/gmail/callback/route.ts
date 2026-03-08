@@ -14,8 +14,24 @@ export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get('state');
   const error = req.nextUrl.searchParams.get('error');
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
-  const successRedirect = `${baseUrl}/dashboard/recruiter/integrations`;
-  const failRedirect = `${baseUrl}/dashboard/recruiter/integrations?error=gmail`;
+
+  let userId: string;
+  let forCandidate = false;
+  try {
+    const stateStr = state ?? '';
+    const decoded = JSON.parse(Buffer.from(stateStr, 'base64url').toString());
+    userId = decoded.userId;
+    forCandidate = decoded.for === 'candidate';
+  } catch {
+    userId = '';
+  }
+
+  const successRedirect = forCandidate
+    ? `${baseUrl}/dashboard/candidate/integrations`
+    : `${baseUrl}/dashboard/recruiter/integrations`;
+  const failRedirect = forCandidate
+    ? `${baseUrl}/dashboard/candidate/integrations?error=gmail`
+    : `${baseUrl}/dashboard/recruiter/integrations?error=gmail`;
 
   if (error) {
     return NextResponse.redirect(failRedirect);
@@ -24,11 +40,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(failRedirect);
   }
 
-  let userId: string;
-  try {
-    const decoded = JSON.parse(Buffer.from(state, 'base64url').toString());
-    userId = decoded.userId;
-  } catch {
+  if (!userId) {
     return NextResponse.redirect(failRedirect);
   }
 

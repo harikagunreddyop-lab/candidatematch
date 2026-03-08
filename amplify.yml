@@ -7,6 +7,7 @@ frontend:
         - npm ci
     build:
       commands:
+        # EventBridge: see infrastructure/eventbridge-rules.json and docs/CRON_AMPLIFY.md for scheduler setup.
         # Optional: write selected env vars into .env.production for Next.js
         - env | grep -e NEXT_PUBLIC_ >> .env.production || true
         - env | grep -e SUPABASE_SERVICE_ROLE_KEY >> .env.production || true

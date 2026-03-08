@@ -1,53 +1,61 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { CandidateProCta } from './CandidateProCta';
+import { PricingCard } from './PricingCard';
+import { ComparisonTable } from './ComparisonTable';
 
 export const metadata: Metadata = {
   title: 'Pricing — CandidateMatch',
   description: 'Simple, transparent pricing for job seekers and companies. Free for candidates; flexible plans for hiring teams.',
 };
 
-export default function PricingPage() {
-  const candidatePlans = [
-    {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      description: 'Get started with no cost.',
-      features: [
-        'Create profile',
-        'Upload resume',
-        'Up to 10 job matches per week',
-        'Basic job alerts',
-        'Apply to unlimited jobs',
-        'Basic resume builder',
-      ],
-      cta: 'Get Started',
-      href: '/auth',
-      highlight: false,
-      useProCta: false,
-    },
-    {
-      name: 'Pro',
-      price: '$29',
-      period: '/month',
-      description: 'For active job seekers who want the full advantage.',
-      features: [
-        'Unlimited job matches',
-        'Priority matching (see jobs first)',
-        'Advanced resume builder',
-        'Salary insights',
-        'Application tracking',
-        'Interview prep AI coach',
-        'No ads',
-      ],
-      cta: 'Start Pro Trial',
-      href: '/auth',
-      highlight: true,
-      useProCta: true,
-    },
-  ];
+const CANDIDATE_PLANS = [
+  {
+    name: 'Free',
+    price: 0,
+    features: [
+      '5 job applications per month',
+      'Basic resume builder',
+      'Job search access',
+      'Profile creation',
+    ],
+    cta: 'Get Started',
+    popular: false,
+    planKey: 'free' as const,
+  },
+  {
+    name: 'Pro',
+    price: 29,
+    features: [
+      'Unlimited applications',
+      'AI-powered resume generation',
+      'Email tracking & auto-updates',
+      'ATS scoring & optimization',
+      '10 job alerts',
+      'Priority support',
+    ],
+    cta: 'Start Free Trial',
+    popular: true,
+    planKey: 'pro' as const,
+  },
+  {
+    name: 'Pro Plus',
+    price: 99,
+    features: [
+      'Everything in Pro',
+      'Priority matching (top of recruiter lists)',
+      'Advanced analytics dashboard',
+      '1-on-1 career coaching (monthly)',
+      'Interview preparation',
+      'Unlimited job alerts',
+      'White-glove support',
+    ],
+    cta: 'Contact Sales',
+    popular: false,
+    planKey: 'pro_plus' as const,
+  },
+];
 
+export default function PricingPage() {
   const companyPlans = [
     {
       name: 'Starter',
@@ -127,45 +135,16 @@ export default function PricingPage() {
 
         <div className="max-w-5xl mx-auto mb-20">
           <h2 className="text-2xl font-bold mb-6 text-center">For candidates</h2>
-          <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {candidatePlans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-2xl p-8 transition-all ${
-                  plan.highlight
-                    ? 'bg-gradient-to-b from-blue-600/10 to-violet-600/10 border-2 border-blue-500/30 shadow-xl shadow-blue-600/5'
-                    : 'bg-white/[0.02] border border-white/5'
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="text-xs font-semibold text-blue-400 uppercase tracking-widest mb-4">Most Popular</div>
-                )}
-                <h3 className="text-2xl font-bold">{plan.name}</h3>
-                <div className="mt-2 mb-4">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-neutral-500 text-sm">{plan.period}</span>
-                </div>
-                <p className="text-neutral-500 text-sm mb-6">{plan.description}</p>
-                {plan.useProCta ? (
-                  <CandidateProCta />
-                ) : (
-                  <Link
-                    href={plan.href}
-                    className="block text-center py-3 rounded-xl font-medium bg-white/5 hover:bg-white/10 text-neutral-300 transition"
-                  >
-                    {plan.cta}
-                  </Link>
-                )}
-                <ul className="mt-6 space-y-3">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-neutral-400">
-                      <span className="text-blue-400 mt-0.5 shrink-0">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+          <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {CANDIDATE_PLANS.map((plan) => (
+              <PricingCard key={plan.name} {...plan} />
             ))}
           </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-6 mb-20">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">Feature Comparison</h2>
+          <ComparisonTable />
         </div>
 
         <div className="max-w-6xl mx-auto">

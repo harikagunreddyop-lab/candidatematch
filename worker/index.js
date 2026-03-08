@@ -4,11 +4,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const fastify = require('fastify')({ logger: true, bodyLimit: 1_048_576 /* 1 MB */ });
 const { createClient } = require('@supabase/supabase-js');
-const { execSync } = require('child_process');
 const fs = require('fs');
-const crypto = require('crypto');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
-const { buildAtsDocx } = require('./ats-docx-builder');
+const { defaultGenerator } = require('./lib/fast-generator');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -17,7 +15,28 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const WORKER_SECRET = process.env.WORKER_SECRET;
 const PORT = process.env.WORKER_PORT || 3001;
 const TEMP_DIR = path.join(__dirname, 'tmp');
-const USE_LATEX = process.env.USE_LATEX === 'true' || process.env.USE_LATEX === '1';
+const REDIS_URL = process.env.REDIS_URL || (process.env.REDIS_HOST && process.env.REDIS_PORT
+  ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}` : null);
+
+let resumeQueue = null;
+let resumeWorker = null;
+let queueEvents = null;
+if (REDIS_URL) {
+  try {
+    const IORedis = require('ioredis');
+    const { Queue, Worker, QueueEvents } = require('bullmq');
+    const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+    const queueName = 'resume-generation';
+    resumeQueue = new Queue(queueName, { connection });
+    queueEvents = new QueueEvents(queueName, { connection });
+    resumeWorker = new Worker(queueName, async (job) => {
+      return await runGeneration(job.data, job);
+    }, { connection, concurrency: 10 });
+    fastify.log.info('BullMQ worker attached to queue resume-generation');
+  } catch (e) {
+    fastify.log.warn('BullMQ setup failed, using inline generation: ' + e.message);
+  }
+}
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Missing env: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env (project root)');
@@ -29,6 +48,15 @@ if (!WORKER_SECRET) {
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── Health / generation metrics ───────────────────────────────────────────
+const metrics = {
+  totalGenerations: 0,
+  successCount: 0,
+  lastDurationMs: null,
+  lastError: null,
+  lastCompletedAt: null,
+};
 
 // Ensure temp directory
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -48,13 +76,80 @@ fastify.addHook('preHandler', async (request, reply) => {
 });
 
 // ─── Health Check ────────────────────────────────────────────────────────────
-fastify.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
+fastify.get('/health', async () => {
+  const stats = defaultGenerator.getStats();
+  return {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    metrics: {
+      totalGenerations: metrics.totalGenerations,
+      successCount: metrics.successCount,
+      successRate: metrics.totalGenerations ? (metrics.successCount / metrics.totalGenerations * 100).toFixed(1) + '%' : null,
+      lastDurationMs: metrics.lastDurationMs,
+      lastError: metrics.lastError,
+      lastCompletedAt: metrics.lastCompletedAt,
+      cacheSize: stats.cacheSize,
+      maxCacheSize: stats.maxCacheSize,
+    },
+    queue: REDIS_URL ? 'bullmq' : 'inline',
+  };
+});
 
-// ─── Generate Resume Endpoint ────────────────────────────────────────────────
-// Output: Word (.docx) with Elite spec. file_path should end in .docx
-fastify.post('/generate', async (request, reply) => {
-  const { resume_version_id, candidate, job, pdf_path, file_path } = request.body || {};
+// ─── Generate Resume Endpoint (Elite pipeline + optional BullMQ) ──────────────
+async function runGeneration(payload, progressJob = null) {
+  const { resume_version_id, candidate, job, file_path, pdf_path, templateType } = payload;
   const storagePath = file_path || pdf_path;
+
+  const progress = (stage) => {
+    if (progressJob && typeof progressJob.updateProgress === 'function') {
+      progressJob.updateProgress({ stage }).catch(() => {});
+    }
+  };
+
+  progress('generating');
+  await updateStatus(resume_version_id, 'generating');
+  const result = await defaultGenerator.generate(candidate, job, {
+    templateKey: templateType || undefined,
+    forceRegenerate: false,
+  });
+
+  const docxBuffer = result.buffer;
+  const sizeKB = docxBuffer.length / 1024;
+  if (sizeKB < 1) throw new Error('DOCX too small, likely empty');
+
+  progress('uploading');
+  await updateStatus(resume_version_id, 'uploading');
+  const { error: uploadError } = await supabase.storage
+    .from('resumes')
+    .upload(storagePath, docxBuffer, {
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      upsert: true,
+    });
+
+  if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+  await supabase.from('resume_versions').update({
+    generation_status: 'completed',
+    bullets: result.bullets || [],
+    pdf_path: storagePath,
+    ...(result.plainText && { resume_text: result.plainText.slice(0, 20000) }),
+  }).eq('id', resume_version_id);
+
+  progress('completed');
+  return {
+    resume_version_id,
+    duration: result.duration,
+    atsScore: result.atsScore,
+    cached: result.cached,
+    buffer: docxBuffer,
+    storagePath,
+  };
+}
+
+fastify.post('/generate', async (request, reply) => {
+  const { resume_version_id, candidate, job, pdf_path, file_path, templateType } = request.body || {};
+  const storagePath = file_path || pdf_path;
+  const streamResponse = request.query && request.query.stream === '1';
 
   if (!resume_version_id || !candidate || !job || !storagePath) {
     return reply.code(400).send({
@@ -63,43 +158,65 @@ fastify.post('/generate', async (request, reply) => {
   }
 
   if (!ANTHROPIC_KEY) {
-    fastify.log.warn('ANTHROPIC_API_KEY not set; resume generation will fail at bullet step');
+    fastify.log.warn('ANTHROPIC_API_KEY not set; resume generation may have empty bullets');
   }
 
+  const startTime = Date.now();
+  metrics.totalGenerations += 1;
+
   try {
-    // Step 1: Generate STAR bullets + summary via Claude
-    await updateStatus(resume_version_id, 'generating');
-    const { summary: generatedSummary, experience: experienceBullets } = await generateBullets(candidate, job);
+    let result;
+    if (REDIS_URL && resumeQueue && resumeWorker && queueEvents) {
+      const jobId = `gen-${resume_version_id}-${Date.now()}`;
+      const job = await resumeQueue.add('generate', {
+        resume_version_id,
+        candidate,
+        job,
+        file_path: storagePath,
+        pdf_path,
+        templateType,
+      }, { jobId, removeOnComplete: { count: 100 } });
+      result = await job.waitUntilFinished(queueEvents, 30000);
+    } else {
+      result = await runGeneration({
+        resume_version_id,
+        candidate,
+        job,
+        file_path: storagePath,
+        pdf_path,
+        templateType,
+      }, null);
+    }
 
-    // Step 2: Build Word (DOCX) — ATS-optimized Elite spec
-    await updateStatus(resume_version_id, 'compiling');
-    const { buffer: docxBuffer, plainText } = await buildAtsDocx(candidate, experienceBullets, job, generatedSummary);
+    metrics.successCount += 1;
+    metrics.lastDurationMs = result.duration ?? (Date.now() - startTime);
+    metrics.lastError = null;
+    metrics.lastCompletedAt = new Date().toISOString();
 
-    const sizeKB = docxBuffer.length / 1024;
-    if (sizeKB < 1) throw new Error('DOCX too small, likely empty');
+    if (streamResponse && result.buffer) {
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      reply.header('Content-Disposition', 'attachment; filename="resume.docx"');
+      const CHUNK = 64 * 1024;
+      const buf = result.buffer;
+      for (let i = 0; i < buf.length; i += CHUNK) {
+        reply.raw.write(buf.slice(i, i + CHUNK));
+      }
+      reply.raw.end();
+      return;
+    }
 
-    // Step 3: Upload to Supabase Storage (Word format)
-    await updateStatus(resume_version_id, 'uploading');
-    const { error: uploadError } = await supabase.storage
-      .from('resumes')
-      .upload(storagePath, docxBuffer, {
-        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        upsert: true,
-      });
-
-    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-    // Step 4: Update DB (pdf_path column stores path to .docx; resume_text for ATS scoring)
-    await supabase.from('resume_versions').update({
-      generation_status: 'completed',
-      bullets: experienceBullets,
-      pdf_path: storagePath,
-      ...(plainText && { resume_text: plainText.slice(0, 20000) }),
-    }).eq('id', resume_version_id);
-
-    return { status: 'completed', resume_version_id };
+    return {
+      status: 'completed',
+      resume_version_id: result.resume_version_id,
+      duration: result.duration,
+      atsScore: result.atsScore,
+      cached: result.cached,
+      resumeUrl: result.storagePath,
+      optimizations: result.atsScore >= 90 ? ['ats-optimized', 'keyword-density'] : [],
+    };
   } catch (err) {
     fastify.log.error(err);
+    metrics.lastError = err.message;
     await supabase.from('resume_versions').update({
       generation_status: 'failed',
       error_message: err.message,
@@ -108,97 +225,6 @@ fastify.post('/generate', async (request, reply) => {
     return reply.code(500).send({ error: err.message });
   }
 });
-
-// ─── Elite STAR Bullet + Summary Generation ───────────────────────────────────
-async function generateBullets(candidate, job) {
-  const expYears = candidate.years_of_experience ?? 5;
-  const maxRoles = expYears <= 5 ? 3 : 5;
-  const maxBulletsRecent = expYears <= 5 ? 4 : 6;
-  const maxBulletsOlder = expYears <= 5 ? 3 : 4;
-
-  const jd = (job.jd_clean || job.jd_raw || '').slice(0, 4000);
-
-  const prompt = `You are an elite ATS resume writer. Your job is to ANALYZE the job description and TAILOR the resume so it scores 85+ on ATS systems (Workday, Taleo, Greenhouse, Lever, etc.).
-
-GOAL: Produce content that will score 85+ on ATS. Extract and mirror job keywords, ensure 3-6% keyword density, use exact role titles and skill phrases from the JD where truthful.
-
-CANDIDATE:
-Name: ${candidate.full_name}
-Title: ${candidate.primary_title}
-Years experience: ${expYears}
-Skills: ${JSON.stringify(candidate.skills)}
-Tools: ${JSON.stringify(candidate.tools || [])}
-
-EXPERIENCE:
-${JSON.stringify(candidate.experience, null, 2)}
-
-TARGET JOB:
-Title: ${job.title}
-Company: ${job.company}
-Description:
-${jd}
-
-ANALYZE THE JD: Extract must-have skills, technologies, role keywords, industry terms. Weave these NATURALLY into the summary and bullets. The resume must pass ATS parsing (scannable in 6 seconds, keyword density 3-6%, no formatting that breaks parsing).
-
-ELITE STAR BULLET RULES (MANDATORY):
-- Formula: Action Verb + Scope + Method + Measurable Outcome
-- Each bullet: 18-32 words, at least one number
-- Use elite verbs ONLY: Architected, Engineered, Orchestrated, Automated, Optimized, Accelerated, Reduced, Increased, Implemented, Delivered, Led, Directed, Rebuilt, Transformed
-- FORBIDDEN: "responsible for", "assisted with", "helped", "various", "several", "dynamic", "hardworking", "passionate", "worked on"
-- NO repetition across roles. Prioritize: revenue metric, cost reduction, efficiency/time, scale (users/records), accuracy/quality
-- Recent roles: ${maxBulletsRecent} bullets. Older roles: ${maxBulletsOlder} bullets. Max ${maxRoles} roles.
-- DO NOT invent facts. ONLY rewrite existing responsibilities with quantifiable impact where data supports it.
-- Embed JD keywords naturally (3-6% density) to maximize ATS score toward 85+.
-
-PROFESSIONAL SUMMARY (3-5 lines, single paragraph):
-- Start with target role title or close variant from the JD
-- Formula: [Title] with X years of experience in [domain from JD]. Specializes in [JD-relevant strengths]. Delivered measurable impact including [metric] and [metric]. Experienced supporting [stakeholder level].
-- NO adjectives: dynamic, motivated, hardworking, passionate.
-- Include 2 quantified achievements, domain, core tools. Use JD terminology.
-
-OUTPUT FORMAT (return ONLY this JSON, no markdown):
-{"summary":"...","experience":[{"company":"...","title":"...","bullets":["...","..."]}]}`;
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': ANTHROPIC_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  const data = await response.json();
-  const text = data.content?.[0]?.text || '{}';
-
-  try {
-    const parsed = JSON.parse(text);
-    // New format: { summary, experience }; legacy: [{ company, title, bullets }]
-    if (parsed && Array.isArray(parsed.experience)) {
-      return { summary: parsed.summary || '', experience: parsed.experience };
-    }
-    if (Array.isArray(parsed)) return { summary: '', experience: parsed };
-    return { summary: '', experience: [] };
-  } catch {
-    const objMatch = text.match(/\{[\s\S]*\}/);
-    const arrMatch = text.match(/\[[\s\S]*\]/);
-    if (objMatch) {
-      try {
-        const p = JSON.parse(objMatch[0]);
-        return { summary: p.summary || '', experience: Array.isArray(p.experience) ? p.experience : [] };
-      } catch (_) { }
-    }
-    if (arrMatch) return { summary: '', experience: JSON.parse(arrMatch[0]) };
-    return { summary: '', experience: [] };
-  }
-}
-
-// ─── LaTeX Template Builder ──────────────────────────────────────────────────
 function buildLatex(candidate, bullets, job) {
   const esc = (s) => (s || '').replace(/[&%$#_{}~^\\]/g, (m) => `\\${m}`);
   const skills = (candidate.skills || []).map(esc).join(' $\\cdot$ ');

@@ -11,6 +11,8 @@
     "@supabase/supabase-js": "^2.45.0",
     "docx": "^9.6.0",
     "dotenv": "^16.4.0",
-    "pdf-lib": "^1.17.1"
+    "pdf-lib": "^1.17.1",
+    "bullmq": "^5.34.5",
+    "ioredis": "^5.4.1"
   }
 }

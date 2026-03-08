@@ -1,8 +1,10 @@
 import posthog from 'posthog-js';
 
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com';
+
 if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: 'https://app.posthog.com',
+    api_host: posthogHost,
     capture_pageview: false,
     capture_pageleave: true,
     autocapture: false,

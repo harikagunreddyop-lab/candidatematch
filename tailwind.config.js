@@ -76,6 +76,17 @@ module.exports = {
         success: { 500: '#22c55e', 600: '#16a34a' },
         warning: { 500: '#f59e0b', 600: '#d97706' },
         danger: { 500: '#ef4444', 600: '#dc2626' },
+        /* WCAG AA semantic (use these for error/success text on dark bg) */
+        error: {
+          DEFAULT: 'var(--color-error)',
+          light: 'var(--color-error-light)',
+          dark: 'var(--color-error-dark)',
+        },
+        successSemantic: {
+          DEFAULT: 'var(--color-success)',
+          light: 'var(--color-success-light)',
+          dark: 'var(--color-success-dark)',
+        },
       },
       fontFamily: {
         sans: ['var(--font-satoshi)', 'system-ui', 'sans-serif'],

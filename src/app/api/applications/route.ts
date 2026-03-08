@@ -6,6 +6,7 @@ import { hasFeature } from '@/lib/feature-flags-server';
 import { emitEvent, recordOutcome } from '@/lib/telemetry';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { isValidUuid } from '@/lib/security';
+import { FeatureGate } from '@/lib/feature-gates';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,11 +44,37 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createServiceClient();
+
+  // Check if application already exists (for candidate limit/gate: only apply to new applications)
+  const { data: existingApplication } = await supabase
+    .from('applications')
+    .select('id')
+    .eq('candidate_id', candidateId)
+    .eq('job_id', jobId)
+    .maybeSingle();
+
   if (profile.role === 'candidate') {
     const { data: c } = await supabase.from('candidates').select('id').eq('id', candidateId).eq('user_id', authResult.user.id).single();
     if (!c) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     const canApply = await hasFeature(supabase, authResult.user.id, profile.role, 'candidate_apply_jobs', true);
     if (!canApply) return NextResponse.json({ error: 'Apply access is restricted' }, { status: 403 });
+    if (!existingApplication) {
+      const gate = new FeatureGate();
+      const access = await gate.checkAccess(candidateId, 'applications');
+      if (!access.allowed) {
+        return NextResponse.json(
+          {
+            error: access.reason === 'limit_reached'
+              ? `You've reached your monthly application limit (${(access as { limit: number }).limit}). Upgrade for more.`
+              : 'Upgrade your plan to submit more applications.',
+            reason: access.reason,
+            upgrade_url: '/pricing',
+            ...(access.reason === 'limit_reached' ? { limit: (access as { limit: number }).limit, used: (access as { used: number }).used } : {}),
+          },
+          { status: 403 }
+        );
+      }
+    }
   } else if (profile.role === 'recruiter') {
     const { data: job } = await supabase.from('jobs').select('id').eq('id', jobId).eq('posted_by', profile.id).single();
     if (!job) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -128,13 +155,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Check if this is an update (existing row) or a new application
-  const { data: existing } = await supabase
-    .from('applications')
-    .select('id')
-    .eq('candidate_id', candidateId)
-    .eq('job_id', jobId)
-    .maybeSingle();
+  // Use existingApplication (fetched above) for update vs new
+  const existing = existingApplication;
 
   const tzOffset = typeof body.tz_offset === 'number' ? body.tz_offset : 0;
   const todayStart = getLocalDayStart(tzOffset);
@@ -187,6 +209,12 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+  if (profile.role === 'candidate' && !existing && data) {
+    const gate = new FeatureGate();
+    await gate.trackUsage(data.candidate_id, 'applications');
+  }
+
   return NextResponse.json(data);
 }
 

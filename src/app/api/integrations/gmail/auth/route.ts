@@ -16,19 +16,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL('/auth/login', req.url));
   }
 
-  const service = createServiceClient();
-  const { data: profile } = await service
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-  if (!profile || !['admin', 'recruiter'].includes(profile.role)) {
-    return NextResponse.json({ error: 'Gmail integration is available for recruiters and admins only' }, { status: 403 });
+  const forCandidate = req.nextUrl.searchParams.get('for') === 'candidate';
+
+  if (forCandidate) {
+    const service = createServiceClient();
+    const { data: profile } = await service.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || profile.role !== 'candidate') {
+      return NextResponse.json({ error: 'Gmail integration for candidates only' }, { status: 403 });
+    }
+  } else {
+    const service = createServiceClient();
+    const { data: profile } = await service
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+    if (!profile || !['admin', 'recruiter'].includes(profile.role)) {
+      return NextResponse.json({ error: 'Gmail integration is available for recruiters and admins only' }, { status: 403 });
+    }
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
   const redirectUri = `${baseUrl}/api/integrations/gmail/callback`;
-  const state = Buffer.from(JSON.stringify({ userId: user.id })).toString('base64url');
+  const state = Buffer.from(JSON.stringify({ userId: user.id, for: forCandidate ? 'candidate' : 'recruiter' })).toString('base64url');
   const authUrl = getAuthUrl(redirectUri, state);
   return NextResponse.redirect(authUrl);
 }

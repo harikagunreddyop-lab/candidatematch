@@ -10,7 +10,7 @@ import { requireApiAuth } from '@/lib/api-auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
+  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   const supabase = createServerSupabase();

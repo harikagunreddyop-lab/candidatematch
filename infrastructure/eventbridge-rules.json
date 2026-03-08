@@ -1,0 +1,64 @@
+{
+  "description": "EventBridge rules for CandidateMatch automation pipeline. Deploy via AWS CLI or Terraform. Targets can be Lambda (invoking HTTPS with CRON_SECRET) or EventBridge Scheduler API destination to your Amplify app URL.",
+  "rules": [
+    {
+      "name": "candidatematch-ingest-hourly",
+      "description": "Ingest jobs from all ATS connectors every hour",
+      "scheduleExpression": "rate(1 hour)",
+      "target": {
+        "type": "https",
+        "url": "https://YOUR_AMPLIFY_APP_URL/api/cron/ingest",
+        "headers": { "Authorization": "Bearer CRON_SECRET" },
+        "note": "Or use EventBridge Scheduler with API destination; or Lambda ARN that calls this URL"
+      },
+      "input": {
+        "mode": "ingest",
+        "connectors": ["greenhouse", "lever", "ashby", "workday"]
+      }
+    },
+    {
+      "name": "candidatematch-match-every-2h",
+      "description": "Run AI matching every 2 hours after ingestion",
+      "scheduleExpression": "rate(2 hours)",
+      "target": {
+        "type": "https",
+        "url": "https://YOUR_AMPLIFY_APP_URL/api/eventbridge/match",
+        "headers": { "Authorization": "Bearer CRON_SECRET" }
+      },
+      "input": {
+        "mode": "match",
+        "minScore": 70,
+        "notifyThreshold": 85
+      }
+    },
+    {
+      "name": "candidatematch-cleanup-daily",
+      "description": "Cleanup old data daily at 2 AM UTC",
+      "scheduleExpression": "cron(0 2 * * ? *)",
+      "target": {
+        "type": "https",
+        "url": "https://YOUR_AMPLIFY_APP_URL/api/cron/cleanup",
+        "headers": { "Authorization": "Bearer CRON_SECRET" }
+      },
+      "input": {
+        "mode": "cleanup",
+        "retentionDays": 90
+      }
+    },
+    {
+      "name": "candidatematch-gmail-candidate-sync",
+      "description": "Gmail job-application tracking for all connected candidates every 6 hours",
+      "scheduleExpression": "rate(6 hours)",
+      "target": {
+        "type": "https",
+        "url": "https://YOUR_AMPLIFY_APP_URL/api/cron/gmail-candidate-sync",
+        "headers": { "Authorization": "Bearer CRON_SECRET" }
+      },
+      "note": "POST with no body"
+    }
+  ],
+  "awsCliExamples": {
+    "note": "EventBridge Scheduler (recommended) uses create-schedule with API destination. Example for match (every 2 hours):",
+    "matchSchedule": "aws scheduler create-schedule --group-name candidatematch --name candidatematch-match-every-2h --schedule-expression \"rate(2 hours)\" --flexible-time-window '{\"Mode\":\"OFF\"}' --target '{\"Arn\":\"arn:aws:scheduler:::aws-sdk:http:invoke\",\"RoleArn\":\"<ROLE_ARN>\",\"Input\":\"{\\\"Method\\\":\\\"POST\\\",\\\"Endpoint\\\":\\\"https://YOUR_APP/api/eventbridge/match\\\",\\\"Headers\\\":{\\\"Authorization\\\":\\\"Bearer CRON_SECRET\\\",\\\"Content-Type\\\":\\\"application/json\\\"},\\\"Body\\\":\\\"{\\\\\\\"mode\\\\\\\":\\\\\\\"match\\\\\\\",\\\\\\\"minScore\\\\\\\":70,\\\\\\\"notifyThreshold\\\\\\\":85}\\\\\\\"}\"}'}'"
+  }
+}

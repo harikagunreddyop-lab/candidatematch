@@ -90,3 +90,62 @@ export async function fetchRecentMessages(accessToken: string, maxResults = 50, 
   }
   return messages;
 }
+
+/** Fetch a single message with full body for parsing (e.g. job application detection). */
+export async function fetchMessageFull(
+  accessToken: string,
+  messageId: string
+): Promise<{ subject: string; from: string; body: string }> {
+  const res = await fetch(`${GMAIL_API_BASE}/messages/${messageId}?format=full`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gmail API error: ${res.status} ${err}`);
+  }
+  const msg: GmailMessage & { payload?: { body?: { data?: string }; parts?: Array<{ body?: { data?: string }; mimeType?: string }> } } = await res.json();
+  const headers = msg.payload?.headers || [];
+  const subject = getHeader(headers, 'Subject');
+  const from = getHeader(headers, 'From');
+  let body = '';
+  const payload = msg.payload;
+  if (payload?.body?.data) {
+    try {
+      body = Buffer.from(payload.body.data, 'base64url').toString('utf-8');
+    } catch {
+      body = '';
+    }
+  }
+  if (!body && payload?.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        try {
+          body = Buffer.from(part.body.data, 'base64url').toString('utf-8');
+          break;
+        } catch {
+          /* skip */
+        }
+      }
+    }
+  }
+  return { subject, from, body: body.slice(0, 15000) };
+}
+
+/** List message IDs matching a query (e.g. job-related, last 7 days). */
+export async function listMessages(
+  accessToken: string,
+  query: string,
+  maxResults = 100
+): Promise<{ id: string; threadId: string }[]> {
+  const q = encodeURIComponent(query);
+  const res = await fetch(
+    `${GMAIL_API_BASE}/messages?maxResults=${maxResults}&q=${q}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gmail API error: ${res.status} ${err}`);
+  }
+  const list = await res.json();
+  return (list.messages || []).map((m: { id: string; threadId: string }) => ({ id: m.id, threadId: m.threadId }));
+}

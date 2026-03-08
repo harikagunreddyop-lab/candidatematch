@@ -69,20 +69,42 @@ export async function POST(req: NextRequest) {
                     })
                     .eq('id', companyId);
             } else if (userId && subscriptionId) {
-                // Candidate Pro
+                // Candidate Pro / Pro Plus (from /api/billing/checkout or /api/billing/upgrade)
+                const candidateId = session?.metadata?.candidate_id;
+                const planName = session?.metadata?.plan_name || 'pro';
+
                 const subRes = await fetch(`https://api.stripe.com/v1/subscriptions/${subscriptionId}`, {
                     headers: { Authorization: `Bearer ${STRIPE_SECRET}` },
                 });
                 const sub = await subRes.json();
+                const periodEnd = sub.current_period_end
+                    ? new Date(sub.current_period_end * 1000).toISOString()
+                    : null;
+                const periodStart = sub.current_period_start
+                    ? new Date(sub.current_period_start * 1000).toISOString()
+                    : null;
 
                 await supabase.from('profiles').update({
-                    subscription_tier: 'pro',
+                    subscription_tier: planName,
                     subscription_status: 'active',
                     stripe_subscription_id: subscriptionId,
-                    subscription_period_end: sub.current_period_end
-                        ? new Date(sub.current_period_end * 1000).toISOString()
-                        : null,
+                    subscription_period_end: periodEnd,
                 }).eq('id', userId);
+
+                if (candidateId) {
+                    await supabase.from('candidate_subscriptions').upsert(
+                        {
+                            candidate_id: candidateId,
+                            plan_name: planName,
+                            status: 'active',
+                            stripe_subscription_id: subscriptionId,
+                            current_period_start: periodStart,
+                            current_period_end: periodEnd,
+                            updated_at: new Date().toISOString(),
+                        },
+                        { onConflict: 'candidate_id' }
+                    );
+                }
             }
             break;
         }
@@ -90,35 +112,46 @@ export async function POST(req: NextRequest) {
         case 'customer.subscription.updated': {
             const sub = event.data?.object;
             const customerId = sub?.customer;
+            const subscriptionId = sub?.id;
 
-            const [{ data: profile }, { data: company }] = await Promise.all([
+            const [{ data: profile }, { data: company }, { data: candidateSub }] = await Promise.all([
                 supabase.from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
                 supabase.from('companies').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+                supabase.from('candidate_subscriptions').select('candidate_id').eq('stripe_subscription_id', subscriptionId).maybeSingle(),
             ]);
 
+            const status = sub?.status === 'active' ? 'active'
+                : sub?.status === 'past_due' ? 'past_due'
+                    : 'canceled';
+            const periodEnd = sub?.current_period_end
+                ? new Date(sub.current_period_end * 1000).toISOString()
+                : null;
+            const periodStart = sub?.current_period_start
+                ? new Date(sub.current_period_start * 1000).toISOString()
+                : null;
+
             if (company) {
-                const status = sub.status === 'active' ? 'active'
-                    : sub.status === 'past_due' ? 'past_due'
-                        : 'canceled';
                 await supabase
                     .from('companies')
                     .update({
                         subscription_status: status,
-                        subscription_period_end: sub.current_period_end
-                            ? new Date(sub.current_period_end * 1000).toISOString()
-                            : null,
+                        subscription_period_end: periodEnd,
                     })
                     .eq('id', company.id);
-            } else if (profile) {
-                const status = sub.status === 'active' ? 'active'
-                    : sub.status === 'past_due' ? 'past_due'
-                        : 'canceled';
+            }
+            if (profile) {
                 await supabase.from('profiles').update({
                     subscription_status: status,
-                    subscription_period_end: sub.current_period_end
-                        ? new Date(sub.current_period_end * 1000).toISOString()
-                        : null,
+                    subscription_period_end: periodEnd,
                 }).eq('id', profile.id);
+            }
+            if (candidateSub) {
+                await supabase.from('candidate_subscriptions').update({
+                    status,
+                    current_period_start: periodStart,
+                    current_period_end: periodEnd,
+                    updated_at: new Date().toISOString(),
+                }).eq('candidate_id', candidateSub.candidate_id);
             }
             break;
         }
@@ -126,10 +159,12 @@ export async function POST(req: NextRequest) {
         case 'customer.subscription.deleted': {
             const sub = event.data?.object;
             const customerId = sub?.customer;
+            const subscriptionId = sub?.id;
 
-            const [{ data: profile }, { data: company }] = await Promise.all([
+            const [{ data: profile }, { data: company }, { data: candidateSub }] = await Promise.all([
                 supabase.from('profiles').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
                 supabase.from('companies').select('id').eq('stripe_customer_id', customerId).maybeSingle(),
+                supabase.from('candidate_subscriptions').select('candidate_id').eq('stripe_subscription_id', subscriptionId).maybeSingle(),
             ]);
 
             if (company) {
@@ -148,6 +183,15 @@ export async function POST(req: NextRequest) {
                     stripe_subscription_id: null,
                     subscription_period_end: null,
                 }).eq('id', profile.id);
+            }
+            if (candidateSub) {
+                await supabase.from('candidate_subscriptions').update({
+                    status: 'canceled',
+                    stripe_subscription_id: null,
+                    current_period_start: null,
+                    current_period_end: null,
+                    updated_at: new Date().toISOString(),
+                }).eq('candidate_id', candidateSub.candidate_id);
             }
             break;
         }

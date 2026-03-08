@@ -222,15 +222,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Resume tailoring service is not available. Please try again later.' }, { status: 503 });
     }
 
-    // Fire-and-forget to worker (output: Word .docx)
+    const workerSecret = process.env.WORKER_SECRET || '';
+    const headers = { 'Content-Type': 'application/json' } as Record<string, string>;
+    if (workerSecret) headers['X-Worker-Secret'] = workerSecret;
+
+    // Fire-and-forget to worker (output: Word .docx, elite templates)
     fetch(`${RESUME_WORKER_URL}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         resume_version_id: resumeVersion.id,
         candidate,
         job,
         file_path: filePath,
+        templateType: (body as { templateType?: string }).templateType,
       }),
     }).catch(err => {
       supabase.from('resume_versions').update({

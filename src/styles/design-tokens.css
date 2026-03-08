@@ -3,17 +3,17 @@
  * WCAG 2.1 AA compliant colors for contrast and accessibility.
  */
 :root {
-  /* Colors - Deep Blue/Purple Theme */
-  --color-brand-50: #f5f3ff;
-  --color-brand-100: #ede9fe;
-  --color-brand-200: #ddd6fe;
-  --color-brand-300: #c4b5fd;
-  --color-brand-400: #a78bfa;
-  --color-brand-500: #8b5cf6;
-  --color-brand-600: #7c3aed;
-  --color-brand-700: #6d28d9;
-  --color-brand-800: #5b21b6;
-  --color-brand-900: #4c1d95;
+  /* Blue palette — primary #57b9ff, light #90d5ff, medium #77b1d4, dark #517891 */
+  --color-brand-50: #e8f5ff;
+  --color-brand-100: #cce8ff;
+  --color-brand-200: #90d5ff;
+  --color-brand-300: #57b9ff;
+  --color-brand-400: #57b9ff;
+  --color-brand-500: #77b1d4;
+  --color-brand-600: #5a9bc4;
+  --color-brand-700: #517891;
+  --color-brand-800: #435f75;
+  --color-brand-900: #364d5e;
 
   /* Status Colors - WCAG AA Compliant (light backgrounds) */
   --color-success-light: #10b981;
@@ -45,10 +45,10 @@
   --surface-800: #e0e0e5;
   --surface-900: #f5f5f7;
 
-  /* Brand - Accessible Variants */
-  --brand-primary: #8b5cf6;
-  --brand-primary-light: #a78bfa;
-  --brand-primary-dark: #7c3aed;
+  /* Brand - Blue palette */
+  --brand-primary: #57b9ff;
+  --brand-primary-light: #90d5ff;
+  --brand-primary-dark: #517891;
 
   /* Typography */
   --font-display: 'Inter Variable', system-ui, sans-serif;

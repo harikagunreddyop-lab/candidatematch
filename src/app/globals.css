@@ -13,12 +13,12 @@
   --font-cabinet: 'Cabinet Grotesk', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
   color-scheme: dark;
-  /* Default (non-dashboard fallback) */
-  --role-accent: #748ffc;
-  --role-accent-dim: rgba(116, 143, 252, 0.15);
-  --role-accent-border: rgba(116, 143, 252, 0.25);
-  --role-accent-ring: rgba(116, 143, 252, 0.25);
-  --role-glow: rgba(116, 143, 252, 0.12);
+  /* Default (non-dashboard fallback) — #517891 */
+  --role-accent: #517891;
+  --role-accent-dim: rgba(81, 120, 145, 0.15);
+  --role-accent-border: rgba(81, 120, 145, 0.25);
+  --role-accent-ring: rgba(81, 120, 145, 0.25);
+  --role-glow: rgba(81, 120, 145, 0.12);
 }
 
 @layer base {

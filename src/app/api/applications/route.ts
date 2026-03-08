@@ -5,8 +5,8 @@ import { getPolicy, evaluateGateDecision } from '@/lib/policy-engine';
 import { hasFeature } from '@/lib/feature-flags-server';
 import { emitEvent, recordOutcome } from '@/lib/telemetry';
 import { rateLimitResponse } from '@/lib/rate-limit';
-import { isValidUuid } from '@/lib/security';
-import { FeatureGate } from '@/lib/feature-gates';
+import { FeatureGate } from '@/lib/feature-gates/index';
+import { applicationCreateSchema } from '@/lib/validation/schemas';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +25,49 @@ function getLocalDayStart(tzOffsetMinutes: number): Date {
   return todayStart;
 }
 
+/** GET /api/applications — List applications. Query: candidate_id, job_id, status, limit, offset. */
+export async function GET(req: NextRequest) {
+  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  if (authResult instanceof Response) return authResult;
+  const { profile } = authResult;
+
+  const supabase = createServiceClient();
+  const { searchParams } = new URL(req.url);
+  const candidateIdParam = searchParams.get('candidate_id');
+  const jobIdParam = searchParams.get('job_id');
+  const statusParam = searchParams.get('status');
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') ?? '50', 10)));
+  const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10));
+
+  let q = supabase
+    .from('applications')
+    .select('*, job:jobs(id, title, company, location, url), candidate:candidates(id, full_name, primary_title, email)')
+    .order('updated_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (profile.role === 'candidate') {
+    const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', authResult.user.id).single();
+    if (!cand) return NextResponse.json({ applications: [] });
+    q = q.eq('candidate_id', cand.id);
+  } else if (profile.role === 'recruiter' || profile.effective_role === 'company_admin') {
+    const companyId = profile.company_id;
+    if (!companyId) return NextResponse.json({ applications: [] });
+    const { data: companyJobs } = await supabase.from('jobs').select('id').eq('company_id', companyId);
+    const jobIds = (companyJobs ?? []).map((j: { id: string }) => j.id);
+    if (jobIds.length === 0) return NextResponse.json({ applications: [] });
+    q = q.in('job_id', jobIds);
+  } else {
+    if (candidateIdParam) q = q.eq('candidate_id', candidateIdParam);
+    if (jobIdParam) q = q.eq('job_id', jobIdParam);
+  }
+
+  if (statusParam) q = q.eq('status', statusParam);
+
+  const { data, error } = await q;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ applications: data ?? [] });
+}
+
 export async function POST(req: NextRequest) {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
@@ -34,14 +77,14 @@ export async function POST(req: NextRequest) {
   if (rl) return rl;
 
   const body = await req.json().catch(() => ({}));
-  const candidateId = body?.candidate_id;
-  const jobId = body?.job_id;
-  if (!candidateId || !jobId) {
-    return NextResponse.json({ error: 'candidate_id and job_id required' }, { status: 400 });
+  const parsed = applicationCreateSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Validation failed', details: parsed.error.issues },
+      { status: 400 }
+    );
   }
-  if (!isValidUuid(candidateId) || !isValidUuid(jobId)) {
-    return NextResponse.json({ error: 'Invalid candidate_id or job_id' }, { status: 400 });
-  }
+  const { candidate_id: candidateId, job_id: jobId, override_gate: overrideGateFromBody, override_reason: overrideReason } = parsed.data;
 
   const supabase = createServiceClient();
 
@@ -89,7 +132,7 @@ export async function POST(req: NextRequest) {
 
   // Block only when policy gate blocks. Profile C never hard-blocks; Profile A blocks below threshold.
   // Recruiters/admins can override with body.override_gate = true (audit trail emitted).
-  const overrideGate = body.override_gate === true && (profile.role === 'recruiter' || profile.role === 'admin');
+  const overrideGate = overrideGateFromBody === true && (profile.role === 'recruiter' || profile.role === 'admin');
   const atsScore = match?.ats_score;
   if (typeof atsScore === 'number') {
     const scoringProfile = (match?.scoring_profile as 'A' | 'C') || 'A';
@@ -110,7 +153,7 @@ export async function POST(req: NextRequest) {
             confidence_bucket: bucket,
             threshold_used: gate.threshold_used,
             scoring_profile: scoringProfile,
-            override_reason: body.override_reason || null,
+            override_reason: parsed.data.override_reason || null,
           },
         });
       } else {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { rateLimitResponse } from '@/lib/rate-limit';
+import { sendEmail, templateCompanyInvite } from '@/lib/email-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,9 +46,19 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // The token for the invite link:
-  // `${process.env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${invitation.token}`
-  // TODO: send email via your provider (Resend / Postmark / SendGrid)
+  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/accept-invite?token=${invitation.token}`;
+  const { data: company } = await service.from('companies').select('name').eq('id', targetCompanyId).single();
+  const { data: inviter } = await service.from('profiles').select('name').eq('id', auth.user.id).single();
+  const { subject, html } = templateCompanyInvite({
+    inviterName: inviter?.name ?? undefined,
+    companyName: company?.name ?? 'Company',
+    inviteLink,
+    role,
+  });
+  const emailResult = await sendEmail({ to: email, subject, html });
+  if (emailResult.error) {
+    console.warn('[invite] email send failed:', emailResult.error);
+  }
 
   return NextResponse.json({ invitation, token: invitation.token });
 }

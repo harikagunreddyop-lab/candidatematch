@@ -38,27 +38,26 @@ function createScoreWorker() {
                 for (let i = 0; i < matchIds.length; i += BATCH_SIZE) {
                     const batch = matchIds.slice(i, i + BATCH_SIZE);
 
-                    // Fetch match details
+                    // Fetch match details and existing scores in one query
                     const { data: matches } = await supabase
                         .from('candidate_job_matches')
-                        .select('id, candidate_id, job_id')
+                        .select('id, candidate_id, job_id, ats_score')
                         .in('id', batch);
 
                     if (!matches?.length) continue;
 
-                    // For each match, trigger ATS check via internal API
+                    // Pre-map existing scores to avoid N+1
+                    const existingScores = new Map<string, number | null>(matches.map((m: { id: string; ats_score: number | null }) => [m.id, m.ats_score]));
+
+                    // For each match, trigger ATS check when not already scored
                     for (const match of matches) {
                         try {
-                            const { data: existingScore } = await supabase
-                                .from('candidate_job_matches')
-                                .select('ats_score')
-                                .eq('id', match.id)
-                                .single();
+                            const existingScore = existingScores.get(match.id);
 
                             // Skip if already scored
-                            if (existingScore?.ats_score != null) {
+                            if (existingScore != null) {
                                 scored++;
-                                if (existingScore.ats_score >= SCORE_THRESHOLD) {
+                                if (existingScore >= SCORE_THRESHOLD) {
                                     aboveThreshold.push(match.id);
                                 }
                                 continue;

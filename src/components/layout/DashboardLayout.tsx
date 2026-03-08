@@ -11,6 +11,7 @@ import {
   Zap, Menu, Link2, Plug, MessageCircle,
   BarChart3, Settings, Calendar, FileText, Shield, Building2,
   Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,
+  Mic, DollarSign, Network, Target, MessageSquare,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -64,7 +65,7 @@ const recruiterNav: NavItem[] = [
   { label: 'Messages', href: '/dashboard/recruiter/messages', icon: <MessageCircle size={18} /> },
 ];
 
-// Blueprint: Dashboard, Matches, Job search, Applications, Profile, Resume, Skill report, Interviews, Extension, Messages, Settings
+// Blueprint: Dashboard, Matches, Job search, Applications, Profile, Resume, Skill report, Interviews, Extension, Messages, Settings + elite
 const candidateNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/candidate', icon: <LayoutDashboard size={18} /> },
   { label: 'Matches', href: '/dashboard/candidate/matches', icon: <Sparkles size={18} /> },
@@ -74,7 +75,14 @@ const candidateNav: NavItem[] = [
   { label: 'Resume', href: '/dashboard/candidate/profile/resume', icon: <FileText size={18} /> },
   { label: 'Skill report', href: '/dashboard/candidate/skill-report', icon: <BarChart3 size={18} /> },
   { label: 'ATS checker', href: '/dashboard/candidate/tools/ats-checker', icon: <FileSearch size={18} /> },
+  { label: 'Interview prep', href: '/dashboard/candidate/interview-prep', icon: <Mic size={18} /> },
   { label: 'Interviews', href: '/dashboard/candidate/interviews', icon: <Calendar size={18} /> },
+  { label: 'Salary', href: '/dashboard/candidate/salary', icon: <DollarSign size={18} /> },
+  { label: 'Career path', href: '/dashboard/candidate/career-path', icon: <Target size={18} /> },
+  { label: 'Skill gaps', href: '/dashboard/candidate/skills/gap-analysis', icon: <BarChart3 size={18} /> },
+  { label: 'Network', href: '/dashboard/candidate/network', icon: <Network size={18} /> },
+  { label: 'Interview analytics', href: '/dashboard/candidate/analytics/interviews', icon: <Activity size={18} /> },
+  { label: 'Career coach', href: '/dashboard/candidate/coach', icon: <MessageSquare size={18} /> },
   { label: 'Integrations', href: '/dashboard/candidate/integrations', icon: <Plug size={18} /> },
   { label: 'Connect extension', href: '/dashboard/candidate/connect-extension', icon: <Link2 size={18} /> },
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },

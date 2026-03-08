@@ -32,18 +32,18 @@
   --color-info-dark: #60a5fa;
   --color-info: var(--color-info-dark);
 
-  /* Surface Colors - Enhanced Contrast for Dark Mode */
-  --surface-bg: #0a0a0f;
-  --surface-50: #1a1a24;
-  --surface-100: #2a2a3a;
-  --surface-200: #3a3a4a;
-  --surface-300: #4a4a5a;
-  --surface-400: #8a8a9a;
-  --surface-500: #8a8a9a;
-  --surface-600: #babaca;
-  --surface-700: #cacacf;
-  --surface-800: #e0e0e5;
-  --surface-900: #f5f5f7;
+  /* Surface Colors - Light theme (50=lightest, 900=darkest) */
+  --surface-bg: #f5f5f7;
+  --surface-50: #ffffff;
+  --surface-100: #f9fafb;
+  --surface-200: #f3f4f6;
+  --surface-300: #e5e7eb;
+  --surface-400: #d1d5db;
+  --surface-500: #9ca3af;
+  --surface-600: #6b7280;
+  --surface-700: #4b5563;
+  --surface-800: #374151;
+  --surface-900: #111827;
 
   /* Brand - Blue palette */
   --brand-primary: #57b9ff;

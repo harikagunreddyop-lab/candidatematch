@@ -12,7 +12,7 @@
   --font-satoshi: 'Satoshi', system-ui, sans-serif;
   --font-cabinet: 'Cabinet Grotesk', system-ui, sans-serif;
   --font-jetbrains: 'JetBrains Mono', monospace;
-  color-scheme: dark;
+  color-scheme: light;
   /* Default (non-dashboard fallback) — #517891 */
   --role-accent: #517891;
   --role-accent-dim: rgba(81, 120, 145, 0.15);
@@ -29,97 +29,13 @@
   }
 
   body {
-    background-color: #0f1114;
-    color: #e9ecef;
+    background-color: #f5f5f7;
+    color: #111827;
   }
 
   * {
-    @apply border-surface-700;
+    @apply border-surface-300;
   }
-}
-
-/* =============================================================================
-   DARK-ONLY TEXT — all surface-* text classes resolve to readable light colors
-   ============================================================================= */
-[class*="text-surface-900"],
-[class*="text-surface-800"],
-[class*="text-surface-700"] {
-  color: #e9ecef !important;
-}
-[class*="text-surface-600"],
-[class*="text-surface-500"] {
-  color: #ced4da !important;
-}
-[class*="text-surface-400"],
-[class*="text-surface-300"],
-[class*="text-surface-200"],
-[class*="text-surface-100"] {
-  color: #ced4da !important;
-}
-
-/* Text colors that might be used inline */
-[class*="text-gray-900"],
-[class*="text-gray-800"],
-[class*="text-gray-700"] {
-  color: #e9ecef !important;
-}
-[class*="text-gray-600"],
-[class*="text-gray-500"] {
-  color: #ced4da !important;
-}
-
-/* =============================================================================
-   DARK-ONLY BACKGROUNDS — convert all light backgrounds to dark equivalents
-   ============================================================================= */
-[class~="bg-white"],
-.bg-white {
-  background-color: #343a40 !important;
-}
-[class~="bg-surface-0"] {
-  background-color: #2b3035 !important;
-}
-[class~="bg-surface-50"],
-[class*="bg-surface-50\/"],
-[class*="bg-surface-50:"] {
-  background-color: #2b3035 !important;
-}
-[class~="bg-surface-100"] {
-  background-color: #2f353a !important;
-}
-[class~="bg-surface-200"] {
-  background-color: #343a40 !important;
-}
-
-/* =============================================================================
-   DARK-ONLY BORDERS — convert light borders to darker equivalents
-   ============================================================================= */
-[class~="border-surface-200"],
-[class~="border-surface-100"],
-[class~="border-surface-300"],
-[class*="divide-surface-200"],
-[class*="divide-surface-100"] {
-  border-color: #495057 !important;
-}
-
-/* =============================================================================
-   DARK-ONLY HOVER BACKGROUNDS — soft, clean
-   ============================================================================= */
-.hover\:bg-surface-50:hover,
-.hover\:bg-surface-50\/80:hover,
-.hover\:bg-surface-50\/30:hover {
-  background-color: rgba(255, 255, 255, 0.04) !important;
-}
-.hover\:bg-surface-100:hover {
-  background-color: rgba(255, 255, 255, 0.06) !important;
-}
-.hover\:bg-surface-200:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-}
-.hover\:bg-white:hover {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-}
-tr:hover {
-  background-color: rgba(255, 255, 255, 0.03) !important;
 }
 
 /* Placeholder text */
@@ -131,7 +47,7 @@ textarea::placeholder {
 }
 
 /* =============================================================================
-   COMPONENT CLASSES — dark-only defaults
+   COMPONENT CLASSES — light theme
    ============================================================================= */
 @layer components {
   .btn-primary {
@@ -181,11 +97,11 @@ textarea::placeholder {
     @apply inline-flex items-center justify-center gap-2 px-3 py-2
            font-medium rounded-2xl
            transition-all duration-200;
-    color: #a1a1aa;
+    color: var(--surface-600);
   }
   .btn-ghost:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-    color: #e4e4e7;
+    background-color: var(--surface-100);
+    color: var(--surface-900);
   }
 
   /* Hero greeting — modern, animated, responsive */
@@ -258,9 +174,9 @@ textarea::placeholder {
   /* Cards — role-tinted, soft matte, clean */
   .card {
     @apply rounded-2xl transition-all duration-300;
-    background-color: var(--tile-bg, rgba(30, 34, 38, 0.65));
-    border: 1px solid var(--tile-border, rgba(255, 255, 255, 0.05));
-    color: #e9ecef;
+    background-color: var(--tile-bg, var(--surface-50));
+    border: 1px solid var(--tile-border, var(--surface-300));
+    color: var(--surface-900);
     backdrop-filter: blur(8px);
   }
 
@@ -270,9 +186,9 @@ textarea::placeholder {
   }
   .card-hover:hover {
     transform: translateY(-2px);
-    background-color: var(--tile-hover-bg, rgba(30, 34, 38, 0.9));
-    border-color: var(--tile-hover-border, rgba(255, 255, 255, 0.08));
-    box-shadow: var(--tile-hover-shadow, 0 8px 24px -8px rgba(0, 0, 0, 0.25));
+    background-color: var(--tile-hover-bg, var(--surface-50));
+    border-color: var(--tile-hover-border, var(--surface-400));
+    box-shadow: var(--tile-hover-shadow, 0 8px 24px -8px rgba(0, 0, 0, 0.12));
   }
 
   .input {
@@ -296,7 +212,7 @@ textarea::placeholder {
 
   .label {
     @apply block text-sm font-medium mb-1.5;
-    color: #e9ecef !important;
+    color: var(--surface-900) !important;
   }
 
   .badge {
@@ -311,14 +227,14 @@ textarea::placeholder {
 
   .badge-success {
     @apply badge;
-    background-color: rgba(34, 197, 94, 0.12);
-    color: #4ade80;
+    background-color: rgba(34, 197, 94, 0.15);
+    color: var(--color-success-light);
   }
 
   .badge-warning {
     @apply badge;
-    background-color: rgba(245, 158, 11, 0.12);
-    color: #fbbf24;
+    background-color: rgba(245, 158, 11, 0.15);
+    color: var(--color-warning-light);
   }
 
   .badge-danger {
@@ -329,8 +245,8 @@ textarea::placeholder {
 
   .badge-neutral {
     @apply badge;
-    background-color: rgba(255, 255, 255, 0.08);
-    color: #a1a1aa;
+    background-color: var(--surface-200);
+    color: var(--surface-700);
   }
 
   .stat-card {
@@ -359,7 +275,7 @@ textarea::placeholder {
     @apply transition-colors duration-200;
   }
   .row-hover:hover {
-    background-color: rgba(255, 255, 255, 0.04);
+    background-color: var(--surface-100);
   }
 
   .table-container {
@@ -371,32 +287,32 @@ textarea::placeholder {
   }
 
   .table-container thead {
-    background-color: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    background-color: var(--surface-100);
+    border-bottom: 1px solid var(--surface-300);
   }
 
   .table-container th {
     @apply px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider;
-    color: #a1a1aa !important;
+    color: var(--surface-600) !important;
   }
 
   .table-container td {
     @apply px-5 py-4 text-sm;
-    color: #e4e4e7 !important;
+    color: var(--surface-900) !important;
   }
 
   .table-container tbody tr {
     @apply last:border-0 transition-colors duration-200;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid var(--surface-200);
   }
   .table-container tbody tr:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--surface-50);
   }
 
   .skeleton {
     @apply rounded-lg animate-shimmer;
-    background-color: #495057;
-    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    background-color: var(--surface-200);
+    background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
     background-size: 200% 100%;
   }
 
@@ -408,10 +324,10 @@ textarea::placeholder {
 
   .tab-inactive {
     @apply border-b-2 border-transparent;
-    color: #ced4da !important;
+    color: var(--surface-500) !important;
   }
   .tab-inactive:hover {
-    color: #e9ecef !important;
+    color: var(--surface-700) !important;
   }
 
   .fit-score-high {
@@ -487,17 +403,16 @@ textarea::placeholder {
   to { opacity: 0; transform: translateX(100%); }
 }
 
-/* =============================================================================
-   ADDITIONAL DARK-MODE FORM OVERRIDES — native inputs, selects, textareas
-   ============================================================================= */
+/* Native form elements — light theme friendly */
 input, textarea, select {
-  background-color: #495057;
-  border-color: #868e96;
-  color: #e9ecef;
+  background-color: #ffffff;
+  border-color: #d1d5db;
+  color: #111827;
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--role-accent);
   outline: none;
+  box-shadow: 0 0 0 1px var(--role-accent-ring, rgba(81, 120, 145, 0.25));
 }
 
 /* Ring colors for focus states */
@@ -643,7 +558,7 @@ input:focus, textarea:focus, select:focus {
   /* Interactive element border glow on focus/hover */
   .focus-border-glow:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--surface-bg, #0a0a0f), 0 0 0 4px var(--role-accent);
+    box-shadow: 0 0 0 2px var(--surface-bg, #ffffff), 0 0 0 4px var(--role-accent);
   }
 }
 

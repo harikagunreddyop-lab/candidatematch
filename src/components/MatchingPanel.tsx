@@ -152,7 +152,7 @@ export default function MatchingPanel() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-surface-900 font-display flex items-center gap-2">
-            <Zap size={18} className="text-brand-600" /> Matching Engine
+            <Zap size={18} className="text-brand-400" /> Matching Engine
           </h2>
           <p className="text-xs text-surface-500 mt-0.5">
             Title-based matching — matches candidates to jobs by primary, secondary, and target job titles (no AI, instant)
@@ -211,7 +211,7 @@ export default function MatchingPanel() {
             <span className="text-xs font-semibold text-surface-600 uppercase tracking-wide">Live Log</span>
             {running && <Spinner size={12} />}
           </div>
-          <div ref={logRef} className="p-4 h-52 overflow-y-auto space-y-1 bg-surface-950 font-mono">
+          <div ref={logRef} className="p-4 h-52 overflow-y-auto space-y-1 bg-surface-100 font-mono">
             {log.map((line, i) => (
               <p key={i} className={cn('text-xs leading-relaxed', {
                 'text-surface-300': line.type === 'progress',
@@ -279,8 +279,8 @@ export default function MatchingPanel() {
 }
 
 function scoreColor(score: number) {
-  if (score >= 85) return 'bg-green-500/15 text-green-400';
-  if (score >= 70) return 'bg-brand-600/15 text-brand-300';
-  if (score >= 50) return 'bg-yellow-500/15 text-yellow-400';
+  if (score >= 85) return 'bg-[#4ade80]/15 text-[#4ade80]';
+  if (score >= 70) return 'bg-brand-400/15 text-brand-400';
+  if (score >= 50) return 'bg-amber-500/15 text-amber-400';
   return 'bg-surface-700 text-surface-400';
 }

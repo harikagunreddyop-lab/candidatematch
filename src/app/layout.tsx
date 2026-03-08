@@ -1,9 +1,11 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { QueryProvider } from '@/components/providers/QueryProvider';
 import { RegisterSW } from '@/components/RegisterSW';
 import { PostHogProvider } from '@/components/PostHogProvider';
 import { Toaster } from '@/components/ui/Toast';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export const metadata: Metadata = {
   title: 'CandidateMatch',
@@ -30,11 +32,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
       <body>
-        <PostHogProvider>
-          <RegisterSW />
-          <Toaster />
-          <ThemeProvider>{children}</ThemeProvider>
-        </PostHogProvider>
+        <ErrorBoundary>
+          <PostHogProvider>
+            <QueryProvider>
+              <RegisterSW />
+              <Toaster />
+              <ThemeProvider>{children}</ThemeProvider>
+            </QueryProvider>
+          </PostHogProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

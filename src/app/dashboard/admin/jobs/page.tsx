@@ -186,16 +186,16 @@ export default function JobsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Jobs</h1>
-          <div className="mt-3 inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-1">
+          <div className="mt-3 inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-1">
             <button
               onClick={() => { setTab('jobs'); router.replace('/dashboard/admin/jobs'); }}
-              className={tab === 'jobs' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+              className={tab === 'jobs' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-100 dark:text-surface-900 dark:font-semibold' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
             >
               Jobs
             </button>
             <button
               onClick={() => { setTab('boards'); router.replace('/dashboard/admin/jobs?tab=boards'); }}
-              className={tab === 'boards' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-white dark:bg-surface-100 dark:text-surface-900' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+              className={tab === 'boards' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-100 dark:text-surface-900 dark:font-semibold' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
             >
               Job boards
             </button>
@@ -237,7 +237,7 @@ export default function JobsPage() {
             <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${matchMsg?.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
                 : matchMsg?.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
                   : matchMsg ? 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
-                    : 'border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800/80 text-surface-700 dark:text-surface-300'
+                    : 'border-surface-200 dark:border-surface-600 bg-surface-100/80 text-surface-700 dark:text-surface-300'
               }`}>
               {matchMsg ?? (liveMatchCount !== null ? `${liveMatchCount.toLocaleString()} total matches (same as Reports & Analytics)` : null)}
             </div>
@@ -348,7 +348,7 @@ export default function JobsPage() {
                     <ExternalLink size={12} /> View original posting
                   </a>
                 )}
-                <div className="mt-4 p-4 bg-surface-50 dark:bg-surface-800 rounded-xl max-h-[400px] overflow-y-auto">
+                <div className="mt-4 p-4 bg-surface-100 rounded-xl max-h-[400px] overflow-y-auto">
                   <p className="text-sm text-surface-700 dark:text-surface-300 whitespace-pre-wrap">
                     {viewing.jd_clean || 'No description available'}
                   </p>
@@ -575,7 +575,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
       <div className="rounded-xl border border-surface-200 overflow-hidden">
         <div className="overflow-x-auto max-h-64">
           <table className="w-full text-xs">
-            <thead className="bg-surface-50 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-600">
+            <thead className="bg-surface-100 border-b border-surface-200 dark:border-surface-600">
               <tr>
                 {['#', 'Title', 'Company', 'Location', 'Has JD'].map(h => (
                   <th key={h} className="px-3 py-2 text-left font-medium text-surface-500">{h}</th>
@@ -584,7 +584,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
             </thead>
             <tbody className="divide-y divide-surface-100">
               {parsed.slice(0, 50).map((r, i) => (
-                <tr key={i} className="hover:bg-surface-50">
+                <tr key={i} className="hover:bg-surface-100">
                   <td className="px-3 py-1.5 text-surface-400">{i + 1}</td>
                   <td className="px-3 py-1.5 font-medium text-surface-800 max-w-[180px] truncate">{r.title}</td>
                   <td className="px-3 py-1.5 text-surface-600 max-w-[140px] truncate">{r.company}</td>
@@ -665,7 +665,7 @@ function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: ()
               : matchingStarted
                 ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
                 : matchingResult.status === 'skipped'
-                  ? 'border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800'
+                  ? 'border-surface-200 dark:border-surface-600 bg-surface-100'
                   : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20'
             }`}>
             {matchingOk ? (

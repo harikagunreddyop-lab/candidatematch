@@ -13,10 +13,10 @@ const STAGES = [
   { key: 'ready', label: 'New Matches', color: 'bg-surface-100 dark:bg-surface-700/80', header: 'bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-200' },
   { key: 'applied', label: 'Applied', color: 'bg-blue-50 dark:bg-blue-900/30', header: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200' },
   { key: 'screening', label: 'Screening', color: 'bg-yellow-50 dark:bg-yellow-900/25', header: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200' },
-  { key: 'interview', label: 'Interview', color: 'bg-purple-50 dark:bg-purple-900/25', header: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200' },
+  { key: 'interview', label: 'Interview', color: 'bg-brand-400/10 dark:bg-brand-400/10', header: 'bg-brand-400/10 text-brand-400' },
   { key: 'offer', label: 'Offer', color: 'bg-green-50 dark:bg-green-900/25', header: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200' },
   { key: 'rejected', label: 'Rejected', color: 'bg-red-50 dark:bg-red-900/25', header: 'bg-red-100 dark:bg-red-800/50 text-red-600 dark:text-red-300' },
-  { key: 'withdrawn', label: 'Withdrawn', color: 'bg-surface-50 dark:bg-surface-700/50', header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
+  { key: 'withdrawn', label: 'Withdrawn', color: 'bg-surface-100 dark:bg-surface-700/50', header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
 ];
 
 function scoreColor(score: number) {
@@ -279,7 +279,7 @@ function PipelineCard({ card, stage, disabled, onDragStart, onMove }: {
   const NEXT_COLORS: Record<string, string> = {
     ready: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-700/50',
     applied: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-700/50',
-    screening: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-700/50',
+    screening: 'bg-brand-400/10 text-brand-400 hover:bg-brand-400/20',
     interview: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-700/50',
   };
 
@@ -290,7 +290,7 @@ function PipelineCard({ card, stage, disabled, onDragStart, onMove }: {
       draggable={!disabled}
       onDragStart={disabled ? undefined : onDragStart}
       className={cn(
-        'bg-white dark:bg-surface-800 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 hover:shadow-md transition-shadow group',
+        'bg-surface-100 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 hover:shadow-md transition-shadow group',
         disabled ? 'cursor-default opacity-75' : 'cursor-grab active:cursor-grabbing'
       )}
     >
@@ -343,7 +343,7 @@ function PipelineCard({ card, stage, disabled, onDragStart, onMove }: {
 
       {/* Interview date */}
       {stage === 'interview' && card.interview_date && (
-        <div className="mt-2 flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400">
+        <div className="mt-2 flex items-center gap-1 text-[10px] text-brand-400">
           <Calendar size={9} /> {formatDate(card.interview_date)}
         </div>
       )}

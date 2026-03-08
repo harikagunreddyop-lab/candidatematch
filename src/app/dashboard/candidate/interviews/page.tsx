@@ -98,7 +98,7 @@ export default function CandidateInterviewsPage() {
             onClick={() => setTab(t.id)}
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              tab === t.id ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              tab === t.id ? 'bg-surface-200 text-surface-900 dark:text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
             )}
           >
             {t.icon}
@@ -127,7 +127,7 @@ export default function CandidateInterviewsPage() {
               </p>
               <div className="space-y-4">
                 {upcoming.map((a: any) => (
-                  <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4 shadow-sm">
+                  <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-5 space-y-4 shadow-sm">
                     <div className="flex items-start justify-between gap-4 flex-wrap">
                       <div>
                         <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg">{a.job?.title}</p>
@@ -179,7 +179,7 @@ export default function CandidateInterviewsPage() {
       )}
 
       {tab === 'past' && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Past interviews & outcomes</h2>
           {past.length === 0 ? (
             <p className="text-surface-500 dark:text-surface-400">No past interviews yet.</p>
@@ -187,7 +187,7 @@ export default function CandidateInterviewsPage() {
             <ul className="space-y-4">
               {past.map((a: any) => (
                 <li key={a.id} className="flex items-center gap-4 p-4 rounded-lg bg-surface-100 dark:bg-surface-900">
-                  <Briefcase className="w-5 h-5 text-violet-500 shrink-0" />
+                  <Briefcase className="w-5 h-5 text-brand-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-surface-900 dark:text-white">{a.job?.title}</p>
                     <p className="text-sm text-surface-500 dark:text-surface-400">{a.job?.company}</p>
@@ -197,7 +197,7 @@ export default function CandidateInterviewsPage() {
                       </p>
                     )}
                   </div>
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 capitalize shrink-0">
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-400/10 text-brand-400 capitalize shrink-0">
                     {a.status}
                   </span>
                 </li>
@@ -208,7 +208,7 @@ export default function CandidateInterviewsPage() {
       )}
 
       {tab === 'analytics' && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Recent interviews</h2>
           {analyticsList.length === 0 ? (
             <p className="text-surface-500 dark:text-surface-400">No interview-stage applications yet.</p>
@@ -216,7 +216,7 @@ export default function CandidateInterviewsPage() {
             <ul className="space-y-4">
               {analyticsList.map((a: any) => (
                 <li key={a.id} className="flex items-center gap-4 p-4 rounded-lg bg-surface-100 dark:bg-surface-900">
-                  <Briefcase className="w-5 h-5 text-violet-500 shrink-0" />
+                  <Briefcase className="w-5 h-5 text-brand-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-surface-900 dark:text-white">{a.job?.title}</p>
                     <p className="text-sm text-surface-500 dark:text-surface-400">{a.job?.company}</p>
@@ -226,7 +226,7 @@ export default function CandidateInterviewsPage() {
                       </p>
                     )}
                   </div>
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 capitalize shrink-0">
+                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-400/10 text-brand-400 capitalize shrink-0">
                     {a.status}
                   </span>
                 </li>

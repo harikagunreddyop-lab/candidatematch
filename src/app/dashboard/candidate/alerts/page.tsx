@@ -31,7 +31,7 @@ function AlertCard({
           <button
             type="button"
             onClick={onEdit}
-            className="text-sm text-violet-400 hover:text-violet-300"
+            className="text-sm text-brand-400 hover:text-brand-300"
           >
             Edit
           </button>

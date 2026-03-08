@@ -71,7 +71,7 @@ export default function AdminAuditPage() {
         <div className="card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-surface-50 dark:bg-surface-800 border-b border-surface-200 dark:border-surface-600">
+              <thead className="bg-surface-100 border-b border-surface-200 dark:border-surface-600">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Time</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Actor</th>
@@ -82,7 +82,7 @@ export default function AdminAuditPage() {
               </thead>
               <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
                 {entries.map((log) => (
-                  <tr key={log.id} className="hover:bg-surface-50 dark:hover:bg-surface-800/50">
+                  <tr key={log.id} className="hover:bg-surface-100 dark:hover:bg-surface-800/50">
                     <td className="px-4 py-3 text-surface-500 whitespace-nowrap">{formatRelative(log.created_at)}</td>
                     <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
                       {log.actor_name ?? (log.user_id ? `${String(log.user_id).slice(0, 8)}…` : '—')}

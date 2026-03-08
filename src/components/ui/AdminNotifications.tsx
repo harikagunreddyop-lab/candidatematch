@@ -77,7 +77,7 @@ export function AdminNotificationBell({ adminId }: { adminId: string }) {
     <div className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-lg hover:bg-white/10 text-surface-400 hover:text-white transition-colors"
+        className="relative p-2 rounded-lg hover:bg-surface-200 text-surface-400 hover:text-white transition-colors"
         aria-label="Admin notifications"
       >
         <Bell size={20} />

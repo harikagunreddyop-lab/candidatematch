@@ -138,7 +138,7 @@ export default function CandidateIntegrationsPage() {
           <button
             onClick={connectGmail}
             disabled={connecting}
-            className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-70 text-white rounded-lg font-semibold inline-flex items-center gap-2"
+            className="px-6 py-3 bg-brand-400 hover:bg-brand-300 disabled:opacity-70 text-[#0a0f00] rounded-lg font-semibold inline-flex items-center gap-2"
           >
             {connecting ? <Spinner size={18} /> : <Link2 size={18} />}
             Connect Gmail

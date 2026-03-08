@@ -44,7 +44,7 @@ export default function CompanyTeamPage() {
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center min-h-[200px]">
-        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -82,7 +82,7 @@ export default function CompanyTeamPage() {
         </Link>
       </div>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 overflow-hidden">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 overflow-hidden">
         {members.length === 0 ? (
           <div className="p-12 text-center">
             <Users className="w-12 h-12 text-surface-400 mx-auto mb-4" />
@@ -100,10 +100,10 @@ export default function CompanyTeamPage() {
             {members.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between px-6 py-4 hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors"
+                className="flex items-center justify-between px-6 py-4 hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                  <div className="w-10 h-10 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                     {(m.name || m.email || '?')[0].toUpperCase()}
                   </div>
                   <div>
@@ -113,7 +113,7 @@ export default function CompanyTeamPage() {
                     <div className="text-sm text-surface-500">{m.email}</div>
                   </div>
                 </div>
-                <span className="px-3 py-1 rounded-full text-xs font-medium bg-violet-500/10 text-violet-600 dark:text-violet-400 capitalize">
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-brand-400/10 text-brand-400 capitalize">
                   {m.effective_role?.replace('_', ' ')}
                 </span>
               </li>

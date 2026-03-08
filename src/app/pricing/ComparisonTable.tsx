@@ -26,12 +26,12 @@ export function ComparisonTable() {
             <th className="text-left py-4 px-4 font-semibold text-white">Feature</th>
             <th className="text-center py-4 px-4 font-semibold text-neutral-400">Free</th>
             <th className="text-center py-4 px-4 font-semibold text-blue-400">Pro</th>
-            <th className="text-center py-4 px-4 font-semibold text-violet-400">Pro Plus</th>
+            <th className="text-center py-4 px-4 font-semibold text-brand-400">Pro Plus</th>
           </tr>
         </thead>
         <tbody>
           {FEATURES_COMPARISON.map((row, i) => (
-            <tr key={i} className="border-b border-white/5 hover:bg-white/[0.02]">
+            <tr key={i} className="border-b border-surface-300 hover:bg-surface-100/50">
               <td className="py-3 px-4 text-neutral-300">{row.feature}</td>
               <td className="py-3 px-4 text-center text-neutral-500">{row.free}</td>
               <td className="py-3 px-4 text-center text-neutral-300">{row.pro}</td>

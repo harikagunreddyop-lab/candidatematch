@@ -44,7 +44,7 @@ export default function CompanyJobCandidatesPage() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (!job) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">
-      Job not found. <Link href="/dashboard/company/jobs" className="text-violet-400 hover:underline">Back to jobs</Link>
+      Job not found. <Link href="/dashboard/company/jobs" className="text-brand-400 hover:underline">Back to jobs</Link>
     </div>
   );
 
@@ -58,7 +58,7 @@ export default function CompanyJobCandidatesPage() {
       </Link>
       <h1 className="text-2xl font-bold text-white">Candidates for {job.title}</h1>
 
-      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 overflow-hidden">
+      <div className="rounded-2xl border border-surface-700 bg-surface-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-surface-700 font-semibold text-white">Applications ({applications.length})</div>
         {applications.length === 0 ? <div className="p-6 text-surface-500 text-sm">No applications yet.</div> : (
           <ul className="divide-y divide-surface-700/50">
@@ -66,7 +66,7 @@ export default function CompanyJobCandidatesPage() {
               <li key={a.id}>
                 <Link href={`/dashboard/company/candidates/${a.candidate_id}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-700/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                       {(a.candidate as any)?.full_name?.[0] || '?'}
                     </div>
                     <div>
@@ -82,7 +82,7 @@ export default function CompanyJobCandidatesPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 overflow-hidden">
+      <div className="rounded-2xl border border-surface-700 bg-surface-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-surface-700 font-semibold text-white">Top matches (not yet applied) ({matchOnly.length})</div>
         {matchOnly.length === 0 ? <div className="p-6 text-surface-500 text-sm">No other matches to show.</div> : (
           <ul className="divide-y divide-surface-700/50">
@@ -90,7 +90,7 @@ export default function CompanyJobCandidatesPage() {
               <li key={m.id}>
                 <Link href={`/dashboard/company/candidates/${m.candidate_id}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-700/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                    <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                       {(m.candidate as any)?.full_name?.[0] || '?'}
                     </div>
                     <div>

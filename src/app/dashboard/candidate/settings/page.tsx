@@ -175,7 +175,7 @@ function ConsentToggle({ label, description, checked, loading, onChange }: {
             onClick={() => onChange(!checked)}
             className={`relative w-10 h-6 rounded-full transition-colors ${checked ? 'bg-brand-500' : 'bg-surface-300 dark:bg-surface-600'}`}
           >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-4' : ''}`} />
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-surface-200 shadow transition-transform ${checked ? 'translate-x-4' : ''}`} />
           </button>
         )}
       </div>
@@ -248,7 +248,7 @@ export default function CandidateSettingsPage() {
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">Account & preferences</h1>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Settings size={16} className="text-surface-500 dark:text-surface-400" /> Password
         </h3>
@@ -256,14 +256,14 @@ export default function CandidateSettingsPage() {
         <SendPasswordReset />
       </div>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Bell size={16} className="text-surface-500 dark:text-surface-400" /> Notifications
         </h3>
         <p className="text-sm text-surface-600 dark:text-surface-300">Email reminders for your follow-ups (e.g. when a reminder is due) can be enabled by your recruiter. In-app reminders are always available on the Reminders tab.</p>
       </div>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm space-y-4">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Shield size={16} className="text-surface-500 dark:text-surface-400" /> Privacy & Data
         </h3>

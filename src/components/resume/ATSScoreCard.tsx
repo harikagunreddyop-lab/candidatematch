@@ -17,9 +17,9 @@ const FACTOR_LABELS: Record<keyof ATSScores, string> = {
   achievements: 'Achievement quantification',
 };
 
-function getScoreColor(val: number): 'emerald' | 'amber' | 'red' {
-  if (val >= 80) return 'emerald';
-  if (val >= 60) return 'amber';
+function getScoreColor(val: number): 'lime' | 'amber' | 'red' {
+  if (val >= 80) return 'lime';
+  if (val >= 50) return 'amber';
   return 'red';
 }
 
@@ -34,7 +34,7 @@ function ScoreFactor({ label, value }: { label: string; value: number }) {
         <div
           className={cn(
             'h-full rounded-full transition-all',
-            color === 'emerald' && 'bg-emerald-500',
+            color === 'lime' && 'bg-[#b8eb1a]',
             color === 'amber' && 'bg-amber-500',
             color === 'red' && 'bg-red-500'
           )}
@@ -91,7 +91,7 @@ export function ATSScoreCard({ score, className }: Props) {
               strokeWidth="8"
               strokeDasharray={`${score.overall_score * 3.52} 352`}
               className={cn(
-                color === 'emerald' && 'text-emerald-500',
+                color === 'lime' && 'text-[#b8eb1a]',
                 color === 'amber' && 'text-amber-500',
                 color === 'red' && 'text-red-500'
               )}
@@ -109,7 +109,7 @@ export function ATSScoreCard({ score, className }: Props) {
         <p
           className={cn(
             'text-sm',
-            color === 'emerald' && 'text-emerald-600 dark:text-emerald-400',
+            color === 'lime' && 'text-[#b8eb1a]',
             color === 'amber' && 'text-amber-600 dark:text-amber-400',
             color === 'red' && 'text-red-600 dark:text-red-400'
           )}
@@ -144,7 +144,7 @@ export function ATSScoreCard({ score, className }: Props) {
                 key={i}
                 className="flex items-start gap-2 text-sm text-surface-600 dark:text-surface-400"
               >
-                <span className="text-violet-500 dark:text-violet-400 shrink-0">•</span>
+                <span className="text-brand-400 shrink-0">•</span>
                 <span>{tip}</span>
               </li>
             ))}

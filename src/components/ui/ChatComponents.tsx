@@ -76,7 +76,7 @@ export function ConversationItem({
         {others.slice(0, 2).map((p, i) => (
           <div key={p.profile_id} className={cn(
             'absolute w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 border-surface-800',
-            i === 0 ? 'top-0 left-0 bg-brand-600/20 text-brand-300 z-10' : 'bottom-0 right-0 bg-purple-600/20 text-purple-300'
+            i === 0 ? 'top-0 left-0 bg-brand-600/20 text-brand-300 z-10' : 'bottom-0 right-0 bg-brand-400/20 text-brand-400'
           )}>
             {(p.profile?.name?.trim() || p.profile?.email || '?')[0].toUpperCase()}
           </div>

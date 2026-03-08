@@ -43,7 +43,7 @@ export function CandidateProCta() {
         type="button"
         onClick={() => handleStartPro('yearly')}
         disabled={loading}
-        className="w-full text-center py-2.5 rounded-xl font-medium bg-white/5 hover:bg-white/10 text-neutral-300 disabled:opacity-60 transition text-sm"
+        className="w-full text-center py-2.5 rounded-xl font-medium bg-surface-100/50 hover:bg-surface-200/50 text-neutral-300 disabled:opacity-60 transition text-sm"
       >
         {loading ? '…' : 'Or $290/year (save 20%)'}
       </button>

@@ -35,7 +35,7 @@ export function FloatingInput({
     <div className="relative">
       <div
         className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${
-          focused ? 'text-violet-400' : 'text-surface-500'
+          focused ? 'text-brand-400' : 'text-surface-500'
         }`}
       >
         {icon}
@@ -57,8 +57,8 @@ export function FloatingInput({
         autoComplete={autoComplete}
         minLength={minLength}
         disabled={disabled}
-        className={`w-full pl-12 pr-4 py-3 bg-surface-900/50 border rounded-xl text-white placeholder-surface-500 transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50 ${
-          focused ? 'border-violet-500 shadow-lg shadow-violet-500/10' : 'border-surface-700'
+        className={`w-full pl-12 pr-4 py-3 bg-surface-900/50 border rounded-xl text-[#0a0a0a] font-medium placeholder-surface-500 transition-all focus:outline-none focus:ring-2 focus:ring-brand-400/50 ${
+          focused ? 'border-brand-400 shadow-lg shadow-lime' : 'border-surface-700'
         }`}
       />
     </div>

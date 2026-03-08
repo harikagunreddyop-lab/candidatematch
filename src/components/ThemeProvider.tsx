@@ -9,7 +9,7 @@ const ThemeContext = createContext<{ theme: Theme; setTheme: (t: Theme) => void;
 const STORAGE_KEY = 'candidatematch-theme';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('dark');
+  const [theme, setThemeState] = useState<Theme>('light');
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(stored);
       document.documentElement.classList.toggle('dark', stored === 'dark');
     } else {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('dark');
     }
   }, []);
 

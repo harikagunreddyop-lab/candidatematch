@@ -1,6 +1,9 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { EffectiveRole } from '@/types';
+import { cached } from '@/lib/redis-upstash';
+
+const PROFILE_CACHE_TTL = 300; // 5 minutes
 
 const ROLE_ROUTES: Record<string, (EffectiveRole | 'admin')[]> = {
   '/dashboard/admin':     ['platform_admin', 'admin'],
@@ -18,14 +21,25 @@ function getDestination(effectiveRole?: string, legacyRole?: string): string {
   return '/auth';
 }
 
+function addTracingHeaders(res: NextResponse, requestId: string, start: number): NextResponse {
+  res.headers.set('x-request-id', requestId);
+  res.headers.set('x-response-time', `${Date.now() - start}ms`);
+  return res;
+}
+
 export async function middleware(request: NextRequest) {
+  const requestId = crypto.randomUUID();
+  const start = Date.now();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-request-id', requestId);
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseAnonKey) {
-    return new NextResponse('Server misconfiguration: missing Supabase env', { status: 503 });
+    return addTracingHeaders(new NextResponse('Server misconfiguration: missing Supabase env', { status: 503 }), requestId, start);
   }
 
-  let response = NextResponse.next({ request: { headers: request.headers } });
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const supabase = createServerClient(
     supabaseUrl,
@@ -62,36 +76,46 @@ export async function middleware(request: NextRequest) {
 
   // ── Not logged in → send to auth page ──────────────────────────────────
   if (pathname.startsWith('/dashboard') && !user) {
-    return NextResponse.redirect(new URL('/auth', request.url));
+    return addTracingHeaders(NextResponse.redirect(new URL('/auth', request.url)), requestId, start);
   }
   if (pathname === '/pending-approval' && !user) {
-    return NextResponse.redirect(new URL('/auth', request.url));
+    return addTracingHeaders(NextResponse.redirect(new URL('/auth', request.url)), requestId, start);
   }
 
   // ── Connect extension: candidates only (logged-in non-candidates → their dashboard) ──
   if (pathname === '/connect-extension' && user) {
-    const { data: profile } = await supabase
-      .from('profile_roles')
-      .select('legacy_role, effective_role')
-      .eq('id', user.id)
-      .single();
+    const profile = await cached(
+      `mw:profile:${user.id}`,
+      PROFILE_CACHE_TTL,
+      async () => {
+        const { data } = await supabase.from('profile_roles').select('legacy_role, effective_role').eq('id', user.id).single();
+        return data;
+      }
+    );
     const role = profile?.legacy_role as string | undefined;
     const effectiveRole = profile?.effective_role as string | undefined;
     const activeRole = effectiveRole || role;
     if (activeRole && activeRole !== 'candidate') {
       const dest = getDestination(effectiveRole, role);
-      return NextResponse.redirect(new URL(dest, request.url));
+      return addTracingHeaders(NextResponse.redirect(new URL(dest, request.url)), requestId, start);
     }
   }
 
   // ── Logged in Logic ──────────────────────────────────────────────────────
   if (user) {
-    // Fetch role once (use profile_roles for effective_role)
-    const { data: profile } = await supabase
-      .from('profile_roles')
-      .select('legacy_role, effective_role, company_id')
-      .eq('id', user.id)
-      .single();
+    // Fetch profile once with cache (avoids repeated DB calls)
+    const profile = await cached(
+      `mw:profile:${user.id}`,
+      PROFILE_CACHE_TTL,
+      async () => {
+        const { data } = await supabase
+          .from('profile_roles')
+          .select('legacy_role, effective_role, company_id')
+          .eq('id', user.id)
+          .single();
+        return data;
+      }
+    );
 
     const role = profile?.legacy_role as string | undefined;
     const effectiveRole = profile?.effective_role as string | undefined;
@@ -100,26 +124,26 @@ export async function middleware(request: NextRequest) {
     // ── No profile or role (e.g. not yet approved) → pending approval page ──
     if (!role && (pathname === '/auth' || pathname.startsWith('/dashboard'))) {
       if (pathname !== '/pending-approval') {
-        return NextResponse.redirect(new URL('/pending-approval', request.url));
+        return addTracingHeaders(NextResponse.redirect(new URL('/pending-approval', request.url)), requestId, start);
       }
-      return response;
+      return addTracingHeaders(response, requestId, start);
     }
 
     // ── User with no role already on pending-approval → stay there ──
     if (!role && pathname === '/pending-approval') {
-      return response;
+      return addTracingHeaders(response, requestId, start);
     }
 
     // ── Already approved user on pending-approval page → send to dashboard ──
     if (pathname === '/pending-approval' && role) {
       const dest = getDestination(effectiveRole, role);
-      return NextResponse.redirect(new URL(dest, request.url));
+      return addTracingHeaders(NextResponse.redirect(new URL(dest, request.url)), requestId, start);
     }
 
     // ── On auth page → redirect to correct dashboard ──────────────
     if (pathname === '/auth') {
       const dest = getDestination(effectiveRole, role);
-      return NextResponse.redirect(new URL(dest, request.url));
+      return addTracingHeaders(NextResponse.redirect(new URL(dest, request.url)), requestId, start);
     }
 
     // ── On a dashboard route → check permissions ───────────────────────────
@@ -131,14 +155,14 @@ export async function middleware(request: NextRequest) {
         const allowedRoles = ROLE_ROUTES[matchedPrefix];
         if (!allowedRoles.includes(activeRole as EffectiveRole | 'admin')) {
           const dest = getDestination(effectiveRole, role);
-          return NextResponse.redirect(new URL(dest, request.url));
+          return addTracingHeaders(NextResponse.redirect(new URL(dest, request.url)), requestId, start);
         }
       }
 
       // /dashboard root → redirect to role-specific dashboard
       if (pathname === '/dashboard' && activeRole) {
         const dest = getDestination(effectiveRole, role);
-        return NextResponse.redirect(new URL(dest, request.url));
+        return addTracingHeaders(NextResponse.redirect(new URL(dest, request.url)), requestId, start);
       }
 
       // ── First-time users → welcome / setup page (once per role) ──
@@ -155,7 +179,7 @@ export async function middleware(request: NextRequest) {
           path: '/',
           maxAge: 60 * 60 * 24 * 365,
         });
-        return redirectResp;
+        return addTracingHeaders(redirectResp, requestId, start);
       }
 
       // ── Candidate Access Gates (self-service: onboarding allowed, no recruiter required) ──
@@ -167,7 +191,7 @@ export async function middleware(request: NextRequest) {
       if (isCandidate && isCandidateDashboard) {
         // Always allow onboarding page
         if (isOnboardingPage) {
-          return response;
+          return addTracingHeaders(response, requestId, start);
         }
 
         let { data: candidate } = await supabase
@@ -199,14 +223,14 @@ export async function middleware(request: NextRequest) {
         // No candidate record at all → send to onboarding to create one
         if (!candidate) {
           if (!isOnboardingPage) {
-            return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
+            return addTracingHeaders(NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url)), requestId, start);
           }
-          return response;
+          return addTracingHeaders(response, requestId, start);
         }
 
         // Candidate exists but hasn't completed onboarding → send to onboarding
         if (!candidate.onboarding_completed && !isOnboardingPage) {
-          return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
+          return addTracingHeaders(NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url)), requestId, start);
         }
       }
 
@@ -236,16 +260,16 @@ export async function middleware(request: NextRequest) {
 
         // If onboarding complete, send to dashboard
         if (candidate?.onboarding_completed) {
-          return NextResponse.redirect(new URL('/dashboard/candidate', request.url));
+          return addTracingHeaders(NextResponse.redirect(new URL('/dashboard/candidate', request.url)), requestId, start);
         }
 
         // Otherwise send to onboarding
-        return NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url));
+        return addTracingHeaders(NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url)), requestId, start);
       }
     }
   }
 
-  return response;
+  return addTracingHeaders(response, requestId, start);
 }
 
 export const config = {

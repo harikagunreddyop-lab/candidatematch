@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, StatusBadge, ToastContainer } from '@/components/ui';
+import { DashboardErrorBoundary } from '@/components/layout/DashboardErrorBoundary';
 import { useToast } from '@/hooks';
 import { ClipboardList, Calendar, UserCheck, Check, X, Brain } from 'lucide-react';
 import { formatDate, cn } from '@/utils/helpers';
@@ -13,7 +14,7 @@ const STATUS_PILL: Record<string, string> = {
   ready: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
   applied: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-200',
   screening: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200',
-  interview: 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200',
+  interview: 'bg-brand-400/10 text-brand-400',
   offer: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200',
   rejected: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
   withdrawn: 'bg-surface-100 dark:bg-surface-600 text-surface-500 dark:text-surface-400',
@@ -191,7 +192,8 @@ export default function RecruiterApplicationsPage() {
   });
 
   return (
-    <div className="space-y-5">
+    <DashboardErrorBoundary sectionName="Applications">
+      <div className="space-y-5">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       <div>
         <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Applications</h1>
@@ -208,7 +210,7 @@ export default function RecruiterApplicationsPage() {
             className={cn(
               'px-3 py-1 rounded-full text-xs font-medium transition-colors',
               statusFilter === 'all'
-                ? 'bg-surface-900 dark:bg-surface-600 text-white'
+                ? 'bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-600 dark:text-white dark:font-semibold'
                 : 'bg-surface-100 dark:bg-surface-700 text-surface-600 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-600'
             )}
           >
@@ -221,7 +223,7 @@ export default function RecruiterApplicationsPage() {
               className={cn(
                 'px-3 py-1 rounded-full text-xs font-medium capitalize transition-colors',
                 statusFilter === s
-                  ? 'bg-surface-900 dark:bg-surface-600 text-white'
+                  ? 'bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-600 dark:text-white dark:font-semibold'
                   : cn(STATUS_PILL[s], 'hover:opacity-80')
               )}
             >
@@ -265,7 +267,7 @@ export default function RecruiterApplicationsPage() {
                       <p className="text-xs text-surface-400">Applied {formatDate(a.applied_at)}</p>
                     )}
                     {a.interview_date && (
-                      <p className="text-xs text-purple-600 flex items-center gap-1">
+                      <p className="text-xs text-brand-400 flex items-center gap-1">
                         <Calendar size={10} /> Interview {formatDate(a.interview_date)}
                       </p>
                     )}
@@ -296,7 +298,7 @@ export default function RecruiterApplicationsPage() {
                   <div>
                     {interviewKitAppId === a.id && interviewKit ? (
                       <div className="space-y-2">
-                        <p className="text-xs font-semibold text-purple-700">Interview questions</p>
+                        <p className="text-xs font-semibold text-brand-400">Interview questions</p>
                         <ol className="list-decimal list-inside text-xs text-surface-600 space-y-1">
                           {interviewKit.questions.map((q, i) => (
                             <li key={i}>{q}</li>
@@ -308,7 +310,7 @@ export default function RecruiterApplicationsPage() {
                       <button
                         onClick={() => fetchInterviewKit(a)}
                         disabled={interviewKitLoading}
-                        className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1.5"
+                        className="text-xs text-brand-400 hover:text-brand-400 flex items-center gap-1.5"
                       >
                         <Brain size={12} />
                         {interviewKitLoading && interviewKitAppId === a.id ? 'Generating…' : 'Generate interview questions'}
@@ -345,7 +347,7 @@ export default function RecruiterApplicationsPage() {
                   ) : (
                     <button
                       onClick={() => openScheduler(a)}
-                      className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1.5"
+                      className="text-xs text-brand-400 hover:text-brand-400 flex items-center gap-1.5"
                     >
                       <Calendar size={12} />
                       {a.interview_date
@@ -363,5 +365,6 @@ export default function RecruiterApplicationsPage() {
         </div>
       )}
     </div>
+    </DashboardErrorBoundary>
   );
 }

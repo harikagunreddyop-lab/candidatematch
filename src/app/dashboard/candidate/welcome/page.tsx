@@ -8,7 +8,7 @@ function StepDot({ active }: { active: boolean }) {
   return (
     <div
       className={`w-3 h-3 rounded-full transition-all ${
-        active ? 'bg-violet-500' : 'bg-surface-700'
+        active ? 'bg-brand-400' : 'bg-surface-700'
       }`}
     />
   );
@@ -27,7 +27,7 @@ function WelcomeStep({
 }) {
   return (
     <div className="rounded-2xl border border-surface-700 bg-surface-800/80 p-8 text-center">
-      <div className="w-14 h-14 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400 mx-auto mb-6">
+      <div className="w-14 h-14 rounded-xl bg-brand-400/20 flex items-center justify-center text-brand-400 mx-auto mb-6">
         {icon}
       </div>
       <h2 className="text-xl font-bold text-white mb-2">{title}</h2>
@@ -35,7 +35,7 @@ function WelcomeStep({
       <button
         type="button"
         onClick={onNext}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl transition-colors"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-brand-400 hover:bg-brand-300 text-white font-semibold rounded-xl transition-colors"
       >
         Next
         <ArrowRight className="w-4 h-4" />
@@ -52,7 +52,7 @@ export default function CandidateWelcome() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-12">
-          <Sparkles className="w-16 h-16 text-violet-400 mx-auto mb-4" />
+          <Sparkles className="w-16 h-16 text-brand-400 mx-auto mb-4" />
           <h1 className="text-4xl font-bold text-white mb-3">
             Welcome to CandidateMatch
           </h1>

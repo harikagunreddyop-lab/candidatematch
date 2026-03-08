@@ -234,7 +234,7 @@ export function Skeleton({ className }: { className?: string }) {
 
 export function CardSkeleton() {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-3">
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-5 space-y-3">
       <Skeleton className="h-5 w-3/4" />
       <Skeleton className="h-4 w-1/2" />
       <div className="flex gap-2">
@@ -248,7 +248,7 @@ export function CardSkeleton() {
 /** Skeleton for a match card in the matches tab */
 export function MatchCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-5 space-y-3">
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4 sm:p-5 space-y-3">
       <Skeleton className="h-5 w-4/5" />
       <div className="flex gap-2 flex-wrap">
         <Skeleton className="h-4 w-24" />

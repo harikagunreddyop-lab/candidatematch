@@ -59,7 +59,7 @@ export default function CompanyJobEditPage() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (!job) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">
-      Job not found. <Link href="/dashboard/company/jobs" className="text-violet-400 hover:underline">Back to jobs</Link>
+      Job not found. <Link href="/dashboard/company/jobs" className="text-brand-400 hover:underline">Back to jobs</Link>
     </div>
   );
 
@@ -87,7 +87,7 @@ export default function CompanyJobEditPage() {
           <label className="block text-sm font-medium text-surface-300 mb-1">Description</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={6} className="w-full px-4 py-2 rounded-xl bg-surface-700 border border-surface-600 text-white" />
         </div>
-        <button type="submit" disabled={saving} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-semibold">
+        <button type="submit" disabled={saving} className="px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] disabled:opacity-50 text-white rounded-xl font-semibold">
           {saving ? <Spinner size={18} className="inline mr-2" /> : null} Save changes
         </button>
       </form>

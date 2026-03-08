@@ -1,10 +1,14 @@
 /**
- * Security utilities: timing-safe comparison, input validation, sanitization.
+ * Security utilities: timing-safe comparison, input validation, sanitization, IP blocking.
  */
 
 import { timingSafeEqual } from 'crypto';
+import { upstash } from './redis-upstash';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const BLOCK_DURATION = 60 * 60; // 1 hour in seconds
+const MAX_FAILED_ATTEMPTS = 10;
 
 /** Timing-safe string comparison (constant time) */
 export function secureCompare(a: string, b: string): boolean {
@@ -48,5 +52,56 @@ export function parseJsonBody<T>(body: string, maxBytes = 100_000): T | null {
     return JSON.parse(body) as T;
   } catch {
     return null;
+  }
+}
+
+// ── IP blocking (brute-force protection) ─────────────────────────────────────
+
+/** Track a failed auth attempt for an IP. Returns true if IP was just blocked. */
+export async function trackFailedAttempt(ip: string): Promise<boolean> {
+  if (!upstash) return false;
+  try {
+    const key = `failed_attempts:${ip}`;
+    const count = await upstash.incr(key);
+    if (count === 1) await upstash.expire(key, BLOCK_DURATION);
+    if (count >= MAX_FAILED_ATTEMPTS) {
+      await blockIP(ip);
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+/** Block an IP for BLOCK_DURATION. */
+export async function blockIP(ip: string, durationSeconds = BLOCK_DURATION): Promise<void> {
+  if (!upstash) return;
+  try {
+    await upstash.setex(`blocked_ip:${ip}`, durationSeconds, '1');
+  } catch {
+    // ignore
+  }
+}
+
+/** Check if an IP is currently blocked. */
+export async function isIPBlocked(ip: string): Promise<boolean> {
+  if (!upstash) return false;
+  try {
+    const v = await upstash.get(`blocked_ip:${ip}`);
+    return v !== null;
+  } catch {
+    return false;
+  }
+}
+
+/** Remove block and failed-attempt count for an IP. */
+export async function unblockIP(ip: string): Promise<void> {
+  if (!upstash) return;
+  try {
+    await upstash.del(`blocked_ip:${ip}`);
+    await upstash.del(`failed_attempts:${ip}`);
+  } catch {
+    // ignore
   }
 }

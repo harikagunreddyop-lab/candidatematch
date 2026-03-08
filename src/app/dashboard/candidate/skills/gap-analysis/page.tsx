@@ -52,7 +52,7 @@ export default function SkillsPage() {
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               tab === t.id
-                ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
+                ? 'bg-surface-200 text-surface-900 dark:text-white shadow-sm'
                 : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
             )}
           >
@@ -66,12 +66,12 @@ export default function SkillsPage() {
         <>
           {loading ? (
             <div className="flex justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-500 border-t-transparent" />
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-400 border-t-transparent" />
             </div>
           ) : (
             <>
               <div className="grid gap-6 sm:grid-cols-2">
-                <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+                <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
                   <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-emerald-500" /> Your skills
                   </h2>
@@ -87,7 +87,7 @@ export default function SkillsPage() {
                     )}
                   </div>
                 </div>
-                <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+                <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
                   <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5 text-amber-500" /> Gaps to close
                   </h2>
@@ -111,7 +111,7 @@ export default function SkillsPage() {
       {tab === 'report' && <SkillReportTabContent />}
 
       {tab === 'recommendations' && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6 space-y-6">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 space-y-6">
           <h2 className="text-lg font-semibold text-surface-900 dark:text-white flex items-center gap-2">
             <Lightbulb className="w-5 h-5 text-amber-500" /> Recommendations
           </h2>
@@ -121,7 +121,7 @@ export default function SkillsPage() {
               <div>
                 <p className="font-medium text-surface-900 dark:text-white">Keep your profile skills updated</p>
                 <p className="text-sm text-surface-500 dark:text-surface-400">Add tools and technologies you use so matches and ATS scores stay accurate.</p>
-                <Link href="/dashboard/candidate/profile" className="text-sm text-violet-500 hover:text-violet-400 font-medium mt-1 inline-block">
+                <Link href="/dashboard/candidate/profile" className="text-sm text-brand-400 hover:text-brand-300 font-medium mt-1 inline-block">
                   Edit profile →
                 </Link>
               </div>
@@ -131,7 +131,7 @@ export default function SkillsPage() {
               <div>
                 <p className="font-medium text-surface-900 dark:text-white">Run ATS check before applying</p>
                 <p className="text-sm text-surface-500 dark:text-surface-400">See matched and missing keywords per job and improve your resume for that role.</p>
-                <Link href="/dashboard/candidate/tools/ats-checker" className="text-sm text-violet-500 hover:text-violet-400 font-medium mt-1 inline-block">
+                <Link href="/dashboard/candidate/tools/ats-checker" className="text-sm text-brand-400 hover:text-brand-300 font-medium mt-1 inline-block">
                   ATS Checker →
                 </Link>
               </div>
@@ -141,7 +141,7 @@ export default function SkillsPage() {
               <div>
                 <p className="font-medium text-surface-900 dark:text-white">Review the Skill Report tab</p>
                 <p className="text-sm text-surface-500 dark:text-surface-400">Profile analysis, resume analysis, and why roles score high or low — all in one place.</p>
-                <button type="button" onClick={() => setTab('report')} className="text-sm text-violet-500 hover:text-violet-400 font-medium mt-1">
+                <button type="button" onClick={() => setTab('report')} className="text-sm text-brand-400 hover:text-brand-300 font-medium mt-1">
                   Open Skill Report →
                 </button>
               </div>

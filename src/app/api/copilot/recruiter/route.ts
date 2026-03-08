@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { buildFixReport } from '@/lib/fix-report';
+import { checkCompanyFeatureAccess, trackCompanyUsage } from '@/lib/feature-gates';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
@@ -12,6 +14,9 @@ export async function POST(req: NextRequest) {
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
   }
+
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter'] });
+  if (auth instanceof Response) return auth;
 
   const supabase = createServiceClient();
 
@@ -25,6 +30,34 @@ export async function POST(req: NextRequest) {
   const matchId = body.match_id ? String(body.match_id).trim() : null;
   if (!matchId) {
     return NextResponse.json({ error: 'match_id is required' }, { status: 400 });
+  }
+
+  const { data: matchRow, error } = await supabase
+    .from('candidate_job_matches')
+    .select('candidate_id, job_id, ats_score, ats_reason, ats_breakdown')
+    .eq('id', matchId)
+    .maybeSingle();
+  if (error || !matchRow) {
+    return NextResponse.json({ error: error?.message || 'Match not found' }, { status: 404 });
+  }
+
+  const { data: job } = await supabase.from('jobs').select('company_id').eq('id', matchRow.job_id).single();
+  const companyId = job?.company_id ?? auth.profile.company_id;
+  if (!companyId) {
+    return NextResponse.json({ error: 'Company context required' }, { status: 403 });
+  }
+
+  const access = await checkCompanyFeatureAccess(supabase, companyId, 'ai_call');
+  if (!access.allowed) {
+    return NextResponse.json(
+      {
+        error: access.reason ?? 'Daily AI call limit reached',
+        upgrade_url: access.upgrade_url,
+        current: access.current,
+        limit: access.limit,
+      },
+      { status: 403 }
+    );
   }
 
   // Feature flag: copilot.recruiter.enabled
@@ -46,15 +79,6 @@ export async function POST(req: NextRequest) {
       { error: 'Feature flags not available; recruiter copilot disabled.' },
       { status: 503 },
     );
-  }
-
-  const { data: matchRow, error } = await supabase
-    .from('candidate_job_matches')
-    .select('candidate_id, job_id, ats_score, ats_reason, ats_breakdown')
-    .eq('id', matchId)
-    .maybeSingle();
-  if (error || !matchRow) {
-    return NextResponse.json({ error: error?.message || 'Match not found' }, { status: 404 });
   }
 
   const breakdown = matchRow.ats_breakdown || {};
@@ -123,6 +147,8 @@ Return ONLY valid JSON, no markdown:
   } catch (e) {
     return NextResponse.json({ error: 'Copilot JSON parse failed' }, { status: 500 });
   }
+
+  await trackCompanyUsage(supabase, companyId, 'ai_call');
 
   return NextResponse.json({
     match_id: matchId,

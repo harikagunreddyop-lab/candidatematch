@@ -72,7 +72,7 @@ export default function CompanyJobNewPage() {
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={6} className="w-full px-4 py-2 rounded-xl bg-surface-700 border border-surface-600 text-white placeholder-surface-500" placeholder="Job description and requirements..." />
         </div>
         {error && <p className="text-red-400 text-sm">{error}</p>}
-        <button type="submit" disabled={saving} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-semibold">
+        <button type="submit" disabled={saving} className="px-4 py-2 bg-brand-400 hover:bg-brand-300 disabled:opacity-50 text-[#0a0f00] rounded-xl font-semibold">
           {saving ? <Spinner size={18} className="inline mr-2" /> : null} Post job
         </button>
       </form>

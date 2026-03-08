@@ -1,154 +1,129 @@
-/**
- * Role-Specific Design Systems — Blue palette
- * #90d5ff (candidate), #57b9ff (recruiter), #77b1d4 (admin), #517891 (fallback)
- */
+/* ============================================================
+   UNIFIED ELITE SYSTEM — all roles share the lime accent
+   Role tints are applied only to sidebar & hero meshes
+   ============================================================ */
 
-/* =============================================================================
-   CANDIDATE — #90d5ff (light blue)
-   ============================================================================= */
+/* CANDIDATE — lime + deep teal undertone */
 [data-role="candidate"] {
-  --role-accent: #90d5ff;
-  --role-accent-muted: #a8ddff;
-  --role-accent-dim: rgba(144, 213, 255, 0.14);
-  --role-accent-border: rgba(144, 213, 255, 0.3);
-  --role-accent-ring: rgba(144, 213, 255, 0.28);
-  --role-glow: rgba(144, 213, 255, 0.08);
-  --role-sidebar-bg: #f2f7ff;
-  --role-sidebar-border: rgba(144, 213, 255, 0.35);
-  --role-sidebar-nav-active-bg: rgba(144, 213, 255, 0.16);
-  --role-sidebar-nav-active-border: rgba(144, 213, 255, 0.6);
-  --role-sidebar-nav-hover-bg: rgba(144, 213, 255, 0.08);
-  --role-sidebar-logo-bg: rgba(255, 255, 255, 0.9);
-  --role-sidebar-logo-border: rgba(144, 213, 255, 0.35);
-  --role-sidebar-accent-line: linear-gradient(180deg, rgba(144, 213, 255, 0.7) 0%, rgba(144, 213, 255, 0.25) 40%, transparent 100%);
-  --role-main-bg: #f7fbff;
-  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(144, 213, 255, 0.16), transparent 65%);
-  --role-header-bg: rgba(255, 255, 255, 0.9);
-  --role-header-border: rgba(144, 213, 255, 0.25);
-  --hero-bg: linear-gradient(135deg, #e8f5ff 0%, #ffffff 45%, #d6ecff 100%);
-  --hero-bg-mesh: radial-gradient(ellipse 120% 80% at 10% 20%, rgba(144, 213, 255, 0.25) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 120% at 90% 80%, rgba(144, 213, 255, 0.18) 0%, transparent 55%);
-  --hero-accent: rgba(144, 213, 255, 0.45);
-  --hero-border: rgba(144, 213, 255, 0.35);
-  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%, transparent 100%);
+  --role-accent:        #b8eb1a;
+  --role-accent-muted:  #c8f542;
+  --role-accent-dim:    rgba(184, 235, 26, 0.10);
+  --role-accent-border: rgba(184, 235, 26, 0.22);
+  --role-accent-ring:   rgba(184, 235, 26, 0.30);
+  --role-glow:          rgba(184, 235, 26, 0.08);
+  --role-tint:          rgba(20, 184, 166, 0.04);   /* subtle personality */
+
+  --role-sidebar-bg:              #090b0b;
+  --role-sidebar-border:          rgba(184, 235, 26, 0.06);
+  --role-sidebar-nav-active-bg:   rgba(184, 235, 26, 0.08);
+  --role-sidebar-nav-active-border: rgba(184, 235, 26, 0.30);
+  --role-sidebar-nav-hover-bg:    rgba(255, 255, 255, 0.03);
+  --role-sidebar-logo-bg:         rgba(184, 235, 26, 0.08);
+  --role-sidebar-logo-border:     rgba(184, 235, 26, 0.20);
+  --role-sidebar-accent-line:     linear-gradient(180deg, rgba(184,235,26,0.45) 0%, rgba(184,235,26,0.08) 60%, transparent 100%);
+
+  --role-main-bg:     #080909;
+  --role-main-glow:   radial-gradient(ellipse 70% 50% at 50% -5%, rgba(184,235,26,0.04), transparent 60%);
+  --role-header-bg:   rgba(9, 11, 11, 0.94);
+  --role-header-border: rgba(184, 235, 26, 0.05);
+
+  --hero-bg:       linear-gradient(140deg, #080909 0%, #090e0c 50%, #080d0a 100%);
+  --hero-bg-mesh:  radial-gradient(ellipse 100% 70% at 15% 20%, rgba(184,235,26,0.06) 0%, transparent 55%),
+                   radial-gradient(ellipse 70% 100% at 85% 75%, rgba(20,184,166,0.04) 0%, transparent 55%),
+                   radial-gradient(ellipse 50% 50% at 55% 35%, rgba(184,235,26,0.03) 0%, transparent 45%);
+  --hero-accent:   rgba(184, 235, 26, 0.28);
+  --hero-border:   rgba(184, 235, 26, 0.12);
 }
 
-/* =============================================================================
-   RECRUITER — #57b9ff (bright blue)
-   ============================================================================= */
+/* RECRUITER — lime + deep violet undertone */
 [data-role="recruiter"] {
-  --role-accent: #57b9ff;
-  --role-accent-muted: #7ac6ff;
-  --role-accent-dim: rgba(87, 185, 255, 0.14);
-  --role-accent-border: rgba(87, 185, 255, 0.3);
-  --role-accent-ring: rgba(87, 185, 255, 0.28);
-  --role-glow: rgba(87, 185, 255, 0.08);
-  --role-sidebar-bg: #f0f7ff;
-  --role-sidebar-border: rgba(87, 185, 255, 0.35);
-  --role-sidebar-nav-active-bg: rgba(87, 185, 255, 0.16);
-  --role-sidebar-nav-active-border: rgba(87, 185, 255, 0.6);
-  --role-sidebar-nav-hover-bg: rgba(87, 185, 255, 0.08);
-  --role-sidebar-logo-bg: rgba(255, 255, 255, 0.9);
-  --role-sidebar-logo-border: rgba(87, 185, 255, 0.35);
-  --role-sidebar-accent-line: linear-gradient(180deg, rgba(87, 185, 255, 0.75) 0%, rgba(87, 185, 255, 0.3) 40%, transparent 100%);
-  --role-main-bg: #f7fbff;
-  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(87, 185, 255, 0.16), transparent 65%);
-  --role-header-bg: rgba(255, 255, 255, 0.9);
-  --role-header-border: rgba(87, 185, 255, 0.25);
-  --hero-bg: linear-gradient(135deg, #e6f4ff 0%, #ffffff 45%, #d4ebff 100%);
-  --hero-bg-mesh: radial-gradient(ellipse 100% 90% at 85% 15%, rgba(87, 185, 255, 0.28) 0%, transparent 50%),
-    radial-gradient(ellipse 90% 100% at 15% 85%, rgba(87, 185, 255, 0.2) 0%, transparent 55%);
-  --hero-accent: rgba(87, 185, 255, 0.5);
-  --hero-border: rgba(87, 185, 255, 0.35);
-  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%, transparent 100%);
+  --role-accent:        #b8eb1a;
+  --role-accent-muted:  #c8f542;
+  --role-accent-dim:    rgba(184, 235, 26, 0.10);
+  --role-accent-border: rgba(184, 235, 26, 0.22);
+  --role-accent-ring:   rgba(184, 235, 26, 0.30);
+  --role-glow:          rgba(184, 235, 26, 0.08);
+  --role-tint:          rgba(139, 92, 246, 0.03);
+
+  --role-sidebar-bg:              #08080c;
+  --role-sidebar-border:          rgba(184, 235, 26, 0.06);
+  --role-sidebar-nav-active-bg:   rgba(184, 235, 26, 0.08);
+  --role-sidebar-nav-active-border: rgba(184, 235, 26, 0.30);
+  --role-sidebar-nav-hover-bg:    rgba(255, 255, 255, 0.03);
+  --role-sidebar-logo-bg:         rgba(184, 235, 26, 0.08);
+  --role-sidebar-logo-border:     rgba(184, 235, 26, 0.20);
+  --role-sidebar-accent-line:     linear-gradient(180deg, rgba(184,235,26,0.45) 0%, rgba(184,235,26,0.08) 60%, transparent 100%);
+
+  --role-main-bg:     #070709;
+  --role-main-glow:   radial-gradient(ellipse 70% 50% at 50% -5%, rgba(184,235,26,0.04), transparent 60%);
+  --role-header-bg:   rgba(8, 8, 12, 0.94);
+  --role-header-border: rgba(184, 235, 26, 0.05);
+
+  --hero-bg:       linear-gradient(140deg, #070709 0%, #0b0a10 50%, #090810 100%);
+  --hero-bg-mesh:  radial-gradient(ellipse 90% 70% at 80% 15%, rgba(184,235,26,0.05) 0%, transparent 50%),
+                   radial-gradient(ellipse 80% 90% at 20% 80%, rgba(139,92,246,0.04) 0%, transparent 55%),
+                   radial-gradient(ellipse 50% 50% at 45% 45%, rgba(184,235,26,0.025) 0%, transparent 45%);
+  --hero-accent:   rgba(184, 235, 26, 0.28);
+  --hero-border:   rgba(184, 235, 26, 0.12);
 }
 
-/* =============================================================================
-   ADMIN — #77b1d4 (medium blue)
-   ============================================================================= */
+/* ADMIN — lime + deep amber undertone (authority, command) */
 [data-role="admin"] {
-  --role-accent: #77b1d4;
-  --role-accent-muted: #8fc0e0;
-  --role-accent-dim: rgba(119, 177, 212, 0.14);
-  --role-accent-border: rgba(119, 177, 212, 0.35);
-  --role-accent-ring: rgba(119, 177, 212, 0.3);
-  --role-glow: rgba(119, 177, 212, 0.06);
-  --role-sidebar-bg: #eff4f9;
-  --role-sidebar-border: rgba(119, 177, 212, 0.3);
-  --role-sidebar-nav-active-bg: rgba(119, 177, 212, 0.16);
-  --role-sidebar-nav-active-border: rgba(119, 177, 212, 0.55);
-  --role-sidebar-nav-hover-bg: rgba(119, 177, 212, 0.08);
-  --role-sidebar-logo-bg: rgba(255, 255, 255, 0.9);
-  --role-sidebar-logo-border: rgba(119, 177, 212, 0.35);
-  --role-sidebar-accent-line: linear-gradient(180deg, rgba(119, 177, 212, 0.65) 0%, rgba(119, 177, 212, 0.25) 40%, transparent 100%);
-  --role-main-bg: #f6fafc;
-  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(119, 177, 212, 0.14), transparent 65%);
-  --role-header-bg: rgba(255, 255, 255, 0.9);
-  --role-header-border: rgba(119, 177, 212, 0.22);
-  --hero-bg: linear-gradient(135deg, #edf5fb 0%, #ffffff 45%, #ddeaf6 100%);
-  --hero-bg-mesh: radial-gradient(ellipse 110% 85% at 90% 20%, rgba(119, 177, 212, 0.25) 0%, transparent 52%),
-    radial-gradient(ellipse 85% 110% at 10% 80%, rgba(119, 177, 212, 0.18) 0%, transparent 55%);
-  --hero-accent: rgba(119, 177, 212, 0.45);
-  --hero-border: rgba(119, 177, 212, 0.3);
-  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%, transparent 100%);
+  --role-accent:        #b8eb1a;
+  --role-accent-muted:  #c8f542;
+  --role-accent-dim:    rgba(184, 235, 26, 0.10);
+  --role-accent-border: rgba(184, 235, 26, 0.22);
+  --role-accent-ring:   rgba(184, 235, 26, 0.30);
+  --role-glow:          rgba(184, 235, 26, 0.08);
+  --role-tint:          rgba(245, 158, 11, 0.025);
+
+  --role-sidebar-bg:              #0b0a08;
+  --role-sidebar-border:          rgba(184, 235, 26, 0.06);
+  --role-sidebar-nav-active-bg:   rgba(184, 235, 26, 0.08);
+  --role-sidebar-nav-active-border: rgba(184, 235, 26, 0.30);
+  --role-sidebar-nav-hover-bg:    rgba(255, 255, 255, 0.03);
+  --role-sidebar-logo-bg:         rgba(184, 235, 26, 0.08);
+  --role-sidebar-logo-border:     rgba(184, 235, 26, 0.20);
+  --role-sidebar-accent-line:     linear-gradient(180deg, rgba(184,235,26,0.45) 0%, rgba(184,235,26,0.08) 60%, transparent 100%);
+
+  --role-main-bg:     #090908;
+  --role-main-glow:   radial-gradient(ellipse 70% 50% at 50% -5%, rgba(184,235,26,0.04), transparent 60%);
+  --role-header-bg:   rgba(11, 10, 8, 0.94);
+  --role-header-border: rgba(184, 235, 26, 0.05);
+
+  --hero-bg:       linear-gradient(140deg, #090908 0%, #0f0e08 50%, #0c0b07 100%);
+  --hero-bg-mesh:  radial-gradient(ellipse 85% 65% at 10% 25%, rgba(184,235,26,0.055) 0%, transparent 50%),
+                   radial-gradient(ellipse 75% 85% at 90% 70%, rgba(245,158,11,0.03) 0%, transparent 50%),
+                   radial-gradient(ellipse 55% 55% at 50% 50%, rgba(184,235,26,0.025) 0%, transparent 45%);
+  --hero-accent:   rgba(184, 235, 26, 0.28);
+  --hero-border:   rgba(184, 235, 26, 0.12);
 }
 
-/* Tile/card design tokens - blue palette */
-[data-role="candidate"] {
-  --tile-bg: rgba(255, 255, 255, 0.96);
-  --tile-border: rgba(144, 213, 255, 0.35);
-  --tile-hover-bg: #ffffff;
-  --tile-hover-border: rgba(144, 213, 255, 0.6);
-  --tile-hover-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.18);
-  --tile-icon-bg: rgba(144, 213, 255, 0.16);
-}
-[data-role="recruiter"] {
-  --tile-bg: rgba(255, 255, 255, 0.96);
-  --tile-border: rgba(87, 185, 255, 0.35);
-  --tile-hover-bg: #ffffff;
-  --tile-hover-border: rgba(87, 185, 255, 0.65);
-  --tile-hover-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.18);
-  --tile-icon-bg: rgba(87, 185, 255, 0.16);
-}
-[data-role="admin"] {
-  --tile-bg: rgba(255, 255, 255, 0.96);
-  --tile-border: rgba(119, 177, 212, 0.35);
-  --tile-hover-bg: #ffffff;
-  --tile-hover-border: rgba(119, 177, 212, 0.6);
-  --tile-hover-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.16);
-  --tile-icon-bg: rgba(119, 177, 212, 0.14);
-}
-
-/* Fallback — #517891 (dark blue accent, light surfaces) */
-:root {
-  --role-accent: #517891;
-  --role-accent-muted: #6b8fa8;
-  --role-accent-dim: rgba(81, 120, 145, 0.12);
-  --role-accent-border: rgba(81, 120, 145, 0.28);
-  --role-accent-ring: rgba(81, 120, 145, 0.26);
-  --role-glow: rgba(81, 120, 145, 0.08);
-  --role-sidebar-bg: #f3f6fa;
-  --role-sidebar-border: rgba(81, 120, 145, 0.22);
-  --role-sidebar-nav-active-bg: rgba(81, 120, 145, 0.12);
-  --role-sidebar-nav-active-border: rgba(81, 120, 145, 0.5);
-  --role-sidebar-nav-hover-bg: rgba(81, 120, 145, 0.06);
-  --role-sidebar-logo-bg: #ffffff;
-  --role-sidebar-logo-border: rgba(81, 120, 145, 0.3);
-  --role-sidebar-accent-line: linear-gradient(180deg, rgba(81, 120, 145, 0.55) 0%, rgba(81, 120, 145, 0.25) 40%, transparent 100%);
-  --role-main-bg: #f5f5f7;
-  --role-main-glow: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(81, 120, 145, 0.16), transparent 65%);
-  --role-header-bg: rgba(255, 255, 255, 0.9);
-  --role-header-border: rgba(81, 120, 145, 0.25);
-  --tile-bg: rgba(255, 255, 255, 0.96);
-  --tile-border: rgba(81, 120, 145, 0.3);
-  --tile-hover-bg: #ffffff;
-  --tile-hover-border: rgba(81, 120, 145, 0.55);
-  --tile-hover-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.16);
-  --tile-icon-bg: rgba(81, 120, 145, 0.12);
-  --hero-bg: linear-gradient(135deg, #eff4f9 0%, #ffffff 45%, #dde7f0 100%);
-  --hero-bg-mesh: radial-gradient(ellipse 100% 80% at 80% 20%, rgba(81, 120, 145, 0.22) 0%, transparent 52%),
-    radial-gradient(ellipse 80% 100% at 20% 80%, rgba(81, 120, 145, 0.16) 0%, transparent 52%);
-  --hero-accent: rgba(81, 120, 145, 0.4);
-  --hero-border: rgba(81, 120, 145, 0.28);
-  --hero-shine: linear-gradient(105deg, transparent 0%, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%, transparent 100%);
+/* COMPANY — same as recruiter */
+[data-role="company_admin"],
+[data-role="company"] {
+  --role-accent:        #b8eb1a;
+  --role-accent-muted:  #c8f542;
+  --role-accent-dim:    rgba(184, 235, 26, 0.10);
+  --role-accent-border: rgba(184, 235, 26, 0.22);
+  --role-accent-ring:   rgba(184, 235, 26, 0.30);
+  --role-glow:          rgba(184, 235, 26, 0.08);
+  --role-sidebar-bg:              #07090b;
+  --role-sidebar-border:          rgba(184, 235, 26, 0.06);
+  --role-sidebar-nav-active-bg:   rgba(184, 235, 26, 0.08);
+  --role-sidebar-nav-active-border: rgba(184, 235, 26, 0.30);
+  --role-sidebar-nav-hover-bg:    rgba(255, 255, 255, 0.03);
+  --role-sidebar-logo-bg:         rgba(184, 235, 26, 0.08);
+  --role-sidebar-logo-border:     rgba(184, 235, 26, 0.20);
+  --role-sidebar-accent-line:     linear-gradient(180deg, rgba(184,235,26,0.45) 0%, rgba(184,235,26,0.08) 60%, transparent 100%);
+  --role-main-bg:     #070809;
+  --role-main-glow:   radial-gradient(ellipse 70% 50% at 50% -5%, rgba(184,235,26,0.04), transparent 60%);
+  --role-header-bg:   rgba(7, 9, 11, 0.94);
+  --role-header-border: rgba(184, 235, 26, 0.05);
+  --hero-bg:       linear-gradient(140deg, #070809 0%, #090c10 50%, #080b0e 100%);
+  --hero-bg-mesh:  radial-gradient(ellipse 90% 65% at 80% 20%, rgba(184,235,26,0.05) 0%, transparent 50%),
+                   radial-gradient(ellipse 70% 85% at 20% 75%, rgba(56,189,248,0.03) 0%, transparent 55%),
+                   radial-gradient(ellipse 50% 50% at 45% 40%, rgba(184,235,26,0.025) 0%, transparent 45%);
+  --hero-accent:   rgba(184, 235, 26, 0.28);
+  --hero-border:   rgba(184, 235, 26, 0.12);
 }

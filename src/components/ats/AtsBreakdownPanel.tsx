@@ -223,7 +223,7 @@ export function AtsBreakdownPanel({
 
           {/* Elite AI: Objection predictor (when candidate + job context) */}
           {candidateId && jobId && (
-            <div className="rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800/50 px-3 py-2.5">
+            <div className="rounded-lg bg-brand-400/10 dark:bg-brand-400/10 border border-brand-400/20 dark:border-brand-400/20 px-3 py-2.5">
               {!objectionResult ? (
                 <button
                   type="button"
@@ -243,13 +243,13 @@ export function AtsBreakdownPanel({
                     }
                   }}
                   disabled={objectionLoading}
-                  className="text-xs font-medium text-violet-700 dark:text-violet-300 hover:underline flex items-center gap-1.5"
+                  className="text-xs font-medium text-brand-400 hover:underline flex items-center gap-1.5"
                 >
                   {objectionLoading ? 'Analyzing…' : <><Shield size={12} /> Predict interview objections</>}
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-violet-800 dark:text-violet-200">Interview objections & defense</p>
+                  <p className="text-xs font-semibold text-brand-400">Interview objections & defense</p>
                   {objectionResult.rejection_reasons?.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-surface-600 dark:text-surface-400 mb-1">Possible concerns:</p>
@@ -265,7 +265,7 @@ export function AtsBreakdownPanel({
                       <p className="text-xs font-medium text-surface-600 dark:text-surface-400 mb-1">Talking points:</p>
                       <ul className="text-xs text-surface-600 dark:text-surface-300 space-y-1">
                         {objectionResult.defense_talking_points.slice(0, 3).map((d: any, i: number) => (
-                          <li key={i}><span className="text-violet-600 dark:text-violet-400">{d.objection}</span> → {d.response}</li>
+                          <li key={i}><span className="text-brand-400">{d.objection}</span> → {d.response}</li>
                         ))}
                       </ul>
                     </div>

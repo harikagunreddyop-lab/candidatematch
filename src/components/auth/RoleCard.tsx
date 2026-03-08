@@ -19,13 +19,13 @@ export function RoleCard({ icon, title, description, selected, onClick }: RoleCa
       whileTap={{ scale: 0.99 }}
       className={`w-full p-4 rounded-xl border-2 text-left transition-all flex items-start gap-4 ${
         selected
-          ? 'border-violet-500 bg-violet-500/10 shadow-lg shadow-violet-500/10'
+          ? 'border-brand-400 bg-brand-400/10 shadow-lg shadow-lime'
           : 'border-surface-700 bg-surface-800/50 hover:border-surface-600'
       }`}
     >
       <div
         className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-          selected ? 'bg-violet-500/30 text-violet-400' : 'bg-surface-700 text-surface-400'
+          selected ? 'bg-brand-400/30 text-brand-400' : 'bg-surface-700 text-surface-400'
         }`}
       >
         {icon}

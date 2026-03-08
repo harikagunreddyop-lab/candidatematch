@@ -90,10 +90,10 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex">
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(140deg, #080909 0%, #0a0d08 50%, #080909 100%)' }}>
       {/* Left Side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-16 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/20 via-purple-600/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-400/10 via-brand-500/5 to-transparent" />
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -103,7 +103,7 @@ export default function SignupPage() {
           <h1 className="text-6xl font-bold text-white mb-6 leading-tight">
             Your dream job
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-purple-600">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 to-brand-500">
               is waiting
             </span>
           </h1>
@@ -165,7 +165,7 @@ export default function SignupPage() {
             {step !== 'verify' && (
               <div className="mt-6 text-center text-sm text-surface-400">
                 Already have an account?{' '}
-                <Link href="/auth/login" className="text-violet-400 hover:text-violet-300 font-semibold">
+                <Link href="/auth/login" className="text-brand-400 hover:text-brand-300 font-semibold">
                   Sign in
                 </Link>
               </div>
@@ -211,7 +211,7 @@ function RoleSelection({
       <button
         type="button"
         onClick={onNext}
-        className="w-full mt-8 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all"
+        className="w-full mt-8 px-6 py-3 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-xl font-semibold shadow-lime hover:shadow-lime-lg transition-all"
       >
         Continue
       </button>
@@ -288,7 +288,7 @@ function DetailsForm({
           type="button"
           onClick={onSubmit}
           disabled={loading}
-          className="flex-1 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-70 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2"
+          className="flex-1 px-6 py-3 bg-brand-400 hover:bg-brand-300 disabled:opacity-70 text-[#0a0f00] rounded-xl font-semibold shadow-lime hover:shadow-lime-lg transition-all flex items-center justify-center gap-2"
         >
           {loading ? (
             <>
@@ -303,11 +303,11 @@ function DetailsForm({
 
       <p className="text-xs text-surface-500 mt-6 text-center">
         By signing up, you agree to our{' '}
-        <Link href="/terms" className="text-violet-400 hover:underline">
+        <Link href="/terms" className="text-brand-400 hover:underline">
           Terms of Service
         </Link>{' '}
         and{' '}
-        <Link href="/privacy" className="text-violet-400 hover:underline">
+        <Link href="/privacy" className="text-brand-400 hover:underline">
           Privacy Policy
         </Link>
       </p>

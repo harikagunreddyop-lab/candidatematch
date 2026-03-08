@@ -91,7 +91,7 @@ export function JobSearchView({ role, companyId, postedByUserId }: JobSearchView
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="min-h-screen bg-surface-900">
+    <div className="min-h-screen bg-surface-900 text-[#0a0a0a]">
       {/* Hero search section */}
       <div className="relative overflow-hidden border-b border-surface-700/60">
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--role-accent)]/8 via-transparent to-transparent" />
@@ -112,7 +112,7 @@ export function JobSearchView({ role, companyId, postedByUserId }: JobSearchView
                   placeholder="Job title, company..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="input pl-10 w-full py-2.5 rounded-xl bg-surface-800/80 border-surface-700 focus:border-[var(--role-accent)]"
+                  className="input pl-10 w-full py-2.5 rounded-xl bg-surface-800/80 border-surface-700 focus:border-[var(--role-accent)] text-[#0a0a0a] font-medium"
                 />
               </div>
               <input
@@ -120,7 +120,7 @@ export function JobSearchView({ role, companyId, postedByUserId }: JobSearchView
                 placeholder="Location"
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="input w-full sm:w-48 py-2.5 rounded-xl bg-surface-800/80 border-surface-700"
+                className="input w-full sm:w-48 py-2.5 rounded-xl bg-surface-800/80 border-surface-700 text-[#0a0a0a] font-medium"
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -132,8 +132,8 @@ export function JobSearchView({ role, companyId, postedByUserId }: JobSearchView
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
                     sourceFilter === s.value
-                      ? 'bg-[var(--role-accent)] text-white'
-                      : 'bg-surface-800 text-surface-400 hover:bg-surface-700 hover:text-surface-300'
+                      ? 'bg-[var(--role-accent)] text-[#0a0f00] font-bold'
+                      : 'bg-surface-800 text-[#0a0a0a] font-medium hover:bg-surface-700 hover:text-[#0a0a0a]'
                   )}
                 >
                   {s.label}
@@ -209,7 +209,7 @@ function JobCard({ job, role }: { job: any; role: 'candidate' | 'recruiter' }) {
       >
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-surface-100 truncate group-hover:text-[var(--role-accent)] transition-colors">
+            <h3 className="font-bold text-[#0a0a0a] truncate group-hover:text-[var(--role-accent)] transition-colors">
               {job.title || 'Untitled'}
             </h3>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-surface-400">
@@ -235,7 +235,7 @@ function JobCard({ job, role }: { job: any; role: 'candidate' | 'recruiter' }) {
               )}
             </div>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-[var(--role-accent)] text-white shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--role-accent)] text-[#0a0f00] shrink-0">
             View candidates
             <ChevronRight size={14} />
           </span>
@@ -253,7 +253,7 @@ function JobCard({ job, role }: { job: any; role: 'candidate' | 'recruiter' }) {
     >
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-surface-100 truncate group-hover:text-[var(--role-accent)] transition-colors">
+          <h3 className="font-bold text-[#0a0a0a] truncate group-hover:text-[var(--role-accent)] transition-colors">
             {job.title || 'Untitled'}
           </h3>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-surface-400">
@@ -285,7 +285,7 @@ function JobCard({ job, role }: { job: any; role: 'candidate' | 'recruiter' }) {
           rel={isExternal ? 'noopener noreferrer' : undefined}
           className={cn(
             'inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium',
-            'bg-[var(--role-accent)] text-white hover:opacity-90 transition-opacity shrink-0'
+            'bg-[var(--role-accent)] text-[#0a0f00] font-bold hover:opacity-90 transition-opacity shrink-0'
           )}
         >
           Apply

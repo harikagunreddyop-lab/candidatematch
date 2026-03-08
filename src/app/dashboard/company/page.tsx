@@ -166,7 +166,7 @@ export default function CompanyDashboard() {
   if (loading)
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
       </div>
     );
 
@@ -198,8 +198,8 @@ export default function CompanyDashboard() {
               unoptimized
             />
           ) : (
-            <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-violet-400" />
+            <div className="w-10 h-10 rounded-xl bg-brand-400/20 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-brand-400" />
             </div>
           )}
           <div>
@@ -217,7 +217,7 @@ export default function CompanyDashboard() {
           </Link>
           <Link
             href="/dashboard/company/jobs/new"
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
           >
             <Plus className="w-4 h-4" />
             Post Job
@@ -231,14 +231,14 @@ export default function CompanyDashboard() {
           label="Active Jobs"
           value={activeJobs}
           icon={<Briefcase className="w-5 h-5" />}
-          color="from-violet-500 to-purple-600"
+          color="from-brand-400 to-brand-600"
           href="/dashboard/company/jobs"
         />
         <KPICard
           label="Total Applications"
           value={analytics?.total_applications ?? 0}
           icon={<Users className="w-5 h-5" />}
-          color="from-blue-500 to-indigo-600"
+          color="from-brand-500 to-brand-700"
           href="/dashboard/company/candidates"
         />
         <KPICard
@@ -281,14 +281,14 @@ export default function CompanyDashboard() {
       {/* Funnel */}
       {analytics && analytics.total_applications > 0 && (
         <div className="rounded-2xl bg-surface-800 border border-surface-700/60 p-6">
-          <h2 className="font-semibold text-white mb-4 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-violet-400" />
+          <h2 className="font-bold text-[#0a0a0a] mb-4 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 text-brand-400" />
             Hiring Funnel
           </h2>
           <div className="flex items-center gap-2 flex-wrap">
             {[
               { label: 'Applied', value: analytics.total_applications, color: 'bg-blue-500' },
-              { label: 'Interviews', value: analytics.total_interviews, color: 'bg-violet-500' },
+              { label: 'Interviews', value: analytics.total_interviews, color: 'bg-brand-400' },
               { label: 'Offers', value: analytics.total_offers ?? 0, color: 'bg-amber-500' },
               { label: 'Hires', value: analytics.total_hires, color: 'bg-emerald-500' },
             ].map((stage, i, arr) => (
@@ -329,7 +329,7 @@ export default function CompanyDashboard() {
             <h2 className="text-xl font-semibold text-white">Recent Jobs</h2>
             <Link
               href="/dashboard/company/jobs"
-              className="text-sm text-violet-400 hover:text-violet-300"
+              className="text-sm text-brand-400 hover:text-brand-300"
             >
               View All →
             </Link>
@@ -373,7 +373,7 @@ export default function CompanyDashboard() {
             <h2 className="text-xl font-semibold text-white">Team</h2>
             <Link
               href="/dashboard/company/team/invite"
-              className="text-sm text-violet-400 hover:text-violet-300"
+              className="text-sm text-brand-400 hover:text-brand-300"
             >
               Invite Member →
             </Link>
@@ -381,7 +381,7 @@ export default function CompanyDashboard() {
           <div className="space-y-3">
             {team.length === 0 ? (
               <p className="text-surface-500 text-sm">
-                No team yet. <Link href="/dashboard/company/team/invite" className="text-violet-400 hover:underline">Invite →</Link>
+                No team yet. <Link href="/dashboard/company/team/invite" className="text-brand-400 hover:underline">Invite →</Link>
               </p>
             ) : (
               team.map((member) => {
@@ -396,7 +396,7 @@ export default function CompanyDashboard() {
                         <div className="font-medium text-white">{member.name || member.email || 'Unknown'}</div>
                         <div className="text-xs text-surface-500">{member.email}</div>
                       </div>
-                      <span className="px-2 py-1 bg-violet-500/10 text-violet-400 text-xs font-medium rounded capitalize">
+                      <span className="px-2 py-1 bg-brand-400/10 text-brand-400 text-xs font-medium rounded capitalize">
                         {member.effective_role?.replace('_', ' ')}
                       </span>
                     </div>
@@ -418,7 +418,7 @@ export default function CompanyDashboard() {
               </span>
               <div className="flex-1 mx-2 h-1 bg-surface-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-violet-500 rounded-full"
+                  className="h-full bg-brand-400 rounded-full"
                   style={{
                     width: `${Math.min(
                       100,
@@ -447,7 +447,7 @@ export default function CompanyDashboard() {
                   : (ev.candidate as { full_name?: string } | null)?.full_name;
                 return (
                   <div key={ev.id} className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-400 mt-2 shrink-0" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-brand-400 mt-2 shrink-0" />
                     <div>
                       <div className="text-xs text-surface-300">
                         {candidateName && (
@@ -470,7 +470,7 @@ export default function CompanyDashboard() {
       {/* Billing CTA */}
       {company &&
         (company.subscription_plan === 'starter' || company.subscription_plan === 'growth') && (
-          <div className="rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-600/5 border border-violet-500/20 p-6 flex items-center justify-between">
+          <div className="rounded-2xl bg-gradient-to-br from-brand-400/10 to-brand-600/5 border border-brand-400/20 p-6 flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-white capitalize">
                 {company.subscription_plan} Plan
@@ -483,7 +483,7 @@ export default function CompanyDashboard() {
             </div>
             <Link
               href="/dashboard/company/settings/billing"
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold transition-colors shrink-0"
+              className="px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-xl text-sm font-semibold transition-colors shrink-0"
             >
               Upgrade Plan
             </Link>

@@ -16,7 +16,7 @@ function StatCard({
   const colorClasses = {
     amber: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
     emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
-    violet: 'bg-violet-500/10 border-violet-500/20 text-violet-400',
+    violet: 'bg-brand-400/10 border-brand-400/20 text-brand-400',
   };
   const c = colorClasses[color];
   return (

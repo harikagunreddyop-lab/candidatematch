@@ -44,7 +44,7 @@ export default function CareerCoachPage() {
   return (
     <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
       <h1 className="text-2xl font-bold text-surface-900 dark:text-white mb-4">Career coach</h1>
-      <div className="flex-1 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 flex flex-col overflow-hidden">
+      <div className="flex-1 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg, i) => (
             <div
@@ -55,15 +55,15 @@ export default function CareerCoachPage() {
               )}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-4 h-4 text-violet-500" />
+                <div className="w-8 h-8 rounded-full bg-brand-400/20 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4 text-brand-400" />
                 </div>
               )}
               <div
                 className={cn(
                   'max-w-[85%] rounded-xl px-4 py-2.5 text-sm',
                   msg.role === 'user'
-                    ? 'bg-violet-600 text-white'
+                    ? 'bg-brand-400 text-[#0a0f00]'
                     : 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white'
                 )}
               >
@@ -73,8 +73,8 @@ export default function CareerCoachPage() {
           ))}
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
-                <MessageCircle className="w-4 h-4 text-violet-500" />
+              <div className="w-8 h-8 rounded-full bg-brand-400/20 flex items-center justify-center shrink-0">
+                <MessageCircle className="w-4 h-4 text-brand-400" />
               </div>
               <div className="rounded-xl px-4 py-2.5 bg-surface-200 dark:bg-surface-700 text-surface-500">Thinking…</div>
             </div>

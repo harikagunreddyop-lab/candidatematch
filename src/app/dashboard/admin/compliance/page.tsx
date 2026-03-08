@@ -9,7 +9,7 @@ type Tab = 'overview' | 'deletion' | 'retention' | 'consent';
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  processing: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  processing: 'bg-brand-400/10 text-brand-400 border-brand-400/20',
   completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
@@ -177,11 +177,11 @@ export default function AdminCompliancePage() {
 
               {/* Deletion breakdown */}
               {Object.keys(stats.deletion_requests || {}).length > 0 && (
-                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4 sm:p-6 shadow-sm">
                   <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Deletion Requests by Status</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                     {['pending', 'approved', 'processing', 'completed', 'rejected'].map(s => (
-                      <div key={s} className="text-center p-3 rounded-xl bg-surface-50 dark:bg-surface-700/50">
+                      <div key={s} className="text-center p-3 rounded-xl bg-surface-100 dark:bg-surface-700/50">
                         <p className="text-xl font-bold text-surface-900 dark:text-surface-100">{stats.deletion_requests?.[s] || 0}</p>
                         <p className="text-xs text-surface-500 dark:text-surface-400 capitalize mt-1">{s}</p>
                       </div>
@@ -192,7 +192,7 @@ export default function AdminCompliancePage() {
 
               {/* Retention overview */}
               {stats.retention_policies?.length > 0 && (
-                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4 sm:p-6 shadow-sm">
                   <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Retention Policies</h3>
                   <div className="space-y-2">
                     {stats.retention_policies.map((p: any) => (
@@ -217,13 +217,13 @@ export default function AdminCompliancePage() {
           {tab === 'deletion' && (
             <div className="space-y-4">
               {deletionRequests.length === 0 ? (
-                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-8 text-center">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-8 text-center">
                   <Trash2 size={32} className="mx-auto text-surface-400 mb-3" />
                   <p className="text-sm text-surface-500 dark:text-surface-400">No deletion requests</p>
                 </div>
               ) : (
                 deletionRequests.map((r: any) => (
-                  <div key={r.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm">
+                  <div key={r.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4 sm:p-6 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                       <div className="space-y-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -294,11 +294,11 @@ export default function AdminCompliancePage() {
 
           {/* Retention Policies Tab */}
           {tab === 'retention' && (
-            <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
+                    <tr className="border-b border-surface-200 dark:border-surface-700 bg-surface-100">
                       <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Category</th>
                       <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Retention</th>
                       <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Auto-delete</th>
@@ -381,16 +381,16 @@ export default function AdminCompliancePage() {
           {tab === 'consent' && (
             <div className="space-y-3">
               {consents.length === 0 ? (
-                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-8 text-center">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-8 text-center">
                   <FileText size={32} className="mx-auto text-surface-400 mb-3" />
                   <p className="text-sm text-surface-500 dark:text-surface-400">No consent records found</p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 shadow-sm overflow-hidden">
+                <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 shadow-sm overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800">
+                        <tr className="border-b border-surface-200 dark:border-surface-700 bg-surface-100">
                           <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Type</th>
                           <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Status</th>
                           <th className="text-left px-4 sm:px-6 py-3 text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider hidden sm:table-cell">IP</th>
@@ -431,8 +431,8 @@ export default function AdminCompliancePage() {
 
 function StatCard({ label, value, icon }: { label: string; value: number | string; icon: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm flex items-start gap-4">
-      <div className="p-2.5 rounded-xl bg-surface-50 dark:bg-surface-700/50">{icon}</div>
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4 sm:p-6 shadow-sm flex items-start gap-4">
+      <div className="p-2.5 rounded-xl bg-surface-100 dark:bg-surface-700/50">{icon}</div>
       <div>
         <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{value}</p>
         <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{label}</p>

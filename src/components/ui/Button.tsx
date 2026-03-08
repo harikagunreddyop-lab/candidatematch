@@ -9,13 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'bg-brand-600 text-white hover:bg-brand-700 focus-visible:ring-brand-500',
+          'bg-brand-400 text-[#0a0f00] font-bold hover:bg-brand-300 focus-visible:ring-brand-400 shadow-lime hover:shadow-lime-lg transition-shadow',
         secondary:
-          'bg-surface-100 text-surface-900 hover:bg-surface-200 focus-visible:ring-surface-500',
+          'bg-surface-200 text-surface-900 hover:bg-surface-300 border border-surface-300 hover:border-surface-400 focus-visible:ring-brand-400',
         outline:
-          'border-2 border-surface-300 bg-transparent text-surface-800 hover:bg-surface-50 focus-visible:ring-surface-500',
+          'border border-surface-300 bg-transparent text-surface-800 hover:bg-surface-100 hover:border-brand-400 hover:text-brand-400 focus-visible:ring-brand-400',
         ghost:
-          'text-surface-800 hover:bg-surface-50 focus-visible:ring-surface-500',
+          'text-surface-800 hover:bg-surface-50 focus-visible:ring-brand-400',
         danger:
           'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500',
       },

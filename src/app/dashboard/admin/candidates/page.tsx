@@ -26,7 +26,7 @@ const STATUS_COLORS: Record<string, string> = {
   ready: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
   applied: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-200',
   screening: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200',
-  interview: 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-200',
+  interview: 'bg-brand-400/10 text-brand-400',
   offer: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200',
   rejected: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
 };
@@ -300,7 +300,7 @@ function CandidatesPageContent() {
       ) : (
         <div className="card overflow-hidden min-w-0">
           <div className="divide-y divide-surface-50 min-w-0 overflow-x-auto">
-            <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 bg-surface-50 dark:bg-surface-700/40 text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide">
+            <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 bg-surface-100 text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide">
               <div className="w-10 shrink-0" />
               <div className="flex-1 flex items-center gap-2 min-w-0">
                 <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
@@ -326,7 +326,7 @@ function CandidatesPageContent() {
                 <div
                   key={c.id}
                   id={`candidate-row-${c.id}`}
-                  className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-700/30 transition-colors group min-w-0"
+                  className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-100 dark:hover:bg-surface-700/30 transition-colors group min-w-0"
                 >
                   <div
                     className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/30 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0 cursor-pointer"
@@ -418,7 +418,7 @@ function CandidatesPageContent() {
                   {recruiters
                     .filter((r) => (assignments[assignTarget.id] || []).includes(r.id))
                     .map((r) => (
-                      <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-surface-50 dark:bg-surface-700/50 rounded-lg">
+                      <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-surface-100 rounded-lg">
                         <div>
                           <p className="text-sm font-medium text-surface-800">{r.name || r.email}</p>
                           <p className="text-xs text-surface-400">{r.email}</p>

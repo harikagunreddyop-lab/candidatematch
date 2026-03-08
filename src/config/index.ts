@@ -35,6 +35,7 @@ const envSchema = z.object({
 
   // Monitoring
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.string().url().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
@@ -88,6 +89,7 @@ function loadConfig(): Config {
     REDIS_URL: process.env.REDIS_URL,
     RESUME_WORKER_URL: process.env.RESUME_WORKER_URL,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
     NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,

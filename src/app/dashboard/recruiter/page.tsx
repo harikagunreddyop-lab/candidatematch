@@ -97,7 +97,7 @@ export default function RecruiterDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -119,7 +119,7 @@ export default function RecruiterDashboard() {
         </div>
         <Link
           href="/dashboard/recruiter/jobs/new"
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
         >
           <Plus className="w-4 h-4" />
           Post Job
@@ -131,7 +131,7 @@ export default function RecruiterDashboard() {
           label="My Active Jobs"
           value={jobCount}
           icon={<Briefcase className="w-5 h-5" />}
-          color="from-violet-500 to-purple-600"
+          color="from-brand-400 to-brand-600"
           href="/dashboard/recruiter/jobs"
         />
         <KPICard
@@ -145,16 +145,16 @@ export default function RecruiterDashboard() {
           label="Total Applications"
           value={totalApplicationsCount}
           icon={<Users className="w-5 h-5" />}
-          color="from-blue-500 to-indigo-600"
+          color="from-brand-500 to-brand-700"
           href="/dashboard/recruiter/pipeline"
         />
       </div>
 
       {newMatches.length > 0 && (
-        <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6">
+        <div className="bg-surface-100 border border-surface-700/60 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">New Matches</h2>
-            <Link href="/dashboard/recruiter/candidates" className="text-sm text-violet-400 hover:text-violet-300">
+            <Link href="/dashboard/recruiter/candidates" className="text-sm text-brand-400 hover:text-brand-300">
               View All →
             </Link>
           </div>
@@ -163,7 +163,7 @@ export default function RecruiterDashboard() {
               <Link
                 key={match.id}
                 href={`/dashboard/recruiter/candidates/${match.candidate_id}`}
-                className="flex items-center justify-between p-4 bg-surface-900/50 rounded-lg hover:bg-surface-900 transition-colors"
+                className="flex items-center justify-between p-4 bg-surface-200/50 rounded-lg hover:bg-surface-200 transition-colors"
               >
                 <div className="flex-1">
                   <div className="font-medium text-white">
@@ -199,10 +199,10 @@ export default function RecruiterDashboard() {
         </div>
       )}
 
-      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6">
+      <div className="bg-surface-100 border border-surface-700/60 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-white">My Jobs</h2>
-          <Link href="/dashboard/recruiter/jobs" className="text-sm text-violet-400 hover:text-violet-300">
+          <Link href="/dashboard/recruiter/jobs" className="text-sm text-brand-400 hover:text-brand-300">
             View All →
           </Link>
         </div>
@@ -214,7 +214,7 @@ export default function RecruiterDashboard() {
               <Link
                 key={job.id}
                 href={`/dashboard/recruiter/jobs/${job.id}`}
-                className="p-4 bg-surface-900/50 rounded-lg hover:bg-surface-900 transition-colors"
+                className="p-4 bg-surface-200/50 rounded-lg hover:bg-surface-200 transition-colors"
               >
                 <div className="font-medium text-white">{job.title}</div>
                 <div className="text-xs text-surface-500 mt-2">
@@ -245,7 +245,7 @@ function KPICard({
   return (
     <Link href={href} className="group">
       <div className={`bg-gradient-to-br ${color} p-[1px] rounded-xl transition-all hover:scale-[1.02]`}>
-        <div className="bg-surface-900 rounded-xl p-5">
+        <div className="bg-surface-100 rounded-xl p-5">
           <div className="flex items-center justify-between mb-3">
             <div className={`bg-gradient-to-br ${color} bg-opacity-10 p-2 rounded-lg text-white`}>
               {icon}

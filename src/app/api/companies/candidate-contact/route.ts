@@ -8,6 +8,7 @@ import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { SUCCESS_FEE_CENTS, isCompanyPlanId, type CompanyPlanId } from '@/lib/plan-limits';
 import { logActivity, getClientIp } from '@/lib/activity-log';
+import { checkCompanyFeatureAccess, trackCompanyUsage } from '@/lib/feature-gates';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,19 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createServiceClient();
+
+  const access = await checkCompanyFeatureAccess(supabase, companyId, 'view_candidate');
+  if (!access.allowed) {
+    return NextResponse.json(
+      {
+        error: access.reason ?? 'Candidate view limit reached for this month',
+        upgrade_url: access.upgrade_url,
+        current: access.current,
+        limit: access.limit,
+      },
+      { status: 403 }
+    );
+  }
 
   const { data: agreement } = await supabase
     .from('success_fee_agreements')
@@ -38,31 +52,6 @@ export async function GET(req: NextRequest) {
 
   const planKey = company && isCompanyPlanId(company.subscription_plan) ? company.subscription_plan : 'starter';
   const successFeeCents = SUCCESS_FEE_CENTS[planKey as CompanyPlanId];
-  const maxView = company?.max_candidates_viewed ?? 50;
-  const unlimited = maxView >= 999;
-
-  if (!unlimited) {
-    const now = new Date();
-    const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
-    const { data: usage } = await supabase
-      .from('company_usage')
-      .select('candidates_viewed')
-      .eq('company_id', companyId)
-      .eq('usage_month', firstDay)
-      .maybeSingle();
-    const used = usage?.candidates_viewed ?? 0;
-    if (used >= maxView) {
-      return NextResponse.json(
-        {
-          error: 'Candidate view limit reached for this month',
-          limit: maxView,
-          used,
-          upgradeMessage: 'Upgrade your plan for more candidate profile views.',
-        },
-        { status: 429 },
-      );
-    }
-  }
 
   if (!agreement) {
     return NextResponse.json({
@@ -82,16 +71,7 @@ export async function GET(req: NextRequest) {
     if (profile?.email && !email) email = profile.email;
   }
 
-  if (!unlimited) {
-    const now = new Date();
-    const firstDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
-    const { data: row } = await supabase.from('company_usage').select('candidates_viewed').eq('company_id', companyId).eq('usage_month', firstDay).maybeSingle();
-    const nextCount = (row?.candidates_viewed ?? 0) + 1;
-    await supabase.from('company_usage').upsert(
-      { company_id: companyId, usage_month: firstDay, candidates_viewed: nextCount },
-      { onConflict: 'company_id,usage_month' },
-    );
-  }
+  await trackCompanyUsage(supabase, companyId, 'view_candidate');
 
   await logActivity({
     supabase,

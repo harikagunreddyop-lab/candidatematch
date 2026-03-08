@@ -312,7 +312,7 @@ export function JobBoardsPanel({ onSyncComplete }: { onSyncComplete?: () => void
       )}
 
       {/* Discovery (kept, but visually minimal) */}
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-5 space-y-4">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-5 space-y-4">
         <div>
           <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100">Discover connectors</h3>
           <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">

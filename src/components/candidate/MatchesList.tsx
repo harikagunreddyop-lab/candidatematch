@@ -30,15 +30,15 @@ function MatchCard({ match }: { match: CandidateJobMatch }) {
 
   return (
     <Link href="/dashboard/candidate/matches">
-      <div className="bg-surface-800 rounded-xl p-5 border border-surface-700/60 hover:border-violet-500/50 transition-all group">
+      <div className="bg-surface-800 rounded-xl p-5 border border-surface-700/60 hover:border-brand-400/50 transition-all group">
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-white group-hover:text-violet-400 transition-colors">
+            <h3 className="text-lg font-semibold text-white group-hover:text-brand-400 transition-colors">
               {job?.title}
             </h3>
             <p className="text-surface-400 text-sm">{job?.company}</p>
           </div>
-          <div className="px-3 py-1 bg-violet-500/10 text-violet-400 rounded-full text-xs font-semibold">
+          <div className="px-3 py-1 bg-brand-400/10 text-brand-400 rounded-full text-xs font-semibold">
             {match.fit_score ?? 0}% Match
           </div>
         </div>

@@ -302,7 +302,7 @@ export default function SkillReportTabContent() {
             {resumeAnalysis
               .filter((ra) => ra.forResume.length > 0)
               .map((ra) => (
-                <div key={ra.resume.id} className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
+                <div key={ra.resume.id} className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
                   <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
                     <FileText size={14} className="text-brand-500" /> {ra.resume.label}
                   </p>
@@ -335,7 +335,7 @@ export default function SkillReportTabContent() {
                 </div>
               ))}
             {tailoredResumeMatches.length > 0 && (
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
+              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
                 <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
                   <Sparkles size={14} className="text-brand-500" /> Tailored resumes
                 </p>
@@ -345,7 +345,7 @@ export default function SkillReportTabContent() {
               </div>
             )}
             {profileOnlyMatches.length > 0 && (
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4">
+              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
                 <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
                   <Zap size={14} className="text-amber-500" /> Profile-only (no resume)
                 </p>
@@ -546,7 +546,7 @@ export default function SkillReportTabContent() {
 
       {briefJobId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-lg max-h-[85vh] flex flex-col">
+          <div className="bg-surface-100 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-lg max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-surface-100 dark:border-surface-700">
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wide">AI brief</p>

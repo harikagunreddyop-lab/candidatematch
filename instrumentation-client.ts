@@ -3,18 +3,41 @@
  */
 import * as Sentry from '@sentry/nextjs';
 
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SENTRY_DSN) {
+const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+
+if (typeof window !== 'undefined' && dsn) {
+  const env = process.env.NODE_ENV;
   Sentry.init({
-    dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    dsn,
     enabled: true,
-    tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0,
-    replaysOnErrorSampleRate: 0.1,
-    environment: process.env.NODE_ENV,
+    environment: env,
+    tracesSampleRate: env === 'production' ? 0.1 : 1.0,
+    tracePropagationTargets: ['localhost', /^https?:\/\/[^/]*/.test(appUrl) ? appUrl : 'localhost'],
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    ],
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
     ignoreErrors: [
       'ResizeObserver loop limit exceeded',
       'Non-Error promise rejection captured',
     ],
+    beforeSend(event) {
+      if (event.request) {
+        delete event.request.cookies;
+        if (event.request.headers) delete (event.request.headers as Record<string, unknown>)['authorization'];
+      }
+      if (event.user) {
+        delete event.user.email;
+        delete event.user.ip_address;
+      }
+      return event;
+    },
   });
 }
 

@@ -265,7 +265,7 @@ export default function DashboardLayout({ children, profile }: { children: React
               <Image src="/logo.png" alt="Orion CMOS" width={26} height={26} className="object-contain opacity-90" />
             </div>
             {!collapsed && (
-              <span className="font-semibold text-white font-display tracking-tight text-[15px]">
+              <span className="font-semibold text-surface-800 dark:text-white font-display tracking-tight text-[15px]">
                 Orion CMOS
               </span>
             )}
@@ -289,7 +289,7 @@ export default function DashboardLayout({ children, profile }: { children: React
                     className={cn(
                       'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 w-full text-left',
                       'relative',
-                      (active || isExpanded) ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
+                      (active || isExpanded) ? 'text-surface-900 dark:text-white' : 'text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-neutral-200',
                       !active && !isExpanded && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
                       collapsed && 'justify-center px-0'
                     )}
@@ -319,7 +319,7 @@ export default function DashboardLayout({ children, profile }: { children: React
                             onClick={() => setMobileOpen(false)}
                             className={cn(
                               'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors',
-                              childActive ? 'text-white bg-[var(--role-sidebar-nav-active-bg)]' : 'text-neutral-400 hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]'
+                              childActive ? 'text-surface-900 dark:text-white bg-[var(--role-sidebar-nav-active-bg)]' : 'text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]'
                             )}
                           >
                             {child.icon && <span className="shrink-0 opacity-70" style={{ color: childActive ? 'var(--role-accent)' : undefined }}>{child.icon}</span>}
@@ -342,7 +342,7 @@ export default function DashboardLayout({ children, profile }: { children: React
                 className={cn(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                   'relative',
-                  linkActive ? 'text-white' : 'text-neutral-400 hover:text-neutral-200',
+                  linkActive ? 'text-surface-900 dark:text-white' : 'text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-neutral-200',
                   !linkActive && 'hover:bg-[var(--role-sidebar-nav-hover-bg)]',
                   collapsed && 'justify-center px-0'
                 )}
@@ -385,7 +385,7 @@ export default function DashboardLayout({ children, profile }: { children: React
             onClick={handleSignOut}
             className={cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full transition-all duration-200',
-              'text-neutral-500 hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+              'text-surface-600 dark:text-neutral-500 hover:text-surface-900 dark:hover:text-neutral-200 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -396,7 +396,7 @@ export default function DashboardLayout({ children, profile }: { children: React
             onClick={() => setCollapsed(!collapsed)}
             className={cn(
               'hidden lg:flex items-center gap-3 px-3 py-2 rounded-xl text-sm w-full transition-all duration-200',
-              'text-neutral-600 hover:text-neutral-400 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
+              'text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-neutral-400 hover:bg-[var(--role-sidebar-nav-hover-bg)]',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -423,7 +423,7 @@ export default function DashboardLayout({ children, profile }: { children: React
         >
           <button
             onClick={() => setMobileOpen(true)}
-            className="lg:hidden p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"
+            className="lg:hidden p-2.5 rounded-xl text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-white transition-colors duration-200"
             aria-label="Open menu"
           >
             <Menu size={20} />
@@ -434,7 +434,7 @@ export default function DashboardLayout({ children, profile }: { children: React
             {effectiveRole === 'platform_admin' && <AdminNotificationBell adminId={profile.id} />}
             <Link
               href={messagesHref}
-              className="relative p-2.5 rounded-xl text-neutral-400 hover:text-white transition-colors duration-200"
+              className="relative p-2.5 rounded-xl text-surface-600 dark:text-neutral-400 hover:text-surface-900 dark:hover:text-white transition-colors duration-200"
             >
               <MessageCircle size={20} />
               {unreadCount > 0 && (
@@ -444,11 +444,11 @@ export default function DashboardLayout({ children, profile }: { children: React
               )}
             </Link>
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
+              <p className="text-sm font-medium text-surface-900 dark:text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
               <p className="text-xs capitalize" style={{ color: 'var(--role-accent)' }}>{effectiveRole?.replace('_', ' ') || profile.role}</p>
             </div>
             <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm text-white border"
+              className="w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm text-surface-800 dark:text-white border"
               style={{
                 backgroundColor: 'var(--role-sidebar-logo-bg)',
                 borderColor: 'var(--role-sidebar-logo-border)',

@@ -187,8 +187,8 @@ export default function AdminDashboard() {
           icon={<Users size={18} className="text-brand-600" />}
           href="/dashboard/admin/candidates" color="bg-brand-50" />
         <StatCard label="Jobs" value={stats.jobs}
-          icon={<Briefcase size={18} className="text-purple-600" />}
-          href="/dashboard/admin/jobs" color="bg-purple-50" />
+          icon={<Briefcase size={18} className="text-brand-400" />}
+          href="/dashboard/admin/jobs" color="bg-brand-400/10" />
         <StatCard label="Applications" value={stats.applications}
           icon={<ClipboardList size={18} className="text-green-600" />}
           href="/dashboard/admin/candidates" color="bg-green-50" />
@@ -196,8 +196,8 @@ export default function AdminDashboard() {
           icon={<FileText size={18} className="text-amber-600" />}
           href="/dashboard/admin/candidates" color="bg-amber-50" />
         <StatCard label="Recruiters" value={stats.recruiters}
-          icon={<TrendingUp size={18} className="text-indigo-600" />}
-          href="/dashboard/admin/users" color="bg-indigo-50" />
+          icon={<TrendingUp size={18} className="text-brand-400" />}
+          href="/dashboard/admin/users" color="bg-brand-400/10" />
         <StatCard label="Assignments" value={stats.assignments}
           icon={<Link2 size={18} className="text-pink-600" />}
           href="/dashboard/admin/assignments" color="bg-pink-50" />
@@ -283,7 +283,7 @@ export default function AdminDashboard() {
             <div className="divide-y divide-surface-100">
               {recentCandidates.map(c => (
                 <Link key={c.id} href={`/dashboard/admin/candidates/${c.id}`}
-                  className="px-5 py-3 block hover:bg-surface-50 transition-colors">
+                  className="px-5 py-3 block hover:bg-surface-100 transition-colors">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-xs shrink-0">
                       {c.full_name?.[0] || '?'}

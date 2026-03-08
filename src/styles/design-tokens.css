@@ -1,99 +1,98 @@
 /**
- * Design system tokens — Linear/Notion/Vercel-grade product UI.
- * WCAG 2.1 AA compliant colors for contrast and accessibility.
+ * ELITE LIME DESIGN SYSTEM — CandidateMatch v2
+ * Inspired by: agency editorial dark + electric lime
+ * Philosophy: one dominant accent, surgical contrast
  */
+
 :root {
-  /* Blue palette — primary #57b9ff, light #90d5ff, medium #77b1d4, dark #517891 */
-  --color-brand-50: #e8f5ff;
-  --color-brand-100: #cce8ff;
-  --color-brand-200: #90d5ff;
-  --color-brand-300: #57b9ff;
-  --color-brand-400: #57b9ff;
-  --color-brand-500: #77b1d4;
-  --color-brand-600: #5a9bc4;
-  --color-brand-700: #517891;
-  --color-brand-800: #435f75;
-  --color-brand-900: #364d5e;
+  /* ============================================================
+     ELITE LIME — one dominant accent, surgical contrast
+     ============================================================ */
 
-  /* Status Colors - WCAG AA Compliant (light backgrounds) */
-  --color-success-light: #10b981;
-  --color-success-dark: #34d399;
-  --color-success: var(--color-success-dark);
+  /* PRIMARY ACCENT — Electric Lime */
+  --color-brand-50:  #f7ffe0;
+  --color-brand-100: #eeffb3;
+  --color-brand-200: #d9ff70;
+  --color-brand-300: #c8f542;
+  --color-brand-400: #b8eb1a;   /* ← PRIMARY: buttons, CTAs, active states */
+  --color-brand-500: #a0d400;   /* ← HOVER / pressed */
+  --color-brand-600: #84b000;
+  --color-brand-700: #648700;
+  --color-brand-800: #486200;
+  --color-brand-900: #2e3e00;
 
-  --color-error-light: #ef4444;
-  --color-error-dark: #f87171;
-  --color-error: var(--color-error-dark);
+  /* SURFACE SCALE — near-black to warm off-white (reduced contrast, warmer) */
+  --surface-bg:    #080909;   /* page background */
+  --surface-50:    #0f1010;   /* sidebar, deep panels */
+  --surface-100:   #161818;   /* cards, inputs */
+  --surface-200:   #1e2020;   /* elevated cards */
+  --surface-300:   #272a2a;   /* borders, dividers */
+  --surface-400:   #6a6e6e;   /* muted text — readable on dark */
+  --surface-500:   #7a7e7e;   /* placeholder, labels — readable on dark */
+  --surface-600:   #9ca0a0;   /* secondary text — clear */
+  --surface-700:   #b8bcbc;   /* body text — easy to read */
+  --surface-800:   #d4d0c8;   /* primary text light — warmed */
+  --surface-900:   #f2efe8;   /* headings — warm off-white, reduced contrast */
+  --text-on-light: #0a0a0a;   /* thick black for text on light/white backgrounds */
+
+  /* READABILITY — text on dark backgrounds (WCAG AA+) */
+  --text-primary:   #e8eaec;   /* body text — clear, easy to read */
+  --text-secondary: #b4b8bc;   /* secondary text — readable */
+  --text-muted:     #8c9094;   /* labels, tertiary — clear enough */
+  --text-placeholder: #8c9094; /* placeholder — visible */
+
+  /* SEMANTIC STATUS */
+  --color-success-light: #22c55e;
+  --color-success-dark:  #4ade80;
+  --color-success:       var(--color-success-dark);
+
+  --color-error-light:   #ef4444;
+  --color-error-dark:    #f87171;
+  --color-error:         var(--color-error-dark);
 
   --color-warning-light: #f59e0b;
-  --color-warning-dark: #fbbf24;
-  --color-warning: var(--color-warning-dark);
+  --color-warning-dark:  #fbbf24;
+  --color-warning:       var(--color-warning-dark);
 
-  --color-info-light: #3b82f6;
-  --color-info-dark: #60a5fa;
-  --color-info: var(--color-info-dark);
+  --color-info-light:    #3b82f6;
+  --color-info-dark:     #60a5fa;
+  --color-info:          var(--color-info-dark);
 
-  /* Surface Colors - Light theme (50=lightest, 900=darkest) */
-  --surface-bg: #f5f5f7;
-  --surface-50: #ffffff;
-  --surface-100: #f9fafb;
-  --surface-200: #f3f4f6;
-  --surface-300: #e5e7eb;
-  --surface-400: #d1d5db;
-  --surface-500: #9ca3af;
-  --surface-600: #6b7280;
-  --surface-700: #4b5563;
-  --surface-800: #374151;
-  --surface-900: #111827;
+  /* BRAND SHORTCUTS */
+  --brand-primary:       #b8eb1a;
+  --brand-primary-light: #c8f542;
+  --brand-primary-dark:  #a0d400;
+  --brand-on-primary:    #0a0f00;  /* text ON a lime button */
 
-  /* Brand - Blue palette */
-  --brand-primary: #57b9ff;
-  --brand-primary-light: #90d5ff;
-  --brand-primary-dark: #517891;
+  /* TYPOGRAPHY */
+  --font-display: 'Cabinet Grotesk', system-ui, sans-serif;
+  --font-body:    'Satoshi', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Typography */
-  --font-display: 'Inter Variable', system-ui, sans-serif;
-  --font-body: 'Inter Variable', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  /* SPACING — unchanged */
+  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
+  --space-4: 1rem;     --space-5: 1.25rem;  --space-6: 1.5rem;
+  --space-8: 2rem;     --space-10: 2.5rem;  --space-12: 3rem;
+  --space-16: 4rem;     --space-20: 5rem;    --space-24: 6rem;
 
-  /* Spacing Scale */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
-
-  /* Border Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
+  /* RADIUS */
+  --radius-sm:   0.25rem;
+  --radius-md:   0.375rem;
+  --radius-lg:   0.5rem;
+  --radius-xl:   0.75rem;
+  --radius-2xl:  1rem;
   --radius-full: 9999px;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.2);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.3);
+  /* SHADOWS */
+  --shadow-sm:  0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md:  0 4px 12px -1px rgb(0 0 0 / 0.5);
+  --shadow-lg:  0 10px 30px -3px rgb(0 0 0 / 0.6);
+  --shadow-xl:  0 20px 50px -5px rgb(0 0 0 / 0.7);
+  --shadow-lime: 0 0 20px -4px rgba(184, 235, 26, 0.25);
+  --shadow-lime-lg: 0 0 40px -8px rgba(184, 235, 26, 0.35);
 
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Dark theme — ensure status colors stay readable on dark backgrounds (WCAG AA) */
-[data-theme="dark"],
-.dark {
-  --color-success: var(--color-success-dark);
-  --color-error: var(--color-error-dark);
-  --color-warning: var(--color-warning-dark);
-  --color-info: var(--color-info-dark);
+  /* TRANSITIONS */
+  --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 380ms cubic-bezier(0.4, 0, 0.2, 1);
 }

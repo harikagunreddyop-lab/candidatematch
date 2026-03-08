@@ -334,7 +334,7 @@ function Toggle({ enabled, onChange }: { enabled: boolean; onChange: (v: boolean
     >
       <span
         className={cn(
-          'absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-all duration-150',
+          'absolute top-0.5 w-5 h-5 bg-surface-200 rounded-full shadow-md transition-all duration-150',
           enabled ? 'left-[calc(100%-1.25rem-2px)]' : 'left-0.5'
         )}
       />
@@ -352,7 +352,7 @@ function FeatureRow({ feature, enabled, onChange }: {
       'flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-all',
       enabled
         ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50/60 dark:bg-brand-500/10'
-        : 'border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-700/30'
+        : 'border-surface-200 dark:border-surface-600 bg-surface-100'
     )}>
       <div className={cn(
         'w-8 h-8 rounded-lg flex items-center justify-center shrink-0',
@@ -467,7 +467,7 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
   return (
     <Modal open onClose={onClose} title="" size="xl">
       {/* Header */}
-      <div className="-mt-5 -mx-6 px-6 pt-5 pb-5 mb-5 border-b border-surface-100 dark:border-surface-700 bg-gradient-to-r from-surface-50 to-white dark:from-surface-700/50 dark:to-surface-800 rounded-t-2xl">
+      <div className="-mt-5 -mx-6 px-6 pt-5 pb-5 mb-5 border-b border-surface-100 dark:border-surface-700 bg-gradient-to-r from-surface-100 to-surface-200 dark:from-surface-700/50 dark:to-surface-800 rounded-t-2xl">
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500/20 to-brand-600/20 dark:from-brand-500/30 dark:to-brand-600/30 flex items-center justify-center shrink-0">
@@ -490,10 +490,10 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
             <button onClick={enableAll} className="text-xs font-medium py-1.5 px-2 rounded-lg text-brand-600 dark:text-brand-400 hover:bg-brand-500/10 flex items-center gap-1">
               <Eye size={12} /> Enable all
             </button>
-            <button onClick={disableAll} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-500/10 flex items-center gap-1">
+            <button onClick={disableAll} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-1000/10 flex items-center gap-1">
               <EyeOff size={12} /> Disable all
             </button>
-            <button onClick={resetToDefaults} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-500/10 flex items-center gap-1">
+            <button onClick={resetToDefaults} className="text-xs font-medium py-1.5 px-2 rounded-lg text-surface-500 dark:text-surface-400 hover:bg-surface-1000/10 flex items-center gap-1">
               <RefreshCw size={12} /> Defaults
             </button>
           </div>
@@ -579,7 +579,7 @@ function TagInput({ value, onChange, placeholder }: { value: string[]; onChange:
   const uid = 'ti-' + (placeholder || '').replace(/\s/g, '');
   const add = () => { const t = input.trim(); if (t && !value.includes(t)) onChange([...value, t]); setInput(''); };
   return (
-    <div className="flex flex-wrap gap-1.5 p-2 border border-surface-200 dark:border-surface-600 rounded-lg min-h-[40px] cursor-text bg-white dark:bg-surface-800"
+    <div className="flex flex-wrap gap-1.5 p-2 border border-surface-200 dark:border-surface-600 rounded-lg min-h-[40px] cursor-text bg-surface-100"
       onClick={() => document.getElementById(uid)?.focus()}>
       {value.map((tag, i) => (
         <span key={i} className="flex items-center gap-1 px-2 py-0.5 bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 rounded-md text-xs font-medium">
@@ -726,7 +726,7 @@ export default function UsersPage() {
         {[
           { label: 'Total Users', val: displayUsers.length, color: 'text-surface-900 dark:text-surface-100', sub: 'portal accounts' },
           { label: 'Recruiters', val: roleCount('recruiter'), color: 'text-brand-700 dark:text-brand-400', sub: 'with access' },
-          { label: 'Admins', val: roleCount('admin'), color: 'text-purple-700 dark:text-purple-400', sub: 'with access' },
+          { label: 'Admins', val: roleCount('admin'), color: 'text-brand-400', sub: 'with access' },
           { label: 'Candidates', val: totalCandidates, color: 'text-green-700 dark:text-green-400', sub: 'total in system' },
         ].map(s => (
           <div key={s.label} className="card p-4 text-center">
@@ -762,10 +762,10 @@ export default function UsersPage() {
               const canManageFeatures = u.role === 'candidate' || u.role === 'recruiter';
               return (
                 <div key={u.id}>
-                  <div className="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-700/60 transition-colors group">
+                  <div className="flex items-center gap-4 px-5 py-3 hover:bg-surface-100 dark:hover:bg-surface-700/60 transition-colors group">
                     <div className={cn(
                       'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0',
-                      u.role === 'admin' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' :
+                      u.role === 'admin' ? 'bg-brand-400/10 text-brand-400' :
                         u.role === 'recruiter' ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300' : 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300'
                     )}>
                       {(u.name || u.email || '?')[0].toUpperCase()}
@@ -775,7 +775,7 @@ export default function UsersPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">{u.name || '(no name yet)'}</p>
                         <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium',
-                          u.role === 'admin' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' :
+                          u.role === 'admin' ? 'bg-brand-400/10 text-brand-400' :
                             u.role === 'recruiter' ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300' : 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300')}>
                           {u.role}
                         </span>
@@ -823,7 +823,7 @@ export default function UsersPage() {
                   </div>
 
                   {isExpanded && (
-                    <div className="px-4 sm:px-8 md:px-16 py-3 bg-surface-50 dark:bg-surface-700/80 border-t border-surface-100 dark:border-surface-600 text-xs text-surface-600 dark:text-surface-300 grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <div className="px-4 sm:px-8 md:px-16 py-3 bg-surface-100 dark:bg-surface-700/80 border-t border-surface-100 dark:border-surface-600 text-xs text-surface-600 dark:text-surface-300 grid grid-cols-2 md:grid-cols-3 gap-3">
                       {u.title && <div><span className="text-surface-400 dark:text-surface-500">Title</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{u.title}</p></div>}
                       {u.timezone && <div><span className="text-surface-400 dark:text-surface-500">Timezone</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{u.timezone}</p></div>}
                       <div><span className="text-surface-400 dark:text-surface-500">Joined</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{formatRelative(u.created_at)}</p></div>
@@ -1075,7 +1075,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
               </div>
               <div className="col-span-2">
                 <label className="label">Email <span className="text-surface-400 font-normal text-xs">read-only</span></label>
-                <input value={user.email} disabled className="input text-sm bg-surface-50 text-surface-400" />
+                <input value={user.email} disabled className="input text-sm bg-surface-100 text-surface-400" />
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1089,7 +1089,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
               <div className="flex items-center gap-3 pt-6">
                 <button type="button" onClick={() => set('is_active', !form.is_active)}
                   className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0', form.is_active ? 'bg-brand-600' : 'bg-surface-300')}>
-                  <span className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', form.is_active ? 'translate-x-5' : 'translate-x-0.5')} />
+                  <span className={cn('absolute top-0.5 w-4 h-4 bg-surface-200 rounded-full shadow transition-transform', form.is_active ? 'translate-x-5' : 'translate-x-0.5')} />
                 </button>
                 <span className="text-sm text-surface-700">{form.is_active ? 'Active' : 'Inactive'}</span>
               </div>
@@ -1123,7 +1123,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
               ))}
               <div className="col-span-2">
                 <label className="label">Email <span className="text-surface-400 font-normal text-xs">read-only</span></label>
-                <input value={user.email} disabled className="input text-sm bg-surface-50 text-surface-400" />
+                <input value={user.email} disabled className="input text-sm bg-surface-100 text-surface-400" />
               </div>
             </div>
             <div>
@@ -1137,7 +1137,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
                       else set('specializations', [...form.specializations, s]);
                     }}
                     className={cn('px-2 py-1 rounded-md text-[11px] border transition-colors',
-                      form.specializations.includes(s) ? 'bg-brand-100 text-brand-700 border-brand-300' : 'bg-white text-surface-600 border-surface-200 hover:border-brand-300')}>
+                      form.specializations.includes(s) ? 'bg-brand-100 text-brand-700 border-brand-300' : 'bg-surface-100 text-surface-600 border-surface-200 hover:border-brand-300')}>
                     {s}
                   </button>
                 ))}
@@ -1168,7 +1168,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
             <div className="flex items-center gap-3">
               <button type="button" onClick={() => set('is_active', !form.is_active)}
                 className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0', form.is_active ? 'bg-brand-600' : 'bg-surface-300')}>
-                <span className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', form.is_active ? 'translate-x-5' : 'translate-x-0.5')} />
+                <span className={cn('absolute top-0.5 w-4 h-4 bg-surface-200 rounded-full shadow transition-transform', form.is_active ? 'translate-x-5' : 'translate-x-0.5')} />
               </button>
               <span className="text-sm text-surface-700 dark:text-surface-200">{form.is_active ? 'Active' : 'Inactive'}</span>
             </div>
@@ -1176,7 +1176,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
               <div className="flex items-center gap-3 pt-2 border-t border-surface-200 dark:border-surface-600">
                 <button type="button" onClick={() => set('resume_generation_allowed', !form.resume_generation_allowed)}
                   className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0', form.resume_generation_allowed ? 'bg-brand-600' : 'bg-surface-300 dark:bg-surface-600')}>
-                  <span className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', form.resume_generation_allowed ? 'translate-x-5' : 'translate-x-0.5')} />
+                  <span className={cn('absolute top-0.5 w-4 h-4 bg-surface-200 rounded-full shadow transition-transform', form.resume_generation_allowed ? 'translate-x-5' : 'translate-x-0.5')} />
                 </button>
                 <div>
                   <span className="text-sm font-medium text-surface-800 dark:text-surface-200">Resume generation allowed</span>

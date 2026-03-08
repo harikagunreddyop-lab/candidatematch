@@ -1,64 +1,67 @@
 /**
- * Production-safe logging: verbose logs only in development, errors always.
- * Use in server/API code only (NODE_ENV is set at build/runtime).
- *
- * structuredLog() and logRequest() emit JSON lines to stdout — always visible
- * in AWS Amplify / CloudWatch regardless of NODE_ENV.
+ * Structured logging with pino.
+ * Use in server/API code only. Child loggers available for modules.
+ * Backward-compatible: log(), warn(), error(), structuredLog(), logRequest() still work.
  */
-const isDev = process.env.NODE_ENV === 'development';
+import pino from 'pino';
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+
+const logger = pino({
+  level: isDevelopment ? 'debug' : 'info',
+  transport:
+    isDevelopment
+      ? { target: 'pino-pretty', options: { colorize: true } }
+      : undefined,
+  base: {
+    env: process.env.NODE_ENV,
+    revision: process.env.VERCEL_GIT_COMMIT_SHA,
+  },
+  redact: {
+    paths: [
+      'req.headers.authorization',
+      'req.headers.cookie',
+      'res.headers["set-cookie"]',
+      'email',
+      'password',
+    ],
+    remove: true,
+  },
+});
+
+export { logger };
+
+export const dbLogger = logger.child({ module: 'database' });
+export const authLogger = logger.child({ module: 'auth' });
+export const apiLogger = logger.child({ module: 'api' });
+export const matchingLogger = logger.child({ module: 'matching' });
 
 export function log(message: string, ...args: unknown[]): void {
-  if (isDev) {
-    // eslint-disable-next-line no-console
-    console.log(message, ...args);
-  }
+  if (args.length > 0) logger.debug({ msg: message, args }, message);
+  else logger.debug(message);
 }
 
 export function warn(message: string, ...args: unknown[]): void {
-  if (isDev) {
-    // eslint-disable-next-line no-console
-    console.warn(message, ...args);
-  }
+  if (args.length > 0) logger.warn({ msg: message, args }, message);
+  else logger.warn(message);
 }
 
-/** Use for operational errors that should be visible in production logs. */
 export function error(message: string, ...args: unknown[]): void {
-  // eslint-disable-next-line no-console
-  console.error(message, ...args);
+  if (args.length > 0) logger.error({ msg: message, args }, message);
+  else logger.error(message);
 }
 
-/**
- * Emit a structured JSON log line to stdout.
- * Always visible in CloudWatch / Amplify logs regardless of environment.
- *
- * @example
- *   structuredLog('info', 'cron run started', { run_id: '...', mode: 'incremental' });
- *   // → {"ts":"2026-03-05T07:00:00Z","level":"info","msg":"cron run started","run_id":"...","mode":"incremental"}
- */
 export function structuredLog(
   level: 'info' | 'warn' | 'error',
   message: string,
   fields?: Record<string, unknown>,
 ): void {
-  const line = JSON.stringify({
-    ts: new Date().toISOString(),
-    level,
-    msg: message,
-    ...fields,
-  });
-  // eslint-disable-next-line no-console
-  if (level === 'error') console.error(line);
-  // eslint-disable-next-line no-console
-  else console.log(line);
+  const payload = { msg: message, ...fields };
+  if (level === 'error') logger.error(payload, message);
+  else if (level === 'warn') logger.warn(payload, message);
+  else logger.info(payload, message);
 }
 
-/**
- * Emit a structured request-completion log.
- * Call at the end of an API route handler.
- *
- * @example
- *   logRequest('/api/cron/match', 4200, 200, userId);
- */
 export function logRequest(
   route: string,
   durationMs: number,

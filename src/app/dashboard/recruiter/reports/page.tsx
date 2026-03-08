@@ -13,7 +13,7 @@ const SCORE_STRONG = 82;
 
 function SectionCard({ title, subtitle, icon, children }: { title: string; subtitle?: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-9 h-9 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shrink-0">
           {icon}
@@ -166,7 +166,7 @@ export default function RecruiterReportsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
         <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2 mb-1">
           <BarChart3 size={20} className="text-brand-600 dark:text-brand-400" />
           Talent & fit report
@@ -176,19 +176,19 @@ export default function RecruiterReportsPage() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="rounded-xl bg-surface-50 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
+          <div className="rounded-xl bg-surface-100 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
             <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums">{stats.totalCandidates}</p>
             <p className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">Candidates</p>
           </div>
-          <div className="rounded-xl bg-surface-50 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
+          <div className="rounded-xl bg-surface-100 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
             <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums">{stats.totalMatches}</p>
             <p className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">Total matches</p>
           </div>
-          <div className="rounded-xl bg-surface-50 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
+          <div className="rounded-xl bg-surface-100 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
             <p className="text-2xl font-bold text-surface-900 dark:text-surface-100 tabular-nums">{stats.avgScore}</p>
             <p className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">Avg ATS score</p>
           </div>
-          <div className="rounded-xl bg-surface-50 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
+          <div className="rounded-xl bg-surface-100 dark:bg-surface-700/50 p-4 border border-surface-100 dark:border-surface-600">
             <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{stats.strongMatchCount}</p>
             <p className="text-xs font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">Strong (82+)</p>
           </div>
@@ -216,7 +216,7 @@ export default function RecruiterReportsPage() {
               <ul className="space-y-2">
                 {bestFitCandidates.map((c: any) => (
                   <li key={c.id}>
-                    <Link href={`/dashboard/recruiter/candidates/${c.id}`} className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors group">
+                    <Link href={`/dashboard/recruiter/candidates/${c.id}`} className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors group">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate group-hover:text-brand-600 dark:group-hover:text-brand-400">{c.full_name}</p>
                         <p className="text-xs text-surface-500 dark:text-surface-400 truncate">{c.primary_title}</p>
@@ -268,14 +268,14 @@ export default function RecruiterReportsPage() {
         </div>
 
         <div className="mt-6">
-          <SectionCard title="Recent top matches" subtitle="Highest-scoring candidate–job pairs" icon={<Target size={18} className="text-violet-600 dark:text-violet-400" />}>
+          <SectionCard title="Recent top matches" subtitle="Highest-scoring candidate–job pairs" icon={<Target size={18} className="text-brand-400 dark:text-brand-400" />}>
             {topMatches.length === 0 ? (
               <p className="text-sm text-surface-500 dark:text-surface-400">No matches yet.</p>
             ) : (
               <ul className="space-y-2">
                 {topMatches.slice(0, 10).map((m: any) => (
                   <li key={m.id}>
-                    <Link href={`/dashboard/recruiter/candidates/${m.candidate_id}`} className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-700/50 transition-colors">
+                    <Link href={`/dashboard/recruiter/candidates/${m.candidate_id}`} className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-colors">
                       <div className="min-w-0 truncate">
                         <span className="text-sm font-medium text-surface-900 dark:text-surface-100">{m.candidate?.full_name}</span>
                         <span className="text-surface-400 dark:text-surface-500 mx-1">→</span>

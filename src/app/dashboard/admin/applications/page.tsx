@@ -12,7 +12,7 @@ const STATUS_PILL: Record<string, string> = {
   ready: 'bg-surface-100 text-surface-600',
   applied: 'bg-blue-100 text-blue-700',
   screening: 'bg-yellow-100 text-yellow-700',
-  interview: 'bg-purple-100 text-purple-700',
+  interview: 'bg-brand-400/10 text-brand-400',
   offer: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-600',
   withdrawn: 'bg-surface-100 text-surface-500',
@@ -152,11 +152,11 @@ export default function AdminApplicationsPage() {
           ))}
         </select>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setStatusFilter('all')} className={cn('px-3 py-1.5 rounded-full text-xs font-medium', statusFilter === 'all' ? 'bg-surface-900 text-white' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
+          <button onClick={() => setStatusFilter('all')} className={cn('px-3 py-1.5 rounded-full text-xs font-medium', statusFilter === 'all' ? 'bg-surface-900 text-[#0a0a0a] font-bold' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
             All ({applications.length})
           </button>
           {STATUS_OPTIONS.filter(s => counts[s] > 0).map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={cn('px-3 py-1.5 rounded-full text-xs font-medium capitalize', statusFilter === s ? 'bg-surface-900 text-white' : STATUS_PILL[s], 'hover:opacity-80')}>
+            <button key={s} onClick={() => setStatusFilter(s)} className={cn('px-3 py-1.5 rounded-full text-xs font-medium capitalize', statusFilter === s ? 'bg-surface-900 text-[#0a0a0a] font-bold' : STATUS_PILL[s], 'hover:opacity-80')}>
               {s} ({counts[s]})
             </button>
           ))}
@@ -192,7 +192,7 @@ export default function AdminApplicationsPage() {
                     )}
                     {a.applied_at && <p className="text-xs text-surface-400">Applied {formatDate(a.applied_at)}</p>}
                     {a.interview_date && (
-                      <p className="text-xs text-purple-600 flex items-center gap-1">
+                      <p className="text-xs text-brand-400 flex items-center gap-1">
                         <Calendar size={10} /> Interview {formatDate(a.interview_date)}
                       </p>
                     )}
@@ -225,7 +225,7 @@ export default function AdminApplicationsPage() {
                       <textarea value={interviewNotes} onChange={e => setInterviewNotes(e.target.value)} placeholder="Interview notes…" className="input text-xs h-16 resize-none w-full" />
                     </div>
                   ) : (
-                    <button onClick={() => openScheduler(a)} className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1.5">
+                    <button onClick={() => openScheduler(a)} className="text-xs text-brand-400 hover:text-brand-300 flex items-center gap-1.5">
                       <Calendar size={12} />
                       {a.interview_date ? `Interview ${formatDate(a.interview_date)} — Edit` : '+ Schedule interview date & notes'}
                     </button>

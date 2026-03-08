@@ -277,7 +277,7 @@ export default function AdminMessagesPage() {
                         </p>
                         {roleUsers.map(u => (
                           <label key={u.id}
-                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-50 cursor-pointer transition-colors">
+                            className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-100 cursor-pointer transition-colors">
                             <input type="checkbox"
                               checked={selectedUsers.includes(u.id)}
                               onChange={e => setSelectedUsers(prev =>
@@ -287,7 +287,7 @@ export default function AdminMessagesPage() {
                             <div className="relative shrink-0">
                               <div className={cn(
                                 'w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm',
-                                role === 'admin' ? 'bg-purple-600/20 text-purple-300'
+                                role === 'admin' ? 'bg-brand-400/20 text-brand-400'
                                   : role === 'recruiter' ? 'bg-brand-600/20 text-brand-300'
                                     : 'bg-green-600/20 text-green-300'
                               )}>

@@ -118,7 +118,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-neutral-950 text-white">
       <nav className="bg-neutral-950/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">
+          <Link href="/" className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-500 bg-clip-text text-transparent">
             CandidateMatch
           </Link>
           <Link href="/auth" className="text-sm bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg font-medium transition">
@@ -158,8 +158,8 @@ export default function PricingPage() {
                 key={plan.name}
                 className={`rounded-2xl p-8 transition-all ${
                   plan.highlight
-                    ? 'bg-gradient-to-b from-blue-600/10 to-violet-600/10 border-2 border-blue-500/30 shadow-xl shadow-blue-600/5'
-                    : 'bg-white/[0.02] border border-white/5'
+                    ? 'bg-gradient-to-b from-brand-600/10 to-brand-500/10 border-2 border-brand-400/30 shadow-xl shadow-blue-600/5'
+                    : 'bg-surface-100/50 border border-surface-300'
                 }`}
               >
                 {plan.highlight && (
@@ -179,7 +179,7 @@ export default function PricingPage() {
                   className={`block text-center py-3 rounded-xl font-medium transition ${
                     plan.highlight
                       ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                      : 'bg-white/5 hover:bg-white/10 text-neutral-300'
+                      : 'bg-surface-100/50 hover:bg-surface-200/50 text-neutral-300'
                   }`}
                 >
                   {plan.cta}

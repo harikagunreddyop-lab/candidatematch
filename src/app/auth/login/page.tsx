@@ -92,7 +92,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex items-center justify-center px-8 py-12">
+    <div className="min-h-screen flex items-center justify-center px-8 py-12" style={{ background: 'linear-gradient(140deg, #080909 0%, #0a0d08 60%, #080909 100%)' }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -101,8 +101,8 @@ export default function LoginPage() {
       >
         <div className="bg-surface-800/50 backdrop-blur-xl border border-surface-700/60 rounded-2xl p-8 shadow-2xl">
           <div className="flex justify-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-brand-400" style={{ filter: 'drop-shadow(0 0 12px rgba(184,235,26,0.30))' }}>
+              <Sparkles className="w-8 h-8 text-[#0a0f00]" />
             </div>
           </div>
 
@@ -136,10 +136,10 @@ export default function LoginPage() {
 
             <div className="flex items-center justify-between text-sm">
               <label className="flex items-center text-surface-400 cursor-pointer">
-                <input type="checkbox" className="mr-2 rounded border-surface-600 bg-surface-800 text-violet-500 focus:ring-violet-500" />
+                <input type="checkbox" className="mr-2 rounded border-surface-600 bg-surface-800 text-brand-400 focus:ring-brand-400" />
                 Remember me
               </label>
-              <Link href="/auth/forgot" className="text-violet-400 hover:text-violet-300">
+              <Link href="/auth/forgot" className="text-brand-400 hover:text-brand-300">
                 Forgot password?
               </Link>
             </div>
@@ -147,7 +147,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-70 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-brand-400 hover:bg-brand-300 disabled:opacity-70 text-[#0a0f00] rounded-xl font-semibold shadow-lime hover:shadow-lime-lg transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -170,7 +170,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleGoogle}
-              className="w-full px-6 py-3 bg-white hover:bg-gray-100 text-gray-900 rounded-xl font-semibold flex items-center justify-center gap-3 transition-all"
+              className="w-full px-6 py-3 bg-surface-200 hover:bg-surface-300 text-surface-900 rounded-xl font-semibold flex items-center justify-center gap-3 transition-all"
             >
               <GoogleIcon />
               Continue with Google
@@ -187,11 +187,11 @@ export default function LoginPage() {
 
             <div className="mt-6 text-center text-sm text-surface-400">
               Don&apos;t have an account?{' '}
-              <Link href="/auth/signup" className="text-violet-400 hover:text-violet-300 font-semibold">
+              <Link href="/auth/signup" className="text-brand-400 hover:text-brand-300 font-semibold">
                 Sign up
               </Link>
               {' · '}
-              <Link href="/auth/magic" className="text-violet-400 hover:text-violet-300 font-semibold">
+              <Link href="/auth/magic" className="text-brand-400 hover:text-brand-300 font-semibold">
                 Sign in with magic link
               </Link>
             </div>

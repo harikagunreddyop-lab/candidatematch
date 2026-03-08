@@ -28,7 +28,7 @@ export default function AdminCompanyJobsPage() {
     })();
   }, [companyId, supabase]);
 
-  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" /></div>;
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <Link href={`/dashboard/admin/companies/${companyId}`} className="text-surface-400 hover:text-white flex items-center gap-1 text-sm">

@@ -71,7 +71,7 @@ export default function CompanyCandidatesPage() {
           <div className="p-12 text-center text-surface-500">
             <Users className="w-12 h-12 mx-auto mb-3 text-surface-600" />
             <p>No candidates yet. Post jobs and get applications or matches.</p>
-            <Link href="/dashboard/company/jobs" className="text-violet-400 hover:underline mt-2 inline-block">Go to jobs →</Link>
+            <Link href="/dashboard/company/jobs" className="text-brand-400 hover:underline mt-2 inline-block">Go to jobs →</Link>
           </div>
         ) : (
           <ul className="divide-y divide-surface-700/50">
@@ -79,7 +79,7 @@ export default function CompanyCandidatesPage() {
               <li key={c.id}>
                 <Link href={`/dashboard/company/candidates/${c.id}`} className="flex items-center justify-between px-6 py-4 hover:bg-surface-700/30">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold">
                       {(c.full_name || '?')[0].toUpperCase()}
                     </div>
                     <div>

@@ -67,7 +67,7 @@ export default function LandingPage() {
               { step: '3', icon: RefreshCw, title: 'Resumes tailored per job', desc: 'Each application gets a resume written for that role so it passes filters.' },
               { step: '4', icon: Shield, title: 'Apply and track', desc: 'Apply from one place and see which applications move forward.' },
             ].map(({ step, icon: Icon, title, desc }) => (
-              <div key={step} className="bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-2xl p-6 transition-all">
+              <div key={step} className="bg-surface-100/50 hover:bg-surface-200/50 border border-surface-300 rounded-2xl p-6 transition-all">
                 <div className="text-xs font-mono text-blue-400/70 mb-3">Step {step}</div>
                 <Icon className="w-7 h-7 text-blue-400 mb-3" />
                 <h3 className="text-base font-semibold mb-1.5 text-white">{title}</h3>
@@ -79,7 +79,7 @@ export default function LandingPage() {
       </section>
 
       {/* Benefits — 4 cards, plain language */}
-      <section className="py-20 px-6 bg-white/[0.01] border-t border-white/5">
+      <section className="py-20 px-6 bg-surface-100/30 border-t border-surface-300">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-3 text-white">Why CandidateMatch</h2>
           <p className="text-neutral-500 text-center mb-12 max-w-lg mx-auto">
@@ -92,7 +92,7 @@ export default function LandingPage() {
               { icon: BarChart3, title: 'Evidence-based matching', desc: 'Fit scores reflect your experience and skills, not just keywords.' },
               { icon: Users, title: 'For candidates and recruiters', desc: 'Candidates apply smarter. Recruiters match and manage talent in one place.' },
             ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="p-5 rounded-xl bg-white/[0.02] border border-white/5">
+              <div key={title} className="p-5 rounded-xl bg-surface-100/50 border border-surface-300">
                 <Icon className="w-6 h-6 text-blue-400 mb-3" />
                 <h3 className="font-semibold mb-1 text-white">{title}</h3>
                 <p className="text-sm text-neutral-500">{desc}</p>

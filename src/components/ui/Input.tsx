@@ -26,8 +26,8 @@ export function Input({
       <input
         id={inputId}
         className={cn(
-          'w-full px-4 py-2 bg-surface-800 border rounded-lg text-white placeholder-surface-500',
-          'focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent',
+          'w-full px-4 py-2 bg-surface-800 border rounded-lg text-[#0a0a0a] font-medium placeholder-surface-500',
+          'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent',
           'transition-all',
           error ? 'border-red-500' : 'border-surface-700',
           className

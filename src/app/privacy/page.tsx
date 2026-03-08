@@ -10,7 +10,7 @@ export default function PrivacyPage() {
         <div className="min-h-screen bg-neutral-950 text-white">
             <nav className="bg-neutral-950/80 backdrop-blur-xl border-b border-white/5">
                 <div className="max-w-6xl mx-auto px-6 h-16 flex items-center">
-                    <a href="/" className="text-xl font-bold bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">CandidateMatch</a>
+                    <a href="/" className="text-xl font-bold bg-gradient-to-r from-brand-400 to-brand-500 bg-clip-text text-transparent">CandidateMatch</a>
                 </div>
             </nav>
             <article className="max-w-3xl mx-auto px-6 py-20 prose prose-invert prose-neutral">

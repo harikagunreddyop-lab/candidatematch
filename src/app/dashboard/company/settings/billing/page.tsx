@@ -115,7 +115,7 @@ export default function CompanySettingsBillingPage() {
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 flex items-center justify-center min-h-[200px]">
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-brand-400" />
       </div>
     );
   }
@@ -151,10 +151,10 @@ export default function CompanySettingsBillingPage() {
       </div>
 
       {/* Current plan */}
-      <section className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6">
+      <section className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-violet-500" />
+          <div className="w-10 h-10 rounded-xl bg-brand-400/10 flex items-center justify-center">
+            <CreditCard className="w-5 h-5 text-brand-400" />
           </div>
           <div>
             <h2 className="font-semibold text-surface-900 dark:text-white">Current plan</h2>
@@ -169,7 +169,7 @@ export default function CompanySettingsBillingPage() {
         <div className="flex flex-wrap gap-2">
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-400 hover:bg-brand-300 text-[#0a0f00] text-sm font-medium transition"
           >
             Upgrade plan
           </Link>
@@ -178,7 +178,7 @@ export default function CompanySettingsBillingPage() {
               type="button"
               onClick={openPortal}
               disabled={portalLoading}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700 text-sm font-medium transition disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 text-sm font-medium transition disabled:opacity-60"
             >
               {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               Manage payment method
@@ -191,7 +191,7 @@ export default function CompanySettingsBillingPage() {
       <section>
         <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Usage</h2>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
             <div className="flex items-center gap-3 mb-2">
               <Users className="w-5 h-5 text-surface-500" />
               <h3 className="font-semibold text-surface-900 dark:text-white">Team seats</h3>
@@ -202,7 +202,7 @@ export default function CompanySettingsBillingPage() {
             <p className="text-xs text-surface-500 mt-1">Used on your plan</p>
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
             <div className="flex items-center gap-3 mb-2">
               <Briefcase className="w-5 h-5 text-surface-500" />
               <h3 className="font-semibold text-surface-900 dark:text-white">Active jobs</h3>
@@ -213,7 +213,7 @@ export default function CompanySettingsBillingPage() {
             <p className="text-xs text-surface-500 mt-1">Posted and active</p>
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
             <div className="flex items-center gap-3 mb-2">
               <Eye className="w-5 h-5 text-surface-500" />
               <h3 className="font-semibold text-surface-900 dark:text-white">Profiles viewed</h3>
@@ -246,7 +246,7 @@ export default function CompanySettingsBillingPage() {
       </section>
 
       {/* Invoice history */}
-      <section className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6">
+      <section className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
         <div className="flex items-center gap-3 mb-2">
           <FileText className="w-5 h-5 text-surface-500" />
           <h2 className="font-semibold text-surface-900 dark:text-white">Invoice history</h2>
@@ -259,7 +259,7 @@ export default function CompanySettingsBillingPage() {
             type="button"
             onClick={openPortal}
             disabled={portalLoading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 text-surface-700 dark:text-surface-300 hover:bg-surface-50 dark:hover:bg-surface-700 text-sm font-medium transition disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 text-surface-700 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-700 text-sm font-medium transition disabled:opacity-60"
           >
             {portalLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Open billing portal

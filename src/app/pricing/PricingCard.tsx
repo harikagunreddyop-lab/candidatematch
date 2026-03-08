@@ -50,8 +50,8 @@ export function PricingCard({ name, price, features, cta, popular, planKey }: Pr
     <div
       className={`rounded-2xl p-8 transition-all ${
         popular
-          ? 'bg-gradient-to-b from-blue-600/10 to-violet-600/10 border-2 border-blue-500/30 shadow-xl shadow-blue-600/5'
-          : 'bg-white/[0.02] border border-white/5'
+          ? 'bg-gradient-to-b from-brand-600/10 to-brand-500/10 border-2 border-brand-400/30 shadow-xl shadow-blue-600/5'
+          : 'bg-surface-100/50 border border-surface-300'
       }`}
     >
       {popular && (
@@ -68,14 +68,14 @@ export function PricingCard({ name, price, features, cta, popular, planKey }: Pr
         {isFree ? (
           <Link
             href="/auth"
-            className="block text-center py-3 rounded-xl font-medium bg-white/5 hover:bg-white/10 text-neutral-300 transition"
+            className="block text-center py-3 rounded-xl font-medium bg-surface-100/50 hover:bg-surface-200/50 text-neutral-300 transition"
           >
             {cta}
           </Link>
         ) : isProPlus ? (
           <a
             href="mailto:sales@candidatematch.io?subject=Pro Plus plan"
-            className="block text-center py-3 rounded-xl font-medium bg-violet-600 hover:bg-violet-500 text-white transition"
+            className="block text-center py-3 rounded-xl font-medium bg-brand-400 hover:bg-brand-300 text-[#0a0f00] transition"
           >
             {cta}
           </a>

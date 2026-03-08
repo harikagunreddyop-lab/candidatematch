@@ -19,11 +19,11 @@ export function SuccessPredictor({ atsScore, fitScore = 0, appliedCount = 0, cla
   return (
     <div className={cn('rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4', className)}>
       <div className="flex items-center gap-2 mb-2">
-        <TrendingUp className="w-4 h-4 text-violet-500" />
+        <TrendingUp className="w-4 h-4 text-brand-400" />
         <span className="text-sm font-semibold text-surface-900 dark:text-white">Success likelihood</span>
       </div>
       <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-violet-600 dark:text-violet-400">{p}%</span>
+        <span className="text-2xl font-bold text-brand-400">{p}%</span>
         <span className="text-xs text-surface-500 dark:text-surface-400">estimated chance of moving forward</span>
       </div>
       <p className="text-xs text-surface-500 dark:text-surface-400 mt-2">

@@ -27,7 +27,7 @@ export default function AdminCompanyTeamPage() {
     })();
   }, [companyId, supabase]);
 
-  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" /></div>;
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <Link href={`/dashboard/admin/companies/${companyId}`} className="text-surface-400 hover:text-white flex items-center gap-1 text-sm">
@@ -40,7 +40,7 @@ export default function AdminCompanyTeamPage() {
             {team.map((m: any) => (
               <li key={m.id} className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">{(m.name || m.email || '?')[0].toUpperCase()}</div>
+                  <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">{(m.name || m.email || '?')[0].toUpperCase()}</div>
                   <div>
                     <div className="font-medium text-white">{m.name || m.email}</div>
                     <div className="text-xs text-surface-500">{m.email} · {m.effective_role?.replace('_', ' ')}</div>

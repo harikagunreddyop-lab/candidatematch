@@ -10,7 +10,7 @@ export default function InterviewAnalyticsRedirect() {
   }, [router]);
   return (
     <div className="flex justify-center py-20">
-      <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-500 border-t-transparent" />
+      <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-400 border-t-transparent" />
     </div>
   );
 }

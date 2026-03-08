@@ -73,7 +73,7 @@ export default function CandidateMatchesPage() {
           <select
             value={minScore}
             onChange={(e) => setMinScore(Number(e.target.value))}
-            className="px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg text-white"
+            className="px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-bold"
           >
             <option value={50}>50%+</option>
             <option value={70}>70%+</option>
@@ -85,14 +85,14 @@ export default function CandidateMatchesPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="animate-spin w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full" />
+          <div className="animate-spin w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full" />
         </div>
       ) : matches.length === 0 ? (
         <div className="rounded-2xl border border-surface-700/60 bg-surface-800/50 p-12 text-center">
           <Star className="w-12 h-12 text-surface-500 mx-auto mb-4" />
           <p className="text-surface-400">No matches yet at {minScore}% or above.</p>
           <p className="text-surface-500 text-sm mt-1">Complete your profile and resume to get better matches.</p>
-          <Link href="/dashboard/candidate/profile" className="inline-block mt-4 text-violet-400 hover:text-violet-300 font-medium">Edit profile →</Link>
+          <Link href="/dashboard/candidate/profile" className="inline-block mt-4 text-brand-400 hover:text-brand-300 font-medium">Edit profile →</Link>
         </div>
       ) : (
         <div className="space-y-4">
@@ -100,12 +100,12 @@ export default function CandidateMatchesPage() {
             const job = Array.isArray(match.job) ? match.job[0] : match.job;
             if (!job) return null;
             return (
-              <div key={match.id} className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6 hover:border-violet-500/50 transition-all">
+              <div key={match.id} className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6 hover:border-brand-400/50 transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <Link
                       href={`/dashboard/candidate/jobs/${job.id}`}
-                      className="text-xl font-semibold text-white hover:text-violet-400 transition-colors"
+                      className="text-xl font-semibold text-white hover:text-brand-400 transition-colors"
                     >
                       {job.title}
                     </Link>
@@ -137,7 +137,7 @@ export default function CandidateMatchesPage() {
 
                 <Link
                   href={`/dashboard/candidate/jobs/${job.id}`}
-                  className="inline-block px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold transition-colors"
+                  className="inline-block px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
                 >
                   View & Apply
                 </Link>

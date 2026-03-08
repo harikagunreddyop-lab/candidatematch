@@ -152,7 +152,7 @@ export default function RecruiterCandidatesPage() {
                 <div
                   key={c.id}
                   onClick={() => router.push(`/dashboard/recruiter/candidates/${c.id}`)}
-                  className="flex items-center gap-4 px-5 py-4 hover:bg-surface-50 dark:hover:bg-surface-700/30 cursor-pointer transition-colors group"
+                  className="flex items-center gap-4 px-5 py-4 hover:bg-surface-100 dark:hover:bg-surface-700/30 cursor-pointer transition-colors group"
                 >
                   <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/30 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0">
                     {c.full_name?.[0] || '?'}

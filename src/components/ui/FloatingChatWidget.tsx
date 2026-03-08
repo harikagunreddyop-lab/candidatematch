@@ -160,7 +160,7 @@ export default function FloatingChatWidget({ currentProfile }: { currentProfile:
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[380px] h-[560px] bg-white dark:bg-surface-800 rounded-2xl shadow-modal border border-surface-200 dark:border-surface-600 flex flex-col overflow-hidden animate-slide-up">
+        <div className="fixed bottom-24 right-6 z-50 w-[380px] h-[560px] bg-surface-100 rounded-2xl shadow-modal border border-surface-200 dark:border-surface-600 flex flex-col overflow-hidden animate-slide-up">
 
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-surface-200 bg-brand-600 text-white rounded-t-2xl shrink-0">

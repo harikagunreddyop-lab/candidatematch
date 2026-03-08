@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               href="/auth/login"
-              className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300 font-semibold"
+              className="inline-flex items-center gap-2 text-brand-400 hover:text-brand-300 font-semibold"
             >
               <ArrowLeft className="w-4 h-4" /> Back to sign in
             </Link>
@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
         className="w-full max-w-md"
       >
         <div className="bg-surface-800/50 backdrop-blur-xl border border-surface-700/60 rounded-2xl p-8 shadow-2xl">
-          <h1 className="text-2xl font-bold text-white text-center mb-2">Forgot password?</h1>
+          <h1 className="text-2xl font-bold text-[#0a0a0a] text-center mb-2">Forgot password?</h1>
           <p className="text-surface-400 text-center mb-8">
             Enter your email and we&apos;ll send you a link to reset your password
           </p>
@@ -104,7 +104,7 @@ export default function ForgotPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-70 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-brand-400 hover:bg-brand-300 disabled:opacity-70 text-[#0a0f00] rounded-xl font-semibold shadow-lime hover:shadow-lime-lg transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -118,7 +118,7 @@ export default function ForgotPasswordPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/auth/login" className="text-sm text-violet-400 hover:text-violet-300 font-semibold inline-flex items-center gap-1">
+            <Link href="/auth/login" className="text-sm text-brand-400 hover:text-brand-300 font-semibold inline-flex items-center gap-1">
               <ArrowLeft className="w-4 h-4" /> Back to sign in
             </Link>
           </div>

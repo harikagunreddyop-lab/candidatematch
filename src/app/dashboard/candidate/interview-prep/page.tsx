@@ -65,14 +65,14 @@ export default function InterviewPrepPage() {
       <h1 className="text-3xl font-bold text-surface-900 dark:text-white">Interview Preparation</h1>
 
       {!job && jobs.length === 0 && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-8 text-center">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-8 text-center">
           <p className="text-surface-500 dark:text-surface-400">No matched jobs yet. Get matches first to prep.</p>
           <Link href="/dashboard/candidate" className="btn-primary mt-4 inline-block">Go to dashboard</Link>
         </div>
       )}
 
       {job && questions.length === 0 && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
           <label className="label text-surface-700 dark:text-surface-200">Select job</label>
           <select
             value={job.id}
@@ -98,7 +98,7 @@ export default function InterviewPrepPage() {
 
       {q && (
         <>
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6 sm:p-8">
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 sm:p-8">
             <div className="flex items-center justify-between mb-6">
               <span className="text-sm text-surface-500 dark:text-surface-400">
                 Question {currentQ + 1} of {questions.length}
@@ -120,7 +120,7 @@ export default function InterviewPrepPage() {
                 onClick={() => setRecording(!recording)}
                 className={cn(
                   'w-full py-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2',
-                  recording ? 'bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-violet-600 hover:bg-violet-700 text-white'
+                  recording ? 'bg-red-500/20 text-red-600 dark:text-red-400' : 'bg-brand-400 hover:bg-brand-300 text-[#0a0f00]'
                 )}
               >
                 {recording ? <><Square size={18} /> Stop recording</> : <><Mic size={18} /> Start answer</>}
@@ -133,7 +133,7 @@ export default function InterviewPrepPage() {
               </div>
             )}
           </div>
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
             <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Sample answer</h3>
             <p className="text-surface-600 dark:text-surface-300">{q.sampleAnswer}</p>
           </div>

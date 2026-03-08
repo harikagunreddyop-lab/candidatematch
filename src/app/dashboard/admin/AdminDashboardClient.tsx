@@ -30,7 +30,7 @@ const STAGES = [
   { key: 'ready', label: 'Ready', color: 'bg-surface-200', text: 'text-surface-600' },
   { key: 'applied', label: 'Applied', color: 'bg-blue-100', text: 'text-blue-700' },
   { key: 'screening', label: 'Screening', color: 'bg-yellow-100', text: 'text-yellow-700' },
-  { key: 'interview', label: 'Interview', color: 'bg-purple-100', text: 'text-purple-700' },
+  { key: 'interview', label: 'Interview', color: 'bg-brand-400/10', text: 'text-brand-400' },
   { key: 'offer', label: 'Offer', color: 'bg-green-100', text: 'text-green-700' },
   { key: 'rejected', label: 'Rejected', color: 'bg-red-50', text: 'text-red-500' },
 ] as const;
@@ -187,7 +187,7 @@ export default function AdminDashboardClient({
       )}
 
       {cronRuns.length > 0 && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50 dark:bg-surface-800/50 px-4 py-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-100 px-4 py-3 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
           <span className="font-medium text-surface-700 dark:text-surface-200 flex items-center gap-1.5">
             <Clock size={14} /> Last cron run
           </span>
@@ -322,7 +322,7 @@ export default function AdminDashboardClient({
               <div className="divide-y divide-surface-50">
                 {filteredCandidates.slice(0, 15).map(c => (
                   <Link key={c.id} href={`/dashboard/admin/candidates/${c.id}`}
-                    className="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 transition-colors group">
+                    className="flex items-center gap-4 px-5 py-3 hover:bg-surface-100 transition-colors group">
                     <Avatar name={c.full_name} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -404,7 +404,7 @@ export default function AdminDashboardClient({
                   const convRate = r.applications_count > 0
                     ? Math.round((r.offers_count / r.applications_count) * 100) : 0;
                   return (
-                    <div key={r.id} className="flex items-center gap-4 px-5 py-4 hover:bg-surface-50">
+                    <div key={r.id} className="flex items-center gap-4 px-5 py-4 hover:bg-surface-100">
                       <Avatar name={r.name || r.email} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-surface-900">{r.name || '(no name)'}</p>
@@ -415,7 +415,7 @@ export default function AdminDashboardClient({
                         {[
                           { label: 'Candidates', val: r.candidates_count, color: 'text-surface-900' },
                           { label: 'Apps', val: r.applications_count, color: 'text-blue-700' },
-                          { label: 'Interviews', val: r.interviews_count, color: 'text-purple-700' },
+                          { label: 'Interviews', val: r.interviews_count, color: 'text-brand-400' },
                           { label: 'Offers', val: r.offers_count, color: 'text-green-700' },
                         ].map(m => (
                           <div key={m.label}>

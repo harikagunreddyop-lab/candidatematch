@@ -65,7 +65,7 @@ export function MetricCard({
 
   if (href) {
     return (
-      <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-bg rounded-xl">
+      <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-bg rounded-xl">
         {content}
       </Link>
     );

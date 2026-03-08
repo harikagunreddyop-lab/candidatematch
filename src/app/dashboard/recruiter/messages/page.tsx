@@ -213,7 +213,7 @@ export default function RecruiterMessagesPage() {
         </button>
       </div>
 
-      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-600 shadow-sm overflow-hidden flex">
+      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-surface-100 rounded-2xl border border-surface-200 dark:border-surface-600 shadow-sm overflow-hidden flex">
         {/* Sidebar */}
         <div className={cn(
           'border-r border-surface-200 dark:border-surface-600 flex flex-col shrink-0',
@@ -278,7 +278,7 @@ export default function RecruiterMessagesPage() {
                     {availableUsers.map(u => (
                       <label
                         key={u.id}
-                        className={`flex items-center gap-3 p-2 rounded-xl ${u.notSignedIn ? 'opacity-70 cursor-default' : 'hover:bg-surface-50 dark:hover:bg-surface-700 cursor-pointer'}`}
+                        className={`flex items-center gap-3 p-2 rounded-xl ${u.notSignedIn ? 'opacity-70 cursor-default' : 'hover:bg-surface-100 dark:hover:bg-surface-700 cursor-pointer'}`}
                       >
                         <input
                           type="checkbox"

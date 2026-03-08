@@ -45,7 +45,7 @@ export default function MagicLinkPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#1a1a24] to-[#0a0a0f] flex items-center justify-center px-8 py-12">
+    <div className="min-h-screen flex items-center justify-center px-8 py-12" style={{ background: 'linear-gradient(140deg, #080909 0%, #0a0d08 60%, #080909 100%)' }}>
       {!sent ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -54,8 +54,8 @@ export default function MagicLinkPage() {
         >
           <div className="bg-surface-800/50 backdrop-blur-xl border border-surface-700/60 rounded-2xl p-8 shadow-2xl">
             <div className="text-center mb-8">
-              <div className="w-14 h-14 bg-violet-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="w-7 h-7 text-violet-400" />
+              <div className="w-14 h-14 bg-brand-400/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Sparkles className="w-7 h-7 text-brand-400" />
               </div>
               <h1 className="text-3xl font-bold text-white mb-2">Sign in with email</h1>
               <p className="text-surface-400">
@@ -82,7 +82,7 @@ export default function MagicLinkPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 disabled:opacity-70 text-white rounded-xl font-semibold shadow-lg shadow-violet-500/25 transition-all flex items-center justify-center gap-2"
+                className="w-full mt-6 px-6 py-3 bg-brand-400 hover:bg-brand-300 disabled:opacity-70 text-[#0a0f00] rounded-xl font-semibold shadow-lime hover:shadow-lime-lg transition-all flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
@@ -96,7 +96,7 @@ export default function MagicLinkPage() {
             </form>
 
             <div className="mt-6 text-center text-sm text-surface-400">
-              <Link href="/auth/login" className="text-violet-400 hover:text-violet-300 font-semibold">
+              <Link href="/auth/login" className="text-brand-400 hover:text-brand-300 font-semibold">
                 ← Back to sign in
               </Link>
             </div>
@@ -125,13 +125,13 @@ export default function MagicLinkPage() {
               <button
                 type="button"
                 onClick={() => setSent(false)}
-                className="text-violet-400 hover:text-violet-300 font-medium"
+                className="text-brand-400 hover:text-brand-300 font-medium"
               >
                 try again
               </button>
             </p>
             <div className="mt-8 pt-6 border-t border-surface-700">
-              <Link href="/auth/login" className="text-sm text-violet-400 hover:text-violet-300 font-semibold">
+              <Link href="/auth/login" className="text-sm text-brand-400 hover:text-brand-300 font-semibold">
                 ← Back to sign in
               </Link>
             </div>

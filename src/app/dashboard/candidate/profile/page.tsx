@@ -201,7 +201,7 @@ export default function CandidateProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Job title / Role</h3>
             {editingProfile
               ? (
@@ -217,7 +217,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-1">Target job titles</h3>
             <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Jobs matching these titles will appear in your My Jobs. Separate with commas.</p>
             {editingProfile
@@ -243,7 +243,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Professional summary</h3>
             {editingProfile
               ? <textarea value={profileForm.summary} onChange={e => setProfileForm((p: any) => ({ ...p, summary: e.target.value }))}
@@ -253,7 +253,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Default pitch / cover snippet</h3>
             <p className="text-xs text-surface-500 dark:text-surface-400 mb-2">One paragraph for recruiters (e.g. elevator pitch or default cover intro).</p>
             {editingProfile
@@ -264,7 +264,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Preferences</h3>
             {editingProfile ? (
               <div className="space-y-4">
@@ -299,7 +299,7 @@ export default function CandidateProfilePage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Experience</h3>
             {(Array.isArray(candidate.experience) ? candidate.experience : [])?.length > 0 ? (
               <div className="space-y-4">
@@ -314,7 +314,7 @@ export default function CandidateProfilePage() {
             ) : <p className="text-sm text-surface-400 dark:text-surface-500">No experience on file. Contact your recruiter to update.</p>}
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Education</h3>
             {(Array.isArray(candidate.education) ? candidate.education : [])?.length > 0 ? (
               <div className="space-y-3">
@@ -330,7 +330,7 @@ export default function CandidateProfilePage() {
         </div>
 
         <div className="space-y-5">
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Contact info</h3>
             {editingProfile ? (
               <div className="space-y-3">
@@ -358,7 +358,7 @@ export default function CandidateProfilePage() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Skills</h3>
             <div className="flex flex-wrap gap-2">
               {(candidate.skills as string[])?.map((s: string, i: number) => (
@@ -368,12 +368,12 @@ export default function CandidateProfilePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-2">Work authorization</h3>
             <p className="text-sm text-surface-600 dark:text-surface-300">{candidate.visa_status || <span className="text-surface-400 dark:text-surface-500 italic">Not specified</span>}</p>
           </div>
 
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-4">
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-4">
             <p className="text-xs text-surface-500 dark:text-surface-400">To update experience, education, or skills — contact your recruiter. You can update contact info and summary here.</p>
           </div>
         </div>

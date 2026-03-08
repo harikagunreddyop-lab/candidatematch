@@ -118,7 +118,7 @@ export default function CandidateAtsCheckerPage() {
         <ChevronLeft size={18} /> Dashboard
       </Link>
       <div className="flex items-center gap-3 mb-2">
-        <BarChart2 className="w-8 h-8 text-violet-400" />
+        <BarChart2 className="w-8 h-8 text-brand-400" />
         <h1 className="text-2xl font-bold text-white">ATS Checker</h1>
       </div>
       <p className="text-surface-400 text-sm mb-8">
@@ -133,7 +133,7 @@ export default function CandidateAtsCheckerPage() {
             onChange={(e) => setJdText(e.target.value)}
             placeholder="Paste the full job description here…"
             rows={8}
-            className="w-full px-4 py-3 rounded-lg bg-surface-900 border border-surface-700 text-white placeholder-surface-500 focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-y"
+            className="w-full px-4 py-3 rounded-lg bg-surface-900 border border-surface-700 text-white placeholder-surface-500 focus:ring-2 focus:ring-brand-400 focus:border-transparent resize-y"
           />
           {resumes.length > 0 && (
             <div className="mt-3">
@@ -155,7 +155,7 @@ export default function CandidateAtsCheckerPage() {
           <button
             onClick={runCheck}
             disabled={loading || !candidateId || !jdText.trim()}
-            className="mt-4 flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
+            className="mt-4 flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 disabled:opacity-50 text-white rounded-lg font-semibold transition-colors"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
             {loading ? 'Checking…' : 'Run ATS check'}

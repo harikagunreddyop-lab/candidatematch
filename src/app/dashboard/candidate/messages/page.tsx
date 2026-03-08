@@ -235,7 +235,7 @@ export default function CandidateMessagesPage() {
                   <p className="text-sm text-surface-400">No recruiter assigned yet. Contact your admin.</p>
                 )}
                 {availableUsers.map(u => (
-                  <label key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-50 cursor-pointer">
+                  <label key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-100 cursor-pointer">
                     <input type="checkbox" checked={selectedUsers.includes(u.id)}
                       onChange={e => setSelectedUsers(prev => e.target.checked ? [...prev, u.id] : prev.filter(id => id !== u.id))}
                       className="rounded border-surface-300 text-brand-600" />

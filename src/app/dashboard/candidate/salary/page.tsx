@@ -41,7 +41,7 @@ export default function SalaryIntelligencePage() {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-violet-500 border-t-transparent" />
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-brand-400 border-t-transparent" />
       </div>
     );
   }
@@ -49,7 +49,7 @@ export default function SalaryIntelligencePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <h1 className="text-3xl font-bold text-surface-900 dark:text-white">Salary Intelligence</h1>
-      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
         <h2 className="text-xl font-semibold text-surface-900 dark:text-white mb-4">Your market value</h2>
         {title && <p className="text-sm text-surface-500 dark:text-surface-400 mb-4">Role: {title}</p>}
         <div className="mb-6">
@@ -59,7 +59,7 @@ export default function SalaryIntelligencePage() {
           </div>
           <div className="relative h-12 bg-surface-200 dark:bg-surface-900 rounded-lg overflow-hidden">
             <div className="absolute inset-y-0 left-[20%] right-[20%] bg-gradient-to-r from-emerald-500/20 to-blue-500/20" />
-            <div className="absolute top-1/2 left-[50%] w-1 h-full bg-violet-500 -translate-y-1/2" />
+            <div className="absolute top-1/2 left-[50%] w-1 h-full bg-brand-400 -translate-y-1/2" />
           </div>
           <div className="flex justify-between mt-2 text-sm text-surface-500 dark:text-surface-400">
             <span>${(low / 1000).toFixed(0)}K (25th)</span>
@@ -73,12 +73,12 @@ export default function SalaryIntelligencePage() {
           <Factor label="Education" impact="+$5K" />
         </div>
       </div>
-      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800 p-6">
+      <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
         <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Negotiation strategies</h3>
         <div className="space-y-3">
           {NEGOTIATION_TIPS.map((tip) => (
             <div key={tip.id} className="flex items-start gap-3 p-3 bg-surface-100 dark:bg-surface-900 rounded-lg">
-              <span className="text-violet-500 dark:text-violet-400 shrink-0">💡</span>
+              <span className="text-brand-400 shrink-0">💡</span>
               <p className="text-sm text-surface-700 dark:text-surface-300">{tip.text}</p>
             </div>
           ))}

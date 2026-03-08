@@ -18,9 +18,9 @@ function ActionCard({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-2xl border border-surface-700 bg-surface-800/80 p-6 text-left hover:border-violet-500/50 hover:bg-surface-800 transition-all group"
+      className="rounded-2xl border border-surface-700 bg-surface-100 p-6 text-left hover:border-brand-400/50 hover:bg-surface-200 transition-all group"
     >
-      <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center text-violet-400 mb-4 group-hover:bg-violet-500/30">
+      <div className="w-12 h-12 rounded-xl bg-brand-400/20 flex items-center justify-center text-brand-400 mb-4 group-hover:bg-brand-400/30">
         {icon}
       </div>
       <h3 className="text-lg font-bold text-white mb-2">{title}</h3>

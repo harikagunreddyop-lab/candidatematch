@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner, StatusBadge } from '@/components/ui';
+import { DashboardErrorBoundary } from '@/components/layout/DashboardErrorBoundary';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, FunnelChart, Funnel, LabelList,
@@ -22,7 +23,7 @@ type Period = 'week' | 'month' | 'quarter';
 const STAGE_ORDER = ['applied', 'screening', 'interview', 'offer'];
 const STAGE_COLORS: Record<string, string> = {
   applied: '#6366f1', screening: '#f59e0b',
-  interview: '#8b5cf6', offer: '#22c55e', rejected: '#ef4444',
+  interview: '#b8eb1a', offer: '#22c55e', rejected: '#ef4444',
 };
 
 function SectionHeader({ title, subtitle, icon }: { title: string; subtitle?: string; icon: React.ReactNode }) {
@@ -403,7 +404,8 @@ export default function AdminReportsPage() {
   const PERIOD_LABELS: Record<Period, string> = { week: 'Last 7 days', month: 'Last 30 days', quarter: 'Last 90 days' };
 
   return (
-    <div className="space-y-8">
+    <DashboardErrorBoundary sectionName="Reports">
+      <div className="space-y-8">
       {/* ── Header ── */}
       <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
@@ -415,7 +417,7 @@ export default function AdminReportsPage() {
             {(['week', 'month', 'quarter'] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
                 className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
-                  period === p ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-surface-100 shadow-sm' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300')}>
+                  period === p ? 'bg-surface-200 text-surface-900 dark:text-surface-100 shadow-sm' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300')}>
                 {p}
               </button>
             ))}
@@ -465,7 +467,7 @@ export default function AdminReportsPage() {
           {/* ── KPI Row ── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <KPI label="Applications" value={kpis.totalApps} sub={PERIOD_LABELS[period]} color="text-brand-600" />
-            <KPI label="In Interview" value={kpis.totalInterviews} color="text-purple-600" />
+            <KPI label="In Interview" value={kpis.totalInterviews} text-brand-400 />
             <KPI label="Offers" value={kpis.totalOffers} color="text-green-600" />
             <KPI label="Offer Rate" value={`${kpis.offerRate}%`} color="text-green-600" />
             <KPI label="Avg ATS Score" value={kpis.avgScore || '—'} color="text-amber-600" />
@@ -486,7 +488,7 @@ export default function AdminReportsPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-100 dark:border-surface-600">
+                  <thead className="bg-surface-100 border-b border-surface-100 dark:border-surface-600">
                     <tr>
                       {['Candidate', 'Role', 'Status', 'Days Stuck', 'Recruiter', 'Last Update'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-surface-600 dark:text-surface-300">{h}</th>
@@ -495,7 +497,7 @@ export default function AdminReportsPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-50 dark:divide-surface-700">
                     {stuckCandidates.slice(0, 8).map(c => (
-                      <tr key={c.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/50">
+                      <tr key={c.id} className="hover:bg-surface-100 dark:hover:bg-surface-700/50">
                         <td className="px-4 py-2.5 font-medium text-surface-900 dark:text-surface-100">{c.candidate_name}</td>
                         <td className="px-4 py-2.5 text-surface-600 dark:text-surface-300">
                           <p className="text-xs">{c.job_title}</p>
@@ -518,7 +520,7 @@ export default function AdminReportsPage() {
           )}
 
           {/* ── Talent & fit analysis (platform-wide) ── */}
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 p-4 sm:p-6 shadow-sm">
+          <div className="rounded-2xl border border-surface-200 dark:border-surface-600 bg-surface-100 p-4 sm:p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-5">
               <div className="w-9 h-9 rounded-xl bg-brand-500/10 dark:bg-brand-500/20 flex items-center justify-center shrink-0">
                 <BarChart3 size={18} className="text-brand-600 dark:text-brand-400" />
@@ -558,7 +560,7 @@ export default function AdminReportsPage() {
                 ) : (
                   <ul className="space-y-2">
                     {talentFit.jobsNeedingAttention.map((j) => (
-                      <li key={j.id} className="flex items-center justify-between text-sm py-2 px-3 rounded-lg bg-surface-50 dark:bg-surface-700/50 border border-surface-100 dark:border-surface-600">
+                      <li key={j.id} className="flex items-center justify-between text-sm py-2 px-3 rounded-lg bg-surface-100 border border-surface-100 dark:border-surface-600">
                         <div className="min-w-0">
                           <p className="font-medium text-surface-900 dark:text-surface-100 truncate">{j.title}</p>
                           <p className="text-xs text-surface-500 dark:text-surface-400">{j.company}</p>
@@ -577,7 +579,7 @@ export default function AdminReportsPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <Lightbulb size={16} className="text-purple-500" />
+                  <Lightbulb size={16} className="text-brand-400" />
                   <h3 className="text-sm font-semibold text-surface-800 dark:text-surface-200">Top missing skills (candidate pool)</h3>
                 </div>
                 <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Skills most often missing vs. job requirements — consider training or hiring</p>
@@ -626,7 +628,7 @@ export default function AdminReportsPage() {
               <SectionHeader
                 title="Application Velocity"
                 subtitle={`Applications submitted — ${PERIOD_LABELS[period]}`}
-                icon={<TrendingUp size={16} className="text-purple-600" />}
+                icon={<TrendingUp size={16} className="text-brand-400" />}
               />
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={velocityData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -657,7 +659,7 @@ export default function AdminReportsPage() {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-100 dark:border-surface-600">
+                  <thead className="bg-surface-100 border-b border-surface-100 dark:border-surface-600">
                     <tr>
                       {['#', 'Recruiter', 'Assigned', `Apps (${period})`, 'Total Apps', 'Interviews', 'Offers', 'Interview %', 'Offer %', 'Efficiency'].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-surface-600 dark:text-surface-300 whitespace-nowrap">{h}</th>
@@ -666,7 +668,7 @@ export default function AdminReportsPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-50 dark:divide-surface-700">
                     {recruiters.map((r, i) => (
-                      <tr key={r.id} className={cn('hover:bg-surface-50 dark:hover:bg-surface-700/50', i === 0 && 'bg-amber-50/50 dark:bg-amber-900/20')}>
+                      <tr key={r.id} className={cn('hover:bg-surface-100 dark:hover:bg-surface-700/50', i === 0 && 'bg-amber-50/50 dark:bg-amber-900/20')}>
                         <td className="px-4 py-3">
                           {i === 0 ? '🏆' : i === 1 ? '🥈' : i === 2 ? '🥉' : (
                             <span className="text-xs text-surface-400 dark:text-surface-500">{i + 1}</span>
@@ -677,14 +679,14 @@ export default function AdminReportsPage() {
                           <p className="text-[10px] text-surface-400 dark:text-surface-500">{r.email}</p>
                         </td>
                         <td className="px-4 py-3 font-bold text-brand-600 dark:text-brand-400">{r.candidates_assigned}</td>
-                        <td className="px-4 py-3 text-purple-600 dark:text-purple-400 font-semibold">{r.period_applications}</td>
+                        <td className="px-4 py-3 text-brand-400 dark:text-brand-400 font-semibold">{r.period_applications}</td>
                         <td className="px-4 py-3 text-surface-600 dark:text-surface-300">{r.applications_submitted}</td>
-                        <td className="px-4 py-3 text-purple-600 dark:text-purple-400">{r.interviews_secured}</td>
+                        <td className="px-4 py-3 text-brand-400 dark:text-brand-400">{r.interviews_secured}</td>
                         <td className="px-4 py-3 text-green-600 dark:text-green-400 font-semibold">{r.offers_received}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-16 bg-surface-100 dark:bg-surface-700 rounded-full h-1.5">
-                              <div className="bg-purple-400 h-1.5 rounded-full" style={{ width: `${Math.min(100, r.interview_rate)}%` }} />
+                              <div className="bg-brand-400 h-1.5 rounded-full" style={{ width: `${Math.min(100, r.interview_rate)}%` }} />
                             </div>
                             <span className="text-xs">{r.interview_rate}%</span>
                           </div>
@@ -723,7 +725,7 @@ export default function AdminReportsPage() {
             <SectionHeader
               title="Role Intelligence"
               subtitle="Which job types are converting to interviews and offers"
-              icon={<Briefcase size={16} className="text-indigo-600" />}
+              icon={<Briefcase size={16} className="text-brand-400" />}
             />
             {roleIntel.length === 0 ? (
               <p className="text-sm text-surface-400 dark:text-surface-500">No application data yet</p>
@@ -739,16 +741,16 @@ export default function AdminReportsPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-50 dark:divide-surface-700">
                     {roleIntel.map((r, i) => (
-                      <tr key={i} className="hover:bg-surface-50 dark:hover:bg-surface-700/50">
+                      <tr key={i} className="hover:bg-surface-100 dark:hover:bg-surface-700/50">
                         <td className="py-2.5 pr-4 font-medium text-surface-900 dark:text-surface-100 capitalize max-w-[160px] truncate">{r.title_family}</td>
                         <td className="py-2.5 pr-4 text-surface-600 dark:text-surface-300">{r.total}</td>
                         <td className="py-2.5 pr-4 text-yellow-600 dark:text-yellow-400">{r.screening}</td>
-                        <td className="py-2.5 pr-4 text-purple-600 dark:text-purple-400 font-semibold">{r.interview}</td>
+                        <td className="py-2.5 pr-4 text-brand-400 dark:text-brand-400 font-semibold">{r.interview}</td>
                         <td className="py-2.5 pr-4 text-green-600 dark:text-green-400 font-bold">{r.offer}</td>
                         <td className="py-2.5 pr-4">
                           <div className="flex items-center gap-2">
                             <div className="w-20 bg-surface-100 dark:bg-surface-700 rounded-full h-1.5">
-                              <div className="bg-purple-400 h-1.5 rounded-full" style={{ width: `${r.interview_rate}%` }} />
+                              <div className="bg-brand-400 h-1.5 rounded-full" style={{ width: `${r.interview_rate}%` }} />
                             </div>
                             <span className={cn('text-xs font-semibold', r.interview_rate >= 30 ? 'text-green-600 dark:text-green-400' : r.interview_rate >= 15 ? 'text-yellow-600 dark:text-yellow-400' : 'text-surface-500 dark:text-surface-400')}>
                               {r.interview_rate}%
@@ -802,7 +804,7 @@ export default function AdminReportsPage() {
               <SectionHeader
                 title="Top Job Roles"
                 subtitle="Most in-demand role families"
-                icon={<Target size={16} className="text-purple-600" />}
+                icon={<Target size={16} className="text-brand-400" />}
               />
               <div className="space-y-2">
                 {heatmap.roles.slice(0, 8).map((r, i) => (
@@ -814,7 +816,7 @@ export default function AdminReportsPage() {
                         <span className="text-xs text-surface-500 dark:text-surface-400 ml-2 shrink-0">{r.count}</span>
                       </div>
                       <div className="w-full bg-surface-100 dark:bg-surface-700 rounded-full h-1.5">
-                        <div className="bg-purple-400 h-1.5 rounded-full"
+                        <div className="bg-brand-400 h-1.5 rounded-full"
                           style={{ width: `${(r.count / (heatmap.roles[0]?.count || 1)) * 100}%` }} />
                       </div>
                     </div>
@@ -871,7 +873,7 @@ export default function AdminReportsPage() {
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-100 dark:border-surface-600">
+                  <thead className="bg-surface-100 border-b border-surface-100 dark:border-surface-600">
                     <tr>
                       {['Candidate', 'Role', 'Company', 'Offered Salary', 'Notes', 'Since'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-xs font-semibold text-surface-600 dark:text-surface-300">{h}</th>
@@ -880,7 +882,7 @@ export default function AdminReportsPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-50 dark:divide-surface-700">
                     {offers.map(o => (
-                      <tr key={o.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/50">
+                      <tr key={o.id} className="hover:bg-surface-100 dark:hover:bg-surface-700/50">
                         <td className="px-4 py-3 font-medium text-surface-900 dark:text-surface-100">{o.candidate_name}</td>
                         <td className="px-4 py-3 text-surface-600 dark:text-surface-300">{o.job_title}</td>
                         <td className="px-4 py-3 text-surface-600 dark:text-surface-300">{o.company}</td>
@@ -901,5 +903,6 @@ export default function AdminReportsPage() {
         </>
       )}
     </div>
+    </DashboardErrorBoundary>
   );
 }

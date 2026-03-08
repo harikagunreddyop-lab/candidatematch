@@ -39,7 +39,7 @@ export default function AdminCompanyDetailPage() {
     })();
   }, [id, supabase]);
 
-  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" /></div>;
+  if (loading) return <div className="flex justify-center py-20"><div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" /></div>;
   if (!company) return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">Company not found.</div>;
 
   const statusColor = (s: string) => s === 'active' || s === 'trialing' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400';
@@ -57,7 +57,7 @@ export default function AdminCompanyDetailPage() {
           {company.logo_url ? (
             <Image src={company.logo_url} alt={company.name} width={48} height={48} className="w-12 h-12 rounded-xl object-cover" unoptimized />
           ) : (
-            <div className="w-12 h-12 rounded-xl bg-violet-500/15 flex items-center justify-center"><Building2 className="w-6 h-6 text-violet-400" /></div>
+            <div className="w-12 h-12 rounded-xl bg-brand-400/15 flex items-center justify-center"><Building2 className="w-6 h-6 text-brand-400" /></div>
           )}
           <div>
             <h1 className="text-2xl font-bold text-white">{company.name}</h1>
@@ -68,7 +68,7 @@ export default function AdminCompanyDetailPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Link href={`/dashboard/admin/companies/${id}/jobs`} className="rounded-2xl border border-surface-700 bg-surface-800/50 p-5 hover:bg-surface-700/50 transition-colors">
-          <Briefcase className="w-8 h-8 text-violet-400 mb-2" />
+          <Briefcase className="w-8 h-8 text-brand-400 mb-2" />
           <div className="text-2xl font-bold text-white">{jobsCount}</div>
           <div className="text-xs text-surface-500">Jobs</div>
         </Link>
@@ -93,7 +93,7 @@ export default function AdminCompanyDetailPage() {
             team.map((m: any) => (
               <div key={m.id} className="px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                  <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                     {(m.name || m.email || '?')[0].toUpperCase()}
                   </div>
                   <div>
@@ -108,7 +108,7 @@ export default function AdminCompanyDetailPage() {
       </div>
 
       <div className="flex gap-3">
-        <Link href={`/dashboard/admin/companies/${id}/team`} className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-sm font-semibold">
+        <Link href={`/dashboard/admin/companies/${id}/team`} className="px-4 py-2 bg-brand-400 hover:bg-brand-300 text-white rounded-xl text-sm font-semibold">
           Manage team
         </Link>
         <Link href={`/dashboard/admin/companies/${id}/jobs`} className="px-4 py-2 bg-surface-700 hover:bg-surface-600 text-white rounded-xl text-sm font-semibold">

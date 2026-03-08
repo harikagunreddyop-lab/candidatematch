@@ -54,7 +54,7 @@ export default function CompanyTeamInvitePage() {
         Invite a team member to join your company as a recruiter or company admin. They will receive a link to accept the invite.
       </p>
 
-      <form onSubmit={handleSubmit} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 space-y-4">
         <div>
           <label htmlFor="email" className="block text-sm font-medium text-surface-700 dark:text-surface-300 mb-1">
             Email
@@ -65,7 +65,7 @@ export default function CompanyTeamInvitePage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="colleague@company.com"
-            className="w-full px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900 text-surface-900 dark:text-white placeholder-surface-400 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 bg-surface-100 text-surface-900 dark:text-white placeholder-surface-400 focus:ring-2 focus:ring-brand-400 focus:border-transparent"
             disabled={loading}
           />
         </div>
@@ -77,7 +77,7 @@ export default function CompanyTeamInvitePage() {
             id="role"
             value={role}
             onChange={(e) => setRole(e.target.value as 'recruiter' | 'company_admin')}
-            className="w-full px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-900 text-surface-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+            className="w-full px-4 py-2 rounded-xl border border-surface-300 dark:border-surface-600 bg-surface-100 text-surface-900 dark:text-white focus:ring-2 focus:ring-brand-400 focus:border-transparent"
             disabled={loading}
           >
             <option value="recruiter">Recruiter</option>
@@ -93,7 +93,7 @@ export default function CompanyTeamInvitePage() {
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl font-semibold transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] disabled:opacity-60 text-white rounded-xl font-semibold transition-colors"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
           {loading ? 'Sending…' : 'Send invite'}

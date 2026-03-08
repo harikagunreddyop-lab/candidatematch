@@ -7,6 +7,7 @@ import { emitEvent, recordOutcome } from '@/lib/telemetry';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { FeatureGate } from '@/lib/feature-gates/index';
 import { applicationCreateSchema } from '@/lib/validation/schemas';
+import { handleAPIError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ function getLocalDayStart(tzOffsetMinutes: number): Date {
 
 /** GET /api/applications — List applications. Query: candidate_id, job_id, status, limit, offset. */
 export async function GET(req: NextRequest) {
+  try {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
@@ -66,9 +68,13 @@ export async function GET(req: NextRequest) {
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ applications: data ?? [] });
+  } catch (e) {
+    return handleAPIError(e);
+  }
 }
 
 export async function POST(req: NextRequest) {
+  try {
   const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
@@ -259,6 +265,9 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json(data);
+  } catch (e) {
+    return handleAPIError(e);
+  }
 }
 
 export async function PATCH(req: NextRequest) {

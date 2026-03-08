@@ -3,6 +3,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { rateLimitResponse } from '@/lib/rate-limit';
+import { inviteSchema } from '@/lib/validation/schemas';
+import { parseBody } from '@/lib/validation/parse';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,20 +12,16 @@ export async function POST(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   if (!authHeader) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  let body: { email?: string; role?: string; name?: string; phone?: string };
+  let body: unknown;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
-  const { email, role, name, phone } = body ?? {};
 
-  if (!email || !role) {
-    return NextResponse.json({ error: 'email and role are required' }, { status: 400 });
-  }
-  if (!['candidate', 'recruiter', 'admin', 'company_admin'].includes(role)) {
-    return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
-  }
+  const parsed = parseBody(body, inviteSchema);
+  if ('error' in parsed) return parsed.error;
+  const { email, role, name, phone } = parsed.data;
 
   const adminClient = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

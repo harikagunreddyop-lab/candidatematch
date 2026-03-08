@@ -481,7 +481,7 @@ export default function CandidateDetailPage() {
                 <h3 className="text-sm font-semibold text-surface-800 mb-3">Tags</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {tags.map((t: string, i: number) => (
-                    <span key={i} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs">{t}</span>
+                    <span key={i} className="px-2 py-0.5 bg-brand-400/10 text-brand-400 rounded text-xs">{t}</span>
                   ))}
                 </div>
               </div>
@@ -495,7 +495,7 @@ export default function CandidateDetailPage() {
               {assignedRecruiters.length > 0 ? (
                 <div className="space-y-2 mb-3">
                   {assignedRecruiters.map((a: any) => (
-                    <div key={a.recruiter_id} className="flex items-center justify-between gap-2 py-1.5 px-2 bg-surface-50 rounded-lg">
+                    <div key={a.recruiter_id} className="flex items-center justify-between gap-2 py-1.5 px-2 bg-surface-100 rounded-lg">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-surface-800 truncate">{a.recruiter?.name || a.recruiter?.email}</p>
                         <p className="text-[10px] text-surface-400 truncate">{a.recruiter?.email}</p>
@@ -743,7 +743,7 @@ export default function CandidateDetailPage() {
             <div className="card overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-surface-50 dark:bg-surface-700/50 border-b border-surface-200 dark:border-surface-600">
+                  <thead className="bg-surface-100 border-b border-surface-200 dark:border-surface-600">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Job</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-surface-500 dark:text-surface-400">Company</th>
@@ -755,7 +755,7 @@ export default function CandidateDetailPage() {
                   </thead>
                   <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
                     {applications.map(a => (
-                      <tr key={a.id} className="hover:bg-surface-50 dark:hover:bg-surface-700/40">
+                      <tr key={a.id} className="hover:bg-surface-100 dark:hover:bg-surface-700/40">
                         <td className="px-4 py-3 font-medium text-surface-900 dark:text-surface-100">{a.job?.title}</td>
                         <td className="px-4 py-3 text-surface-500 dark:text-surface-400">{a.job?.company}</td>
                         <td className="px-4 py-3"><StatusBadge status={a.status} /></td>

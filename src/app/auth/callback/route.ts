@@ -1,9 +1,19 @@
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import { NextResponse } from 'next/server';
+import { getClientId } from '@/lib/rate-limit';
+import { rateLimitResponse } from '@/lib/rate-limit';
+import { isIPBlocked, trackFailedAttempt } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const ip = getClientId(request);
+  if (await isIPBlocked(ip)) {
+    return new NextResponse('Too many failed attempts. Try again later.', { status: 403 });
+  }
+  const rl = await rateLimitResponse(request, 'auth', null);
+  if (rl) return rl;
+
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   // Supabase passes `type` for recovery/invite flows so we can route correctly
@@ -90,8 +100,12 @@ export async function GET(request: Request) {
 
         return NextResponse.redirect(new URL('/auth/complete', origin));
       }
+      if (error) {
+        await trackFailedAttempt(ip);
+      }
     } catch {
-      // Exchange threw — fall through to error redirect below
+      // Exchange threw — track failed attempt and fall through to error redirect
+      await trackFailedAttempt(ip);
     }
   }
 

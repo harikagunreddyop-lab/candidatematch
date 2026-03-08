@@ -16,7 +16,7 @@ export function DashboardStats({ stats }: { stats: Stats }) {
         label="AI Matches"
         value={stats.matches}
         icon={<Sparkles className="w-5 h-5" />}
-        color="bg-violet-500/10 text-violet-400"
+        color="bg-brand-400/10 text-brand-400"
       />
       <StatCard
         label="Applications"

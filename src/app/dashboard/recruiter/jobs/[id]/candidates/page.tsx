@@ -80,7 +80,7 @@ export default function RecruiterJobCandidatesPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <p className="text-surface-400">Job not found or access denied. You can only view candidates for jobs you posted.</p>
-        <Link href="/dashboard/recruiter/jobs" className="text-violet-400 hover:underline mt-2 inline-block">Back to my jobs</Link>
+        <Link href="/dashboard/recruiter/jobs" className="text-brand-400 hover:underline mt-2 inline-block">Back to my jobs</Link>
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function RecruiterJobCandidatesPage() {
         {matches.length} matched · {applications.length} applications
       </p>
 
-      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 overflow-hidden">
+      <div className="rounded-2xl border border-surface-700 bg-surface-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-surface-700 font-semibold text-white">
           Applications ({applications.length})
         </div>
@@ -118,7 +118,7 @@ export default function RecruiterJobCandidatesPage() {
                     className="flex items-center justify-between px-6 py-4 hover:bg-surface-700/30"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                         {c?.full_name?.[0] || '?'}
                       </div>
                       <div>
@@ -135,7 +135,7 @@ export default function RecruiterJobCandidatesPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 overflow-hidden">
+      <div className="rounded-2xl border border-surface-700 bg-surface-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-surface-700 font-semibold text-white">
           Top matches (not yet applied) ({matchOnly.length})
         </div>
@@ -152,7 +152,7 @@ export default function RecruiterJobCandidatesPage() {
                     className="flex items-center justify-between px-6 py-4 hover:bg-surface-700/30"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-brand-400/20 flex items-center justify-center text-brand-400 font-semibold text-sm">
                         {c?.full_name?.[0] || '?'}
                       </div>
                       <div>

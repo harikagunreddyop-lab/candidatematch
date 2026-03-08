@@ -188,17 +188,17 @@ export default function CandidateOnboardingPage() {
   }, [candidateId, supabase, router]);
 
   // ── Styles ──
-  const card = 'max-w-2xl mx-auto bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-8 mt-12';
+  const card = 'max-w-2xl mx-auto bg-surface-100 rounded-2xl shadow-xl p-8 mt-12';
   const heading = 'text-2xl font-bold text-neutral-900 dark:text-white mb-2';
   const subtitle = 'text-neutral-500 dark:text-neutral-400 mb-6';
   const label = 'block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1';
-  const input = 'w-full px-4 py-2.5 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition';
+  const input = 'w-full px-4 py-2.5 rounded-lg border border-surface-300 bg-surface-100 text-surface-800 focus:ring-2 focus:ring-brand-400 focus:border-transparent outline-none transition';
   const btn = 'px-6 py-2.5 rounded-lg font-medium transition-all';
   const btnPrimary = `${btn} bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50`;
   const btnSecondary = `${btn} bg-neutral-200 dark:bg-neutral-700 hover:bg-neutral-300 dark:hover:bg-neutral-600 text-neutral-700 dark:text-neutral-200`;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-surface-100 via-surface-50 to-surface-100 py-8 px-4">
       {/* Progress bar — only when authenticated */}
       {authStatus === 'authenticated' && (
         <div className="max-w-2xl mx-auto mb-6">
@@ -390,7 +390,7 @@ export default function CandidateOnboardingPage() {
         <div className={card}>
           <h1 className={heading}>You&apos;re All Set! 🎉</h1>
           <p className={subtitle}>Here&apos;s a summary of your profile. Complete onboarding to see your first job matches.</p>
-          <div className="space-y-3 bg-neutral-50 dark:bg-neutral-800 rounded-xl p-4">
+          <div className="space-y-3 bg-surface-100 rounded-xl p-4">
             <div className="flex justify-between"><span className="text-neutral-500">Name</span><span className="font-medium">{fullName}</span></div>
             <div className="flex justify-between"><span className="text-neutral-500">Title</span><span className="font-medium">{primaryTitle || '—'}</span></div>
             <div className="flex justify-between"><span className="text-neutral-500">Experience</span><span className="font-medium">{yearsExp ? `${yearsExp} years` : '—'}</span></div>

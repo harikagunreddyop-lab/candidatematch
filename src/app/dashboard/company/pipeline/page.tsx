@@ -13,10 +13,10 @@ const STAGES = [
   { key: 'ready', label: 'New Matches', color: 'bg-surface-100 dark:bg-surface-700/80', header: 'bg-surface-200 dark:bg-surface-600 text-surface-700 dark:text-surface-200' },
   { key: 'applied', label: 'Applied', color: 'bg-blue-50 dark:bg-blue-900/30', header: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200' },
   { key: 'screening', label: 'Screening', color: 'bg-yellow-50 dark:bg-yellow-900/25', header: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200' },
-  { key: 'interview', label: 'Interview', color: 'bg-purple-50 dark:bg-purple-900/25', header: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200' },
+  { key: 'interview', label: 'Interview', color: 'bg-brand-400/10 text-brand-400', header: 'bg-brand-400/10 text-brand-400' },
   { key: 'offer', label: 'Offer', color: 'bg-green-50 dark:bg-green-900/25', header: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200' },
   { key: 'rejected', label: 'Rejected', color: 'bg-red-50 dark:bg-red-900/25', header: 'bg-red-100 dark:bg-red-800/50 text-red-600 dark:text-red-300' },
-  { key: 'withdrawn', label: 'Withdrawn', color: 'bg-surface-50 dark:bg-surface-700/50', header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
+  { key: 'withdrawn', label: 'Withdrawn', color: 'bg-surface-100 dark:bg-surface-700/50', header: 'bg-surface-200 dark:bg-surface-600 text-surface-500 dark:text-surface-400' },
 ];
 
 function scoreColor(score: number) {
@@ -170,14 +170,14 @@ function CompanyPipelineCard({ card, stage, disabled, onDragStart, onMove }: { c
   const NEXT_COLORS: Record<string, string> = {
     ready: 'bg-blue-100 dark:bg-blue-800/60 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-700/50',
     applied: 'bg-yellow-100 dark:bg-yellow-800/50 text-yellow-700 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-700/50',
-    screening: 'bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-200 hover:bg-purple-200 dark:hover:bg-purple-700/50',
+    screening: 'bg-brand-400/10 text-brand-400 hover:bg-brand-400/20',
     interview: 'bg-green-100 dark:bg-green-800/50 text-green-700 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-700/50',
   };
   const nextStage = NEXT_STAGE[stage];
 
   return (
     <div draggable={!disabled} onDragStart={disabled ? undefined : onDragStart}
-      className={cn('bg-white dark:bg-surface-800 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 hover:shadow-md transition-shadow group', disabled ? 'cursor-default opacity-75' : 'cursor-grab active:cursor-grabbing')}>
+      className={cn('bg-surface-100 rounded-xl p-3 shadow-sm border border-surface-100 dark:border-surface-600 hover:shadow-md transition-shadow group', disabled ? 'cursor-default opacity-75' : 'cursor-grab active:cursor-grabbing')}>
       <div className="flex items-start gap-2">
         <div className="w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-500/25 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-xs shrink-0">{candidate?.full_name?.[0] || '?'}</div>
         <div className="flex-1 min-w-0">
@@ -190,7 +190,7 @@ function CompanyPipelineCard({ card, stage, disabled, onDragStart, onMove }: { c
         <p className="text-[10px] text-surface-500 dark:text-surface-400 truncate">{job?.company}</p>
       </div>
       {isMatch && card.fit_score && <div className="mt-2"><span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', scoreColor(card.fit_score))}>{card.fit_score} fit</span></div>}
-      {stage === 'interview' && card.interview_date && <div className="mt-2 flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400"><Calendar size={9} /> {formatDate(card.interview_date)}</div>}
+      {stage === 'interview' && card.interview_date && <div className="mt-2 flex items-center gap-1 text-[10px] text-brand-400"><Calendar size={9} /> {formatDate(card.interview_date)}</div>}
       <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         {nextStage && <button onClick={() => !disabled && onMove(card, nextStage)} disabled={disabled} className={cn('text-[10px] px-1.5 py-0.5 rounded transition-colors', disabled ? 'opacity-50 cursor-not-allowed' : NEXT_COLORS[stage])}>{NEXT_LABELS[stage]}</button>}
       </div>

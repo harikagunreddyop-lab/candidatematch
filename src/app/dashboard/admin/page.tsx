@@ -88,7 +88,7 @@ export default function PlatformAdminDashboard() {
   if (loading)
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-brand-400 border-t-transparent rounded-full" />
       </div>
     );
 
@@ -98,8 +98,8 @@ export default function PlatformAdminDashboard() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white">Platform Dashboard</h1>
-          <p className="text-surface-400 mt-1">Multi-tenant SaaS management</p>
+          <h1 className="text-3xl font-bold text-surface-900 dark:text-surface-100">Platform Dashboard</h1>
+          <p className="text-surface-600 dark:text-surface-400 mt-1">Multi-tenant SaaS management</p>
         </div>
         <div className="flex items-center gap-3">
           <SystemHealthBadge status={stats.system.health} />
@@ -120,7 +120,7 @@ export default function PlatformAdminDashboard() {
           value={stats.companies.active}
           subtext={`${stats.companies.trialing} trialing`}
           icon={<Building2 className="w-5 h-5" />}
-          gradient="from-violet-500 to-purple-600"
+          gradient="from-brand-400 to-brand-600"
           href="/dashboard/admin/companies?filter=active"
         />
         <MetricCard
@@ -128,7 +128,7 @@ export default function PlatformAdminDashboard() {
           value={stats.companies.total}
           subtext={stats.companies.past_due > 0 ? `${stats.companies.past_due} past due` : 'All healthy'}
           icon={<Building2 className="w-5 h-5" />}
-          gradient="from-blue-500 to-indigo-600"
+          gradient="from-brand-500 to-brand-700"
           href="/dashboard/admin/companies"
         />
         <MetricCard
@@ -141,12 +141,12 @@ export default function PlatformAdminDashboard() {
         />
       </div>
 
-      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6">
+      <div className="bg-surface-100 dark:bg-surface-800/50 border border-surface-300 dark:border-surface-700/60 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">System Health</h2>
+          <h2 className="text-xl font-semibold text-surface-900 dark:text-surface-100">System Health</h2>
           <Link
             href="/dashboard/admin/system/health"
-            className="text-sm text-violet-400 hover:text-violet-300 transition-colors"
+            className="text-sm text-brand-600 dark:text-brand-400 hover:underline transition-colors"
           >
             View Details →
           </Link>
@@ -218,15 +218,15 @@ function MetricCard({ label, value, subtext, icon, gradient, href }: {
   return (
     <Link href={href} className="group">
       <div className={`relative overflow-hidden bg-gradient-to-br ${gradient} p-[1px] rounded-xl transition-all hover:scale-[1.02]`}>
-        <div className="bg-surface-900 rounded-xl p-5 h-full">
+        <div className="bg-surface-100 dark:bg-surface-900 rounded-xl p-5 h-full border border-surface-200 dark:border-transparent">
           <div className="flex items-center justify-between mb-3">
-            <div className={`bg-gradient-to-br ${gradient} bg-opacity-20 p-2 rounded-lg text-white`}>
+            <div className={`bg-gradient-to-br ${gradient} bg-opacity-20 p-2 rounded-lg text-surface-900 dark:text-white`}>
               {icon}
             </div>
           </div>
-          <div className="text-3xl font-bold text-white mb-1">{value}</div>
-          <div className="text-sm font-medium text-surface-300">{label}</div>
-          {subtext && <div className="text-xs text-surface-500 mt-1">{subtext}</div>}
+          <div className="text-3xl font-bold text-surface-900 dark:text-white mb-1">{value}</div>
+          <div className="text-sm font-medium text-surface-700 dark:text-surface-300">{label}</div>
+          {subtext && <div className="text-xs text-surface-600 dark:text-surface-400 mt-1">{subtext}</div>}
         </div>
       </div>
     </Link>
@@ -235,12 +235,12 @@ function MetricCard({ label, value, subtext, icon, gradient, href }: {
 
 function SystemHealthBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    healthy: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    degraded: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    unhealthy: 'bg-red-500/10 text-red-400 border-red-500/20',
+    healthy: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
+    degraded: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
+    unhealthy: 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20',
   };
   return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${colors[status] || 'bg-surface-500/10 text-surface-400 border-surface-500/20'}`}>
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${colors[status] || 'bg-surface-200 dark:bg-surface-500/10 text-surface-700 dark:text-surface-400 border-surface-300 dark:border-surface-500/20'}`}>
       <div className="w-2 h-2 rounded-full bg-current animate-pulse" />
       <span className="text-xs font-semibold uppercase">{status}</span>
     </div>
@@ -254,19 +254,19 @@ function HealthCard({ label, status, icon, subtext }: {
   subtext?: string;
 }) {
   const statusColors: Record<string, string> = {
-    healthy: 'text-emerald-400',
-    degraded: 'text-amber-400',
-    unhealthy: 'text-red-400',
+    healthy: 'text-emerald-600 dark:text-emerald-400',
+    degraded: 'text-amber-600 dark:text-amber-400',
+    unhealthy: 'text-red-600 dark:text-red-400',
   };
   return (
-    <div className="flex items-center gap-3 bg-surface-900/50 rounded-lg p-4">
-      <div className={statusColors[status] || 'text-surface-400'}>{icon}</div>
+    <div className="flex items-center gap-3 bg-surface-100 dark:bg-surface-900/50 rounded-lg p-4 border border-surface-200 dark:border-surface-700">
+      <div className={statusColors[status] || 'text-surface-500 dark:text-surface-400'}>{icon}</div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-white">{label}</div>
-        <div className={`text-xs font-semibold uppercase ${statusColors[status] || 'text-surface-500'}`}>
+        <div className="text-sm font-medium text-surface-900 dark:text-surface-100">{label}</div>
+        <div className={`text-xs font-semibold uppercase ${statusColors[status] || 'text-surface-600 dark:text-surface-500'}`}>
           {status}
         </div>
-        {subtext && <div className="text-xs text-surface-500 mt-0.5 truncate">{subtext}</div>}
+        {subtext && <div className="text-xs text-surface-600 dark:text-surface-400 mt-0.5 truncate">{subtext}</div>}
       </div>
     </div>
   );
@@ -280,12 +280,12 @@ function ActionCard({ title, description, href, icon }: {
 }) {
   return (
     <Link href={href} className="group">
-      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-5 hover:border-violet-500/50 transition-all">
+      <div className="bg-surface-100 dark:bg-surface-800/50 border border-surface-200 dark:border-surface-700/60 rounded-xl p-5 hover:border-brand-500/50 transition-all">
         <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-violet-500/10 text-violet-400 rounded-lg">{icon}</div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <div className="p-2 bg-brand-400/10 text-brand-400 rounded-lg">{icon}</div>
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100">{title}</h3>
         </div>
-        <p className="text-sm text-surface-400">{description}</p>
+        <p className="text-sm text-surface-600 dark:text-surface-400">{description}</p>
       </div>
     </Link>
   );

@@ -8,7 +8,7 @@ export function ApplicationsList({ applications }: { applications: Application[]
   if (applications.length === 0) {
     return (
       <div className="bg-surface-800 rounded-xl p-8 text-center border border-surface-700/60">
-        <p className="text-surface-400">No applications yet. Start applying to jobs!</p>
+        <p className="text-[#0a0a0a] font-medium">No applications yet. Start applying to jobs!</p>
       </div>
     );
   }
@@ -27,7 +27,7 @@ export function ApplicationsList({ applications }: { applications: Application[]
         <tbody className="divide-y divide-surface-700/50">
           {applications.map((app) => (
             <tr key={app.id} className="hover:bg-surface-900/30">
-              <td className="px-4 py-3 text-white">{app.job?.title}</td>
+              <td className="px-4 py-3 text-[#0a0a0a] font-medium">{app.job?.title}</td>
               <td className="px-4 py-3 text-surface-400">{app.job?.company}</td>
               <td className="px-4 py-3">
                 <StatusBadge status={app.status} />

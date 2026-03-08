@@ -73,7 +73,7 @@ export default function CompanyCandidateDetailPage() {
   if (accessDenied) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center">
       <p className="text-surface-400">This candidate is not applied or matched to any of your company’s jobs.</p>
-      <Link href="/dashboard/company/candidates" className="text-violet-400 hover:underline mt-2 inline-block">Back to candidates</Link>
+      <Link href="/dashboard/company/candidates" className="text-brand-400 hover:underline mt-2 inline-block">Back to candidates</Link>
     </div>
   );
   if (!candidate) return <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">Candidate not found.</div>;
@@ -84,7 +84,7 @@ export default function CompanyCandidateDetailPage() {
         <ChevronLeft size={18} /> Candidates
       </Link>
       <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-lg">{(candidate.full_name || '?')[0].toUpperCase()}</div>
+        <div className="w-12 h-12 rounded-full bg-brand-400/20 text-brand-400 font-bold text-lg">{(candidate.full_name || '?')[0].toUpperCase()}</div>
         <div>
           <h1 className="text-2xl font-bold text-white">{candidate.full_name}</h1>
           <p className="text-surface-500">
@@ -122,7 +122,7 @@ export default function CompanyCandidateDetailPage() {
               type="button"
               onClick={signAgreement}
               disabled={signingAgreement}
-              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-lg font-semibold transition-colors"
+              className="px-4 py-2 bg-brand-400 hover:bg-brand-300 disabled:opacity-60 text-white rounded-lg font-semibold transition-colors"
             >
               {signingAgreement ? 'Signing…' : 'Sign Agreement'}
             </button>

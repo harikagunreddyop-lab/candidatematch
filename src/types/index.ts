@@ -426,3 +426,62 @@ export interface RoleIntelligence {
   interview_rate: number;
   offer_rate: number;
 }
+
+// ============================================
+// API RESPONSES & UTILITY TYPES
+// ============================================
+
+export interface BaseEntity {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface APIResponse<T = unknown> {
+  data?: T;
+  error?: {
+    message: string;
+    code?: string;
+    details?: unknown;
+  };
+  metadata?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    hasMore?: boolean;
+  };
+}
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
+}
+
+export interface LoadingState {
+  isLoading: boolean;
+  error: Error | null;
+}
+
+export interface QueryState<T> extends LoadingState {
+  data: T | null;
+}
+
+export type Nullable<T> = T | null;
+export type Optional<T> = T | undefined;
+
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
+};

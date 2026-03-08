@@ -51,7 +51,7 @@ export default function CompaniesPage() {
         </div>
         <Link
           href="/dashboard/admin/companies/new"
-          className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-semibold transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
         >
           <Plus className="w-4 h-4" />
           New Company
@@ -66,13 +66,13 @@ export default function CompaniesPage() {
             placeholder="Search companies..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-white placeholder-surface-500 focus:outline-none focus:border-violet-500"
+            className="w-full pl-10 pr-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-medium placeholder-surface-500 focus:outline-none focus:border-brand-400"
           />
         </div>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
-          className="px-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-white focus:outline-none focus:border-violet-500"
+          className="px-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-bold focus:outline-none focus:border-brand-400"
         >
           <option value="all">All Companies</option>
           <option value="active">Active</option>
@@ -84,7 +84,7 @@ export default function CompaniesPage() {
       <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full" />
+            <div className="animate-spin w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full" />
           </div>
         ) : (
           <table className="w-full">
@@ -111,7 +111,7 @@ export default function CompaniesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-violet-500/10 text-violet-400 text-xs font-medium rounded">
+                    <span className="px-2 py-1 bg-brand-400/10 text-brand-400 text-xs font-medium rounded">
                       {company.subscription_plan}
                     </span>
                   </td>
@@ -127,7 +127,7 @@ export default function CompaniesPage() {
                   <td className="px-6 py-4">
                     <Link
                       href={`/dashboard/admin/companies/${company.id}`}
-                      className="inline-flex text-violet-400 hover:text-violet-300 transition-colors"
+                      className="inline-flex text-brand-400 hover:text-brand-300 transition-colors"
                       aria-label="View company"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -143,7 +143,7 @@ export default function CompaniesPage() {
             {companies.length === 0 ? (
               <>
                 No companies yet.{' '}
-                <Link href="/dashboard/admin/companies/new" className="text-violet-400 hover:underline">
+                <Link href="/dashboard/admin/companies/new" className="text-brand-400 hover:underline">
                   Create the first one →
                 </Link>
               </>

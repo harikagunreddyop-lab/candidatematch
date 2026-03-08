@@ -54,7 +54,7 @@ function TagInput({ value, onChange, placeholder }: {
   };
   return (
     <div
-      className="flex flex-wrap gap-1.5 p-2 border border-surface-200 dark:border-surface-600 rounded-lg min-h-[40px] cursor-text bg-white dark:bg-surface-800"
+      className="flex flex-wrap gap-1.5 p-2 border border-surface-200 dark:border-surface-600 rounded-lg min-h-[40px] cursor-text bg-surface-100"
       onClick={() => document.getElementById(inputId)?.focus()}
     >
       {value.map((tag, i) => (
@@ -711,7 +711,7 @@ export default function RecruiterCandidateDetail() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Matches', value: matches.length, color: 'text-brand-600' },
-          { label: 'Applications', value: applications.length, color: 'text-purple-600' },
+          { label: 'Applications', value: applications.length, color: 'text-brand-400' },
           { label: 'Resumes', value: resumes.length + candidateResumes.length, color: 'text-amber-600' },
           { label: 'Top Score', value: matches[0]?.fit_score ?? '—', color: 'text-green-600' },
         ].map((s) => (
@@ -741,10 +741,10 @@ export default function RecruiterCandidateDetail() {
               <h3 className="text-sm font-semibold text-surface-800 mb-4">Basic Information</h3>
               <p className="text-xs text-surface-500 mb-3">Name, email and phone are set by the admin. You can edit all other fields below.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><label className="label">Full Name <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.full_name} readOnly className="input text-sm bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-300" /></div>
+                <div><label className="label">Full Name <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.full_name} readOnly className="input text-sm bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-300" /></div>
                 <div><label className="label">Primary Title <span className="text-red-500">*</span></label><input value={profileForm.primary_title} onChange={(e) => set('primary_title', e.target.value)} className="input text-sm" placeholder="Data Analyst" /></div>
-                <div><label className="label">Email <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.email} readOnly className="input text-sm bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-300" type="email" /></div>
-                <div><label className="label">Phone <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.phone} readOnly className="input text-sm bg-surface-50 dark:bg-surface-700 text-surface-500 dark:text-surface-300" type="tel" /></div>
+                <div><label className="label">Email <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.email} readOnly className="input text-sm bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-300" type="email" /></div>
+                <div><label className="label">Phone <span className="text-surface-400 dark:text-surface-500 font-normal text-xs">set by admin</span></label><input value={profileForm.phone} readOnly className="input text-sm bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-300" type="tel" /></div>
                 <div><label className="label">Location</label><input value={profileForm.location} onChange={(e) => set('location', e.target.value)} className="input text-sm" placeholder="New York, NY" /></div>
                 <div><label className="label">LinkedIn URL</label><input value={profileForm.linkedin_url} onChange={(e) => set('linkedin_url', e.target.value)} className="input text-sm" /></div>
                 <div><label className="label">GitHub URL</label><input value={profileForm.github_url} onChange={(e) => set('github_url', e.target.value)} className="input text-sm" /></div>
@@ -760,7 +760,7 @@ export default function RecruiterCandidateDetail() {
                 <div className="col-span-2"><label className="label">Professional Summary</label><textarea value={profileForm.summary} onChange={(e) => set('summary', e.target.value)} className="input text-sm h-24 resize-none" /></div>
                 <div className="col-span-2 flex items-center gap-3">
                   <button type="button" onClick={() => set('active', !profileForm.active)} className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0', profileForm.active ? 'bg-brand-600' : 'bg-surface-300')}>
-                    <span className={cn('absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform', profileForm.active ? 'translate-x-5' : 'translate-x-0.5')} />
+                    <span className={cn('absolute top-0.5 w-4 h-4 bg-surface-200 rounded-full shadow transition-transform', profileForm.active ? 'translate-x-5' : 'translate-x-0.5')} />
                   </button>
                   <span className="text-sm text-surface-700">{profileForm.active ? 'Active — visible in matching' : 'Inactive — excluded from matching'}</span>
                 </div>
@@ -863,7 +863,7 @@ export default function RecruiterCandidateDetail() {
 
             {/* Sticky save bar */}
             <div className="sticky bottom-4 z-10">
-              <div className="card px-4 py-3 flex items-center gap-3 shadow-xl border border-surface-600 bg-surface-800">
+              <div className="card px-4 py-3 flex items-center gap-3 shadow-xl border border-surface-600 bg-surface-100">
                 {saveError && (
                   <p className="text-xs text-red-600 flex items-center gap-1 flex-1 min-w-0">
                     <AlertCircle size={12} className="shrink-0" /><span className="truncate">{saveError}</span>
@@ -1026,7 +1026,7 @@ export default function RecruiterCandidateDetail() {
 
                       {/* Action buttons */}
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        <button onClick={() => generateEmail(m.job_id)} className="btn-ghost text-xs sm:text-sm flex items-center gap-1 py-2 px-3 min-h-[44px] text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-500/10">
+                        <button onClick={() => generateEmail(m.job_id)} className="btn-ghost text-xs sm:text-sm flex items-center gap-1 py-2 px-3 min-h-[44px] text-brand-400 hover:bg-brand-400/10">
                           <Mail size={14} /> Email
                         </button>
                         <button onClick={() => generateBrief(m.job_id)} className="btn-ghost text-xs sm:text-sm flex items-center gap-1 py-2 px-3 min-h-[44px] text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10">
@@ -1181,7 +1181,7 @@ export default function RecruiterCandidateDetail() {
                     </div>
                     {briefLoading
                       ? <div className="flex items-center gap-2 text-xs text-surface-500 py-3"><Spinner size={14} /> Generating…</div>
-                      : <div className="text-xs text-surface-700 dark:text-surface-200 leading-relaxed whitespace-pre-wrap bg-surface-50 dark:bg-surface-700 rounded-lg p-4">{brief}</div>
+                      : <div className="text-xs text-surface-700 dark:text-surface-200 leading-relaxed whitespace-pre-wrap bg-surface-100 dark:bg-surface-700 rounded-lg p-4">{brief}</div>
                     }
                   </div>
                 )}
@@ -1190,15 +1190,15 @@ export default function RecruiterCandidateDetail() {
                 {emailJobId === m.job_id && (
                   <div className="mt-4 pt-4 border-t border-surface-100">
                     <div className="flex items-center gap-2 mb-2">
-                      <Mail size={14} className="text-purple-600" />
-                      <p className="text-xs font-semibold text-purple-700">Outreach Email</p>
+                      <Mail size={14} className="text-brand-400" />
+                      <p className="text-xs font-semibold text-brand-400">Outreach Email</p>
                       <button onClick={() => setEmailJobId(null)} className="ml-auto text-xs text-surface-400">✕</button>
                     </div>
                     {emailLoading
                       ? <div className="flex items-center gap-2 text-xs text-surface-500 py-3"><Spinner size={14} /> Drafting…</div>
                       : (
                         <div className="space-y-2">
-                          <div className="bg-surface-50 dark:bg-surface-700 rounded-lg p-4 text-xs text-surface-700 dark:text-surface-200 leading-relaxed whitespace-pre-wrap">{emailDraft}</div>
+                          <div className="bg-surface-100 dark:bg-surface-700 rounded-lg p-4 text-xs text-surface-700 dark:text-surface-200 leading-relaxed whitespace-pre-wrap">{emailDraft}</div>
                           <button onClick={() => { navigator.clipboard.writeText(emailDraft || ''); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="btn-ghost text-xs flex items-center gap-1.5">
                             {copied ? <><Check size={12} className="text-green-500" /> Copied!</> : <><Copy size={12} /> Copy</>}
                           </button>
@@ -1297,7 +1297,7 @@ export default function RecruiterCandidateDetail() {
                     ) : (
                       <button
                         onClick={() => { setSchedulingAppId(a.id); setInterviewDate(a.interview_date?.slice(0, 16) || ''); setInterviewNotes(a.interview_notes || a.notes || ''); }}
-                        className="btn-ghost text-xs flex items-center gap-1.5 text-purple-600"
+                        className="btn-ghost text-xs flex items-center gap-1.5 text-brand-400"
                       >
                         <Calendar size={12} />
                         {a.interview_date ? `Interview: ${formatDate(a.interview_date)} — Edit` : '+ Schedule interview'}
@@ -1396,7 +1396,7 @@ export default function RecruiterCandidateDetail() {
       {/* Upload Resume Modal (recruiter uploading for candidate) */}
       {showUploadModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-md p-6 space-y-5">
+          <div className="bg-surface-100 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-md p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">
                 Upload resume for candidate
@@ -1462,7 +1462,7 @@ export default function RecruiterCandidateDetail() {
       {/* Job description modal */}
       {viewingJdJob && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setViewingJdJob(null)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-surface-200 dark:border-surface-600" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface-100 rounded-2xl shadow-xl max-w-2xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-surface-200 dark:border-surface-600" onClick={e => e.stopPropagation()}>
             <div className="px-5 py-4 border-b border-surface-200 dark:border-surface-600 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="font-semibold text-surface-900 dark:text-surface-100">{viewingJdJob.title}</h3>
@@ -1478,7 +1478,7 @@ export default function RecruiterCandidateDetail() {
       {/* ── Paste JD → ATS check modal ── */}
       {pasteJdOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={() => setPasteJdOpen(false)}>
-          <div className="bg-white dark:bg-surface-800 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-surface-100 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-2xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-surface-100 dark:border-surface-700">
               <div>
                 <h3 className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
@@ -1504,7 +1504,7 @@ export default function RecruiterCandidateDetail() {
               </div>
               {pasteJdError && <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2 flex items-center gap-1.5"><AlertCircle size={14} />{pasteJdError}</p>}
               {pasteJdResult && (
-                <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-50/50 dark:bg-surface-700/30 p-4 space-y-3">
+                <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-100/50 dark:bg-surface-700/30 p-4 space-y-3">
                   <div className="flex items-center gap-3">
                     <span className={cn('text-2xl font-bold px-3 py-1 rounded-lg', pasteJdResult.ats_score >= 80 ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : pasteJdResult.ats_score >= 61 ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300' : 'bg-red-500/20 text-red-600 dark:text-red-400')}>
                       ATS {pasteJdResult.ats_score}

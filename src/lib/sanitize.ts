@@ -1,9 +1,15 @@
 /**
  * Lightweight input sanitization for API routes.
  * Use for user-supplied strings before DB or downstream use.
+ * For rich HTML, use sanitizeHtml (XSS-safe) when rendering user content.
  */
 
+import DOMPurify from 'isomorphic-dompurify';
+
 const MAX_STRING_LENGTH = 10_000;
+
+/** Default max length for sanitized HTML output */
+const MAX_HTML_LENGTH = 100_000;
 
 /**
  * Trim and limit length. Replaces control chars and null bytes.
@@ -61,4 +67,22 @@ export function sanitizeStringRecord(
     }
   }
   return out;
+}
+
+/**
+ * Sanitize HTML for safe rendering (XSS protection).
+ * Use when rendering user-supplied rich text (e.g. job descriptions, notes).
+ * Allows safe tags; strips scripts, event handlers, and dangerous attributes.
+ */
+export function sanitizeHtml(html: unknown, maxLength: number = MAX_HTML_LENGTH): string {
+  if (html == null) return '';
+  const raw = String(html);
+  const trimmed = raw.slice(0, maxLength);
+  return DOMPurify.sanitize(trimmed, {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'a', 'ul', 'ol', 'li',
+      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'code', 'pre', 'span', 'div',
+    ],
+    ALLOWED_ATTR: ['href', 'target', 'rel', 'title'],
+  });
 }

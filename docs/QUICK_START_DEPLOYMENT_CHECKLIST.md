@@ -79,10 +79,10 @@ Use these **exact** variable names (the app expects them):
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | From Supabase → Settings → API |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | **Secret** – server only |
 | `ANTHROPIC_API_KEY` | Yes | **Secret** – e.g. `sk-ant-...` |
-| `RESUME_WORKER_URL` | Yes | Full URL of resume worker (no trailing slash) |
+| `RESUME_WORKER_URL` | Yes | Full URL of resume worker (no trailing slash) — see [Setup: Resume worker & AUTOFILL](SETUP_RESUME_WORKER_AND_AUTOFILL.md) |
 | `NEXT_PUBLIC_APP_URL` | Yes | `https://orioncmos.com` |
 | `CRON_SECRET` | Yes | e.g. `openssl rand -hex 32` |
-| `AUTOFILL_ALLOWED_ORIGINS` | Yes (prod) | `https://orioncmos.com` (or comma-separated list) |
+| `AUTOFILL_ALLOWED_ORIGINS` | Yes (prod) | `https://orioncmos.com` (or comma-separated list) — see [Setup: Resume worker & AUTOFILL](SETUP_RESUME_WORKER_AND_AUTOFILL.md) |
 | `INGEST_USE_V3` | Optional | Set `true` for quality/scam filtering |
 
 **Steps:**

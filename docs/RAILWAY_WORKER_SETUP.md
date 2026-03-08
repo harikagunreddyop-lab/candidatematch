@@ -57,7 +57,7 @@ Railway should auto-detect the Dockerfile. If not:
 | `SUPABASE_SERVICE_ROLE_KEY` | Same as your main app | Yes |
 | `ANTHROPIC_API_KEY` | Same as your main app | Yes |
 | `WORKER_SECRET` | A secret string (see below) | Yes |
-| `WORKER_PORT` | `3001` | Optional (default 3001) |
+| `WORKER_PORT` | `3001` | Optional; Railway sets `PORT` automatically — the worker uses it |
 | `REDIS_URL` | Redis URL (if using BullMQ) | Optional |
 
 **Generate a worker secret:**

@@ -13,7 +13,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const WORKER_SECRET = process.env.WORKER_SECRET;
-const PORT = process.env.WORKER_PORT || 3001;
+const PORT = process.env.PORT || process.env.WORKER_PORT || 3001;
 const TEMP_DIR = path.join(__dirname, 'tmp');
 const REDIS_URL = process.env.REDIS_URL || (process.env.REDIS_HOST && process.env.REDIS_PORT
   ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}` : null);

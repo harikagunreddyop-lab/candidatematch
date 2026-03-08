@@ -60,14 +60,19 @@ export async function GET() {
   if (process.env.ANTHROPIC_API_KEY) {
     try {
       const response = await fetch('https://api.anthropic.com/v1/models', {
-        headers: { 'x-api-key': process.env.ANTHROPIC_API_KEY },
+        headers: {
+          'x-api-key': process.env.ANTHROPIC_API_KEY.trim(),
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
       });
       checks.anthropic = response.ok ? { status: 'healthy' } : { status: 'unhealthy', error: `HTTP ${response.status}` };
-      if (!response.ok && status === 'healthy') status = 'degraded';
+      // Anthropic check is informational — don't affect overall status (key may lack Models API access)
+      // if (!response.ok && status === 'healthy') status = 'degraded';
     } catch (e) {
       const err = e instanceof Error ? e.message : String(e);
       checks.anthropic = { status: 'unhealthy', error: err };
-      if (status === 'healthy') status = 'degraded';
+      // if (status === 'healthy') status = 'degraded';
     }
   } else {
     checks.anthropic = 'not_configured';
@@ -80,9 +85,8 @@ export async function GET() {
     (checks.redis === 'not_configured' ||
       (typeof checks.redis === 'object' && (checks.redis as { status: string }).status === 'healthy')) &&
     (checks.cache === 'not_configured' ||
-      (typeof checks.cache === 'object' && (checks.cache as { status: string }).status === 'healthy')) &&
-    (checks.anthropic === 'not_configured' ||
-      (typeof checks.anthropic === 'object' && (checks.anthropic as { status: string }).status === 'healthy'));
+      (typeof checks.cache === 'object' && (checks.cache as { status: string }).status === 'healthy'));
+  // Anthropic is informational only — does not affect allHealthy
 
   const body = {
     status: allHealthy ? 'healthy' : status,

@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, parseInt(searchParams.get('page') || String(DEFAULT_PAGE), 10));
   const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(searchParams.get('limit') || String(DEFAULT_LIMIT), 10)));
   const sortBy = searchParams.get('sort_by') || 'relevance';
+  // #region agent log
+  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0753dd'},body:JSON.stringify({sessionId:'0753dd',runId:'initial',hypothesisId:'H3_api_filter_application',location:'src/app/api/jobs/search/route.ts:32',message:'API search params received',data:{query,location,remoteType,salaryMin,salaryMax,jobTypesCount:jobTypeRaw?jobTypeRaw.split(',').filter(Boolean).length:0,experienceLevelsCount:experienceLevelRaw?experienceLevelRaw.split(',').filter(Boolean).length:0,skillsCount:skillsRaw?skillsRaw.split(',').filter(Boolean).length:0,page,limit,sortBy},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   const jobTypes = jobTypeRaw.split(',').map((s) => s.trim()).filter(Boolean);
   const experienceLevels = experienceLevelRaw.split(',').map((s) => s.trim()).filter(Boolean);
@@ -47,7 +50,13 @@ export async function GET(req: NextRequest) {
     q = q.ilike('location', `%${location}%`);
   }
   if (remoteType && ['remote', 'hybrid', 'onsite'].includes(remoteType.toLowerCase())) {
-    q = q.eq('remote_type', remoteType.toLowerCase());
+    const normalizedRemote = remoteType.toLowerCase();
+    if (normalizedRemote === 'onsite') {
+      // Handle common stored variants: onsite, on-site, on site, office based.
+      q = q.or('remote_type.ilike.%onsite%,remote_type.ilike.%on-site%,remote_type.ilike.%on site%,remote_type.ilike.%office%');
+    } else {
+      q = q.ilike('remote_type', `%${normalizedRemote}%`);
+    }
   }
   if (salaryMin) {
     const n = parseInt(salaryMin, 10);
@@ -88,6 +97,9 @@ export async function GET(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // #region agent log
+  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0753dd'},body:JSON.stringify({sessionId:'0753dd',runId:'initial',hypothesisId:'H3_api_filter_application',location:'src/app/api/jobs/search/route.ts:92',message:'API query result snapshot',data:{remoteTypeParam:remoteType || null,rowCount:Array.isArray(jobs)?jobs.length:0,total:count ?? null,resultRemoteTypes:Array.isArray(jobs)?Array.from(new Set(jobs.map((j:any)=>j?.remote_type ?? null))).slice(0,8):[]},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   let candidate: { id: string; skills?: string[]; years_of_experience?: number; primary_title?: string; location?: string; open_to_remote?: boolean; salary_min?: number; salary_max?: number } | null = null;
   try {
@@ -123,6 +135,7 @@ export async function GET(req: NextRequest) {
       min_years_experience: job.min_years_experience ?? null,
       seniority_level: job.seniority_level ?? null,
       company_logo_url: job.company_logo_url ?? null,
+      jd_excerpt: (job.jd_clean ?? job.jd_raw ?? '').toString().replace(/\s+/g, ' ').slice(0, 260) || null,
     };
     if (candidate) {
       const { score, reasons } = calculateMatchScore(

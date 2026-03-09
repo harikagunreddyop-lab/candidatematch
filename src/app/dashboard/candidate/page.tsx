@@ -30,6 +30,9 @@ const ApplicationsList = dynamic(
 );
 
 const WEEKLY_GOAL_DEFAULT = 5;
+const DEBUG_ENDPOINT = 'http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50';
+const DEBUG_SESSION_ID = 'f6067c';
+const DEBUG_RUN_ID = 'candidate-dashboard-run1';
 
 function trackDashboardCta(cta: string, props?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
@@ -69,8 +72,14 @@ export default function CandidateDashboard() {
       const res = await fetch('/api/candidate/dashboard/stats', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load stats');
       const data = await res.json();
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:76',message:'fetchStats success',data:{applicationsTotal:data?.applicationsTotal??0,activeMatches:data?.activeMatches??0,averageMatchScore:data?.averageMatchScore??0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setStats(data);
     } catch (e) {
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:81',message:'fetchStats failed',data:{error:e instanceof Error ? e.message : 'unknown'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setStatsError(e instanceof Error ? e.message : 'Failed to load stats');
     } finally {
       setStatsLoading(false);
@@ -83,8 +92,14 @@ export default function CandidateDashboard() {
       const res = await fetch('/api/candidate/dashboard/recommendations', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load recommendations');
       const data = await res.json();
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:98',message:'fetchRecommendations success',data:{recommendationCount:Array.isArray(data?.recommendations)?data.recommendations.length:0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setRecommendations(data.recommendations ?? []);
     } catch (e) {
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:103',message:'fetchRecommendations failed',data:{error:e instanceof Error ? e.message : 'unknown'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setRecsError(e instanceof Error ? e.message : 'Failed to load recommendations');
     } finally {
       setRecsLoading(false);
@@ -97,8 +112,14 @@ export default function CandidateDashboard() {
       const res = await fetch('/api/candidate/dashboard/upcoming', { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load upcoming');
       const data = await res.json();
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:120',message:'fetchUpcoming success',data:{upcomingCount:Array.isArray(data?.upcoming)?data.upcoming.length:0},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setUpcoming(data.upcoming ?? []);
     } catch (e) {
+      // #region agent log
+      fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H2',location:'src/app/dashboard/candidate/page.tsx:125',message:'fetchUpcoming failed',data:{error:e instanceof Error ? e.message : 'unknown'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setUpcomingError(e instanceof Error ? e.message : 'Failed to load upcoming');
     } finally {
       setUpcomingLoading(false);
@@ -106,11 +127,14 @@ export default function CandidateDashboard() {
   }, []);
 
   useEffect(() => {
+    // #region agent log
+    fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H4',location:'src/app/dashboard/candidate/page.tsx:135',message:'dashboard candidate gate check',data:{candidateLoading,candidateIdPresent:Boolean(candidate?.id)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!candidate?.id) return;
     fetchStats();
     fetchRecommendations();
     fetchUpcoming();
-  }, [candidate?.id, fetchStats, fetchRecommendations, fetchUpcoming]);
+  }, [candidate?.id, candidateLoading, fetchStats, fetchRecommendations, fetchUpcoming]);
 
   // Real-time: refetch when applications or matches change
   useEffect(() => {
@@ -157,6 +181,13 @@ export default function CandidateDashboard() {
       supabase.removeChannel(matchesChannel);
     };
   }, [candidate?.id, refreshApplications, refreshMatches, fetchStats, fetchRecommendations, fetchUpcoming]);
+
+  useEffect(() => {
+    if (candidateLoading || !candidate?.id) return;
+    // #region agent log
+    fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H5',location:'src/app/dashboard/candidate/page.tsx:188',message:'dashboard state snapshot',data:{matchesCount:matches.length,applicationsCount:applications.length,statsActiveMatches:stats?.activeMatches??null,statsAvgMatch:stats?.averageMatchScore??null,statsLoading,matchesLoading,appsLoading,recsLoading,upcomingLoading},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [candidateLoading, candidate?.id, matches.length, applications.length, stats?.activeMatches, stats?.averageMatchScore, statsLoading, matchesLoading, appsLoading, recsLoading, upcomingLoading]);
 
   if (candidateLoading) {
     return (
@@ -220,12 +251,12 @@ export default function CandidateDashboard() {
           />
           <DashboardMetricCard
             label="AI Matches"
-            value={statsLoading ? '—' : (stats?.activeMatches ?? 0)}
+            value={matchesLoading ? '—' : matches.length}
             icon={<Sparkles className="w-5 h-5" />}
             iconClassName="bg-brand-400/10 text-brand-400"
             href="/dashboard/candidate/matches"
-            loading={statsLoading}
-            aria-label={`AI matches: ${stats?.activeMatches ?? 0}`}
+            loading={matchesLoading}
+            aria-label={`AI matches: ${matches.length}`}
             onCtaClick={() => trackDashboardCta('metric_matches')}
           />
           <DashboardMetricCard

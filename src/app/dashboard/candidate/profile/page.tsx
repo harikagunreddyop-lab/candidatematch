@@ -64,13 +64,25 @@ export default function CandidateProfilePage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLoading(false); return; }
     const { data: cand } = await supabase.from('candidates').select('*').eq('user_id', session.user.id).single();
-    if (!cand) { setNotLinked(true); setLoading(false); return; }
-    setCandidate(cand);
+    if (!cand) {
+      // #region agent log
+      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H4',location:'profile/page.tsx:68',message:'Candidate profile page has no linked candidate',data:{hasSession:true},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      setNotLinked(true); setLoading(false); return;
+    }
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H1',location:'profile/page.tsx:72',message:'Loaded candidate target title fields',data:{candidateId:cand.id,targetJobTitlesCount:Array.isArray(cand.target_job_titles)?cand.target_job_titles.length:0,targetRolesCount:Array.isArray((cand as any).target_roles)?(cand as any).target_roles.length:0},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    const normalizedTargetTitles =
+      Array.isArray(cand.target_job_titles) && cand.target_job_titles.length > 0
+        ? cand.target_job_titles
+        : (Array.isArray((cand as any).target_roles) ? (cand as any).target_roles : []);
+    setCandidate({ ...cand, target_job_titles: normalizedTargetTitles });
     setAutofillSuccess(false);
     setProfileForm({
       full_name: cand.full_name || '',
       primary_title: cand.primary_title || '',
-      target_job_titles: (cand.target_job_titles || []).join(', '),
+      target_job_titles: normalizedTargetTitles.join(', '),
       phone: cand.phone || '',
       location: cand.location || '',
       linkedin_url: cand.linkedin_url || '',
@@ -200,6 +212,7 @@ export default function CandidateProfilePage() {
       full_name: profileForm.full_name,
       primary_title: profileForm.primary_title?.trim() || null,
       target_job_titles: targetTitlesArr,
+      target_roles: targetTitlesArr,
       phone: profileForm.phone || null,
       location: profileForm.location || null,
       linkedin_url: profileForm.linkedin_url || null,
@@ -212,6 +225,9 @@ export default function CandidateProfilePage() {
       open_to_remote: profileForm.open_to_remote ?? true,
       privacy_settings: Object.keys(privacySettings).length ? privacySettings : {},
     };
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H1',location:'profile/page.tsx:216',message:'Saving candidate profile target_job_titles',data:{candidateId:candidate.id,targetJobTitlesCount:targetTitlesArr.length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (Array.isArray(profileForm.experience) && profileForm.experience.length > 0) {
       (payload as any).experience = profileForm.experience;
     }

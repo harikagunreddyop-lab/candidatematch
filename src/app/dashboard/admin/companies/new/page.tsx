@@ -1,9 +1,17 @@
 'use client';
 export default function NewCompanyPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-white mb-2">New Company</h1>
-      <p className="text-surface-500">Full implementation coming in next sprint. Form will call POST /api/companies (name, slug, owner_email, subscription_plan).</p>
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <h1 className="admin-page-title">New Company</h1>
+        <p className="admin-page-subtitle">Create a company workspace and owner account.</p>
+      </div>
+      <div className="card p-6">
+        <p className="text-sm text-surface-600">
+          Full implementation coming in next sprint. Form will call `POST /api/companies` with
+          `name`, `slug`, `owner_email`, and `subscription_plan`.
+        </p>
+      </div>
     </div>
   );
 }

@@ -700,10 +700,10 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Users & Recruiters</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+          <h1 className="admin-page-title">Users & Recruiters</h1>
+          <p className="admin-page-subtitle">
             {roleCount('recruiter')} recruiters · {roleCount('admin')} admins · {roleCount('candidate')} candidates
           </p>
         </div>
@@ -716,13 +716,13 @@ export default function UsersPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle size={14} />{error}
         </div>
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: 'Total Users', val: displayUsers.length, color: 'text-surface-900 dark:text-surface-100', sub: 'portal accounts' },
           { label: 'Recruiters', val: roleCount('recruiter'), color: 'text-brand-700 dark:text-brand-400', sub: 'with access' },
@@ -738,7 +738,7 @@ export default function UsersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div className="admin-toolbar">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, email, company..." />
         <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
           className="input text-sm w-full sm:w-36" aria-label="Filter by role">
@@ -755,35 +755,35 @@ export default function UsersPage() {
           action={<button onClick={() => setShowInvite(true)} className="btn-primary text-sm flex items-center gap-1.5"><Send size={14} /> Invite User</button>} />
       ) : (
         <div className="card overflow-hidden min-w-0">
-          <div className="divide-y divide-surface-100 dark:divide-surface-600">
+          <div className="divide-y divide-surface-200">
             {filtered.map(u => {
               const assignedCount = assignmentCounts[u.id] || 0;
               const isExpanded = expandedId === u.id;
               const canManageFeatures = u.role === 'candidate' || u.role === 'recruiter';
               return (
                 <div key={u.id}>
-                  <div className="flex items-center gap-4 px-5 py-3 hover:bg-surface-100 dark:hover:bg-surface-700/60 transition-colors group">
+                  <div className="flex items-center gap-4 px-5 py-3 hover:bg-surface-50 transition-colors group">
                     <div className={cn(
                       'w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shrink-0',
                       u.role === 'admin' ? 'bg-brand-400/10 text-brand-400' :
-                        u.role === 'recruiter' ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300' : 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300'
+                        u.role === 'recruiter' ? 'bg-brand-100 text-brand-700' : 'bg-green-100 text-green-700'
                     )}>
                       {(u.name || u.email || '?')[0].toUpperCase()}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-surface-900 dark:text-surface-100">{u.name || '(no name yet)'}</p>
+                        <p className="text-sm font-semibold text-surface-900">{u.name || '(no name yet)'}</p>
                         <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium',
                           u.role === 'admin' ? 'bg-brand-400/10 text-brand-400' :
-                            u.role === 'recruiter' ? 'bg-brand-100 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300' : 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300')}>
+                            u.role === 'recruiter' ? 'bg-brand-100 text-brand-700' : 'bg-green-100 text-green-700')}>
                           {u.role}
                         </span>
                         {u.is_active === false && (
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400">Inactive</span>
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-600">Inactive</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-0.5 text-xs text-surface-500 dark:text-surface-400 flex-wrap">
+                      <div className="flex items-center gap-3 mt-0.5 text-xs text-surface-500 flex-wrap">
                         <span className="flex items-center gap-1"><Mail size={10} />{u.email}</span>
                         {u.phone && <span className="flex items-center gap-1"><Phone size={10} />{u.phone}</span>}
                         {u.company && <span className="flex items-center gap-1"><Briefcase size={10} />{u.company}</span>}
@@ -823,17 +823,17 @@ export default function UsersPage() {
                   </div>
 
                   {isExpanded && (
-                    <div className="px-4 sm:px-8 md:px-16 py-3 bg-surface-100 dark:bg-surface-700/80 border-t border-surface-100 dark:border-surface-600 text-xs text-surface-600 dark:text-surface-300 grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {u.title && <div><span className="text-surface-400 dark:text-surface-500">Title</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{u.title}</p></div>}
-                      {u.timezone && <div><span className="text-surface-400 dark:text-surface-500">Timezone</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{u.timezone}</p></div>}
-                      <div><span className="text-surface-400 dark:text-surface-500">Joined</span><p className="font-medium mt-0.5 text-surface-800 dark:text-surface-200">{formatRelative(u.created_at)}</p></div>
-                      {u.bio && <div className="col-span-2 md:col-span-3"><span className="text-surface-400 dark:text-surface-500">Bio</span><p className="mt-0.5 text-surface-700 dark:text-surface-300">{u.bio}</p></div>}
+                    <div className="px-4 sm:px-8 md:px-16 py-3 bg-surface-50 border-t border-surface-200 text-xs text-surface-600 grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {u.title && <div><span className="text-surface-400">Title</span><p className="font-medium mt-0.5 text-surface-800">{u.title}</p></div>}
+                      {u.timezone && <div><span className="text-surface-400">Timezone</span><p className="font-medium mt-0.5 text-surface-800">{u.timezone}</p></div>}
+                      <div><span className="text-surface-400">Joined</span><p className="font-medium mt-0.5 text-surface-800">{formatRelative(u.created_at)}</p></div>
+                      {u.bio && <div className="col-span-2 md:col-span-3"><span className="text-surface-400">Bio</span><p className="mt-0.5 text-surface-700">{u.bio}</p></div>}
                       {/* Feature access quick summary for eligible roles */}
                       {canManageFeatures && (
-                        <div className="col-span-2 md:col-span-3 pt-2 border-t border-surface-200 dark:border-surface-600">
+                        <div className="col-span-2 md:col-span-3 pt-2 border-t border-surface-200">
                           <button
                             onClick={() => setFeatureUser(u)}
-                            className="flex items-center gap-2 text-brand-600 dark:text-brand-400 hover:underline font-medium"
+                            className="flex items-center gap-2 text-brand-600 hover:underline font-medium"
                           >
                             <Sliders size={12} /> Manage feature access →
                           </button>

@@ -173,10 +173,10 @@ export default function AdminMessagesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 font-display">Messages</h1>
-          <p className="text-sm text-surface-500 mt-1">
+          <h1 className="admin-page-title">Messages</h1>
+          <p className="admin-page-subtitle">
             All conversations {totalUnread > 0 && <span className="text-brand-600 font-medium">· {totalUnread} unread</span>}
           </p>
         </div>
@@ -186,15 +186,15 @@ export default function AdminMessagesPage() {
         </button>
       </div>
 
-      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-surface-800 rounded-2xl border border-surface-600 shadow-sm overflow-hidden flex">
+      <div className="h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] bg-white rounded-[14px] border border-surface-300 shadow-[0_8px_25px_rgba(15,23,42,0.05)] overflow-hidden flex">
 
         {/* Sidebar */}
         <div className={cn(
-          'border-r border-surface-700 flex flex-col shrink-0',
+          'border-r border-surface-300 flex flex-col shrink-0',
           'w-full md:w-80',
           activeConvId || showNewConv ? 'hidden md:flex' : 'flex'
         )}>
-          <div className="p-3 border-b border-surface-700">
+          <div className="p-3 border-b border-surface-300">
             <SearchInput value={search} onChange={setSearch} placeholder="Search conversations..." />
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -236,7 +236,7 @@ export default function AdminMessagesPage() {
             <div className="h-full overflow-y-auto p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }} className="md:hidden p-1.5 rounded-lg hover:bg-surface-700 text-surface-400"><ArrowLeft size={18} /></button>
+                  <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }} className="md:hidden p-1.5 rounded-lg hover:bg-surface-100 text-surface-400"><ArrowLeft size={18} /></button>
                   <h3 className="font-semibold text-surface-900">New Conversation</h3>
                 </div>
                 <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }}
@@ -245,7 +245,7 @@ export default function AdminMessagesPage() {
 
               {/* Error banner */}
               {createError && (
-                <div className="mb-4 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400 flex items-start gap-2">
+                <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
                   <AlertCircle size={15} className="shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium">Something went wrong</p>
@@ -308,7 +308,7 @@ export default function AdminMessagesPage() {
               )}
 
               {/* Sticky footer buttons */}
-              <div className="sticky bottom-0 bg-surface-800 border-t border-surface-700 pt-3 flex gap-3">
+              <div className="sticky bottom-0 bg-white border-t border-surface-300 pt-3 flex gap-3">
                 <button
                   onClick={() => { setShowNewConv(false); setSelectedUsers([]); setCreateError(null); }}
                   className="btn-secondary flex-1 text-sm">
@@ -327,7 +327,7 @@ export default function AdminMessagesPage() {
 
           ) : activeConvId ? (
             <div className="flex flex-col h-full">
-              <button onClick={() => setActiveConvId(null)} className="md:hidden flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-surface-300 hover:text-white border-b border-surface-700 shrink-0">
+              <button onClick={() => setActiveConvId(null)} className="md:hidden flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-surface-500 hover:text-surface-900 border-b border-surface-300 shrink-0">
                 <ArrowLeft size={16} /> Back to conversations
               </button>
               <div className="flex-1 min-h-0">
@@ -343,7 +343,7 @@ export default function AdminMessagesPage() {
               <div className="w-16 h-16 rounded-2xl bg-brand-600/10 flex items-center justify-center">
                 <MessageCircle size={28} className="text-brand-400" />
               </div>
-              <p className="text-surface-200 font-medium">Select a conversation</p>
+              <p className="text-surface-700 font-medium">Select a conversation</p>
               <p className="text-sm text-surface-400">
                 Choose from the list on the left, or start a new conversation
               </p>

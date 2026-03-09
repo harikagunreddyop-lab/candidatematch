@@ -207,12 +207,12 @@ export default function SkillReportTabContent() {
   if (!atsReportAllowed) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-6 text-center px-4 max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-surface-200 dark:bg-surface-700 flex items-center justify-center">
-          <BarChart2 size={28} className="text-surface-500 dark:text-surface-400" />
+        <div className="w-16 h-16 rounded-2xl bg-surface-200 flex items-center justify-center">
+          <BarChart2 size={28} className="text-surface-500" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-2">ATS fix report</h2>
-          <p className="text-sm text-surface-500 dark:text-surface-400">
+          <h2 className="text-lg font-semibold text-surface-900 mb-2">ATS fix report</h2>
+          <p className="text-sm text-surface-600">
             This feature is not enabled for your account. Ask an admin to grant access in Users &amp; Recruiters settings.
           </p>
         </div>
@@ -231,36 +231,36 @@ export default function SkillReportTabContent() {
 
   return (
     <div className="space-y-8">
-      <div className="mb-6 rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-50/80 dark:bg-surface-700/40 px-3 py-2.5 flex gap-2.5 text-xs text-surface-600 dark:text-surface-400">
-        <Info size={14} className="shrink-0 mt-0.5 text-surface-500 dark:text-surface-400" />
+      <div className="mb-6 rounded-lg border border-surface-300 bg-surface-50/80 px-3 py-2.5 flex gap-2.5 text-xs text-surface-600">
+        <Info size={14} className="shrink-0 mt-0.5 text-surface-500" />
         <p>
           Automated screening is used to evaluate applications. If you are blocked from applying due to a low score, you have the right to <strong>request human review</strong> of your application.
         </p>
       </div>
 
-      <div className="rounded-xl border border-brand-200 dark:border-brand-500/30 bg-gradient-to-br from-brand-50/50 to-white dark:from-brand-500/5 dark:to-surface-800 p-5">
-        <h4 className="text-xs font-semibold text-brand-700 dark:text-brand-300 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+      <div className="rounded-xl border border-brand-200 bg-gradient-to-br from-brand-50/50 to-white p-5">
+        <h4 className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
           <User size={12} /> Profile analysis
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-2">Strong in</p>
+            <p className="text-[10px] font-semibold text-emerald-700 uppercase tracking-wide mb-2">Strong in</p>
             {profileStrengths.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {profileStrengths.map((k, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <span key={i} className="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-700 text-xs font-medium">
                     ✓ {k}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-surface-500 dark:text-surface-400">No keyword data yet.</p>
+              <p className="text-xs text-surface-600">No keyword data yet.</p>
             )}
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-brand-700 dark:text-brand-400 uppercase tracking-wide mb-2">Best fit roles</p>
+            <p className="text-[10px] font-semibold text-brand-700 uppercase tracking-wide mb-2">Best fit roles</p>
             {bestFitRoles.length > 0 ? (
-              <ul className="space-y-1 text-xs text-surface-700 dark:text-surface-200">
+              <ul className="space-y-1 text-xs text-surface-700">
                 {bestFitRoles.map((m: any) => (
                   <li key={m.id} className="flex items-center gap-2">
                     <span className={cn('shrink-0 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold', getScoreBadgeClasses(m.fit_score).bg, getScoreBadgeClasses(m.fit_score).text)}>
@@ -273,56 +273,56 @@ export default function SkillReportTabContent() {
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-surface-500 dark:text-surface-400">No matches yet.</p>
+              <p className="text-xs text-surface-600">No matches yet.</p>
             )}
           </div>
           <div>
-            <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">What to add or highlight</p>
+            <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide mb-2">What to add or highlight</p>
             {whatToAdd.length > 0 ? (
               <div className="flex flex-wrap gap-1">
                 {whatToAdd.map((k, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                  <span key={i} className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-700 text-xs font-medium">
                     + {k}
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-surface-500 dark:text-surface-400">No major gaps identified.</p>
+              <p className="text-xs text-surface-600">No major gaps identified.</p>
             )}
           </div>
         </div>
       </div>
 
       {(resumes.length > 0 || profileOnlyMatches.length > 0 || tailoredResumeMatches.length > 0) && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-5">
-          <h4 className="text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <div className="rounded-xl border border-surface-300 bg-surface-50/50 p-5">
+          <h4 className="text-xs font-semibold text-surface-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
             <FileText size={12} /> Resume analysis
           </h4>
           <div className="space-y-4">
             {resumeAnalysis
               .filter((ra) => ra.forResume.length > 0)
               .map((ra) => (
-                <div key={ra.resume.id} className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
-                  <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
+                <div key={ra.resume.id} className="rounded-lg border border-surface-300 bg-surface-100 p-4">
+                  <p className="text-sm font-semibold text-surface-900 mb-2 flex items-center gap-2">
                     <FileText size={14} className="text-brand-500" /> {ra.resume.label}
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <p className="font-medium text-surface-600 dark:text-surface-300 mb-1">Strong in</p>
+                      <p className="font-medium text-surface-600 mb-1">Strong in</p>
                       <div className="flex flex-wrap gap-1">
                         {ra.strongIn.length > 0 ? (
                           ra.strongIn.map((k, i) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300">
+                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700">
                               ✓ {k}
                             </span>
                           ))
                         ) : (
-                          <span className="text-surface-400 dark:text-surface-500">—</span>
+                          <span className="text-surface-400">—</span>
                         )}
                       </div>
                     </div>
                     <div>
-                      <p className="font-medium text-surface-600 dark:text-surface-300 mb-1">Best for</p>
+                      <p className="font-medium text-surface-600 mb-1">Best for</p>
                       <ul className="space-y-0.5">
                         {ra.bestFor.map((b: any, i: number) => (
                           <li key={i} className="truncate">
@@ -335,21 +335,21 @@ export default function SkillReportTabContent() {
                 </div>
               ))}
             {tailoredResumeMatches.length > 0 && (
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
-                <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
+              <div className="rounded-lg border border-surface-300 bg-surface-100 p-4">
+                <p className="text-sm font-semibold text-surface-900 mb-2 flex items-center gap-2">
                   <Sparkles size={14} className="text-brand-500" /> Tailored resumes
                 </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400">
+                <p className="text-xs text-surface-600">
                   You have tailored resumes for {tailoredResumeMatches.length} job{tailoredResumeMatches.length !== 1 ? 's' : ''}.
                 </p>
               </div>
             )}
             {profileOnlyMatches.length > 0 && (
-              <div className="rounded-lg border border-surface-200 dark:border-surface-600 bg-surface-100 p-4">
-                <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-2 flex items-center gap-2">
+              <div className="rounded-lg border border-surface-300 bg-surface-100 p-4">
+                <p className="text-sm font-semibold text-surface-900 mb-2 flex items-center gap-2">
                   <Zap size={14} className="text-amber-500" /> Profile-only (no resume)
                 </p>
-                <p className="text-xs text-surface-500 dark:text-surface-400">
+                <p className="text-xs text-surface-600">
                   {profileOnlyMatches.length} match{profileOnlyMatches.length !== 1 ? 'es' : ''} scored from profile only. Upload or tailor a resume to improve ATS scores.
                 </p>
               </div>
@@ -359,7 +359,7 @@ export default function SkillReportTabContent() {
       )}
 
       <div>
-        <h4 className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <h4 className="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
           <Star size={12} className="text-emerald-500" /> Why your best matches score high
         </h4>
         <div className="space-y-4">
@@ -371,10 +371,10 @@ export default function SkillReportTabContent() {
               const matchedKw = (m.matched_keywords || []) as string[];
               const missingKw = (m.missing_keywords || []) as string[];
               return (
-                <div key={m.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-4">
+                <div key={m.id} className="rounded-xl border border-surface-300 bg-surface-50/50 p-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="font-semibold text-surface-900 dark:text-surface-100">
+                      <p className="font-semibold text-surface-900">
                         {m.job?.title} · {m.job?.company}
                       </p>
                       <ATSScoreBadge score={m.fit_score} decision="Strong match" />
@@ -382,12 +382,12 @@ export default function SkillReportTabContent() {
                   </div>
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <p className="font-medium text-emerald-700 dark:text-emerald-300 mb-1">What&apos;s working</p>
-                      {reason.strength && <p className="text-surface-700 dark:text-surface-200">{reason.strength}</p>}
+                      <p className="font-medium text-emerald-700 mb-1">What&apos;s working</p>
+                      {reason.strength && <p className="text-surface-700">{reason.strength}</p>}
                       {matchedKw.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {matchedKw.slice(0, 6).map((k: string, i: number) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300">
+                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700">
                               ✓ {k}
                             </span>
                           ))}
@@ -395,18 +395,18 @@ export default function SkillReportTabContent() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-amber-700 dark:text-amber-300 mb-1">What&apos;s missing</p>
-                      {reason.gap && <p className="text-surface-700 dark:text-surface-200">{reason.gap}</p>}
+                      <p className="font-medium text-amber-700 mb-1">What&apos;s missing</p>
+                      {reason.gap && <p className="text-surface-700">{reason.gap}</p>}
                       {missingKw.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {missingKw.slice(0, 4).map((k: string, i: number) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded bg-amber-500/15 dark:bg-amber-500/25 text-amber-700 dark:text-amber-300">
+                            <span key={i} className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700">
                               △ {k}
                             </span>
                           ))}
                         </div>
                       )}
-                      {!reason.gap && (!missingKw || missingKw.length === 0) && <p className="text-surface-500 dark:text-surface-400">No major gaps</p>}
+                      {!reason.gap && (!missingKw || missingKw.length === 0) && <p className="text-surface-500">No major gaps</p>}
                     </div>
                   </div>
                   {atsReportAllowed && typeof m.ats_score === 'number' && (
@@ -424,7 +424,7 @@ export default function SkillReportTabContent() {
                       candidateTitle={candidate?.primary_title}
                     />
                   )}
-                  <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
+                  <div className="mt-3 pt-3 border-t border-surface-300 flex flex-wrap justify-end gap-2">
                     <button
                       onClick={() => runAtsForJob(m.job_id)}
                       disabled={!!atsRunningByJob[m.job_id]}
@@ -432,9 +432,9 @@ export default function SkillReportTabContent() {
                         'text-xs py-1.5 px-2.5 flex items-center gap-1 rounded-lg border font-medium transition-colors',
                         typeof m.ats_score === 'number'
                           ? m.ats_score >= 50
-                            ? 'border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                            : 'border-amber-300 dark:border-amber-500/40 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                          : 'btn-ghost text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10'
+                            ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                            : 'border-amber-300 bg-amber-50 text-amber-700'
+                          : 'btn-ghost text-brand-600 hover:bg-brand-50'
                       )}
                       title="Run on-demand ATS check"
                     >
@@ -448,7 +448,7 @@ export default function SkillReportTabContent() {
                         setBriefError(null);
                         generateJobBrief(m.job_id);
                       }}
-                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-500/10"
+                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 hover:bg-brand-50"
                     >
                       <Brain size={12} /> AI brief for this role
                     </button>
@@ -457,13 +457,13 @@ export default function SkillReportTabContent() {
               );
             })}
           {matches.filter((m) => m.fit_score >= SCORE_APPLY_OK).length === 0 && (
-            <p className="text-sm text-surface-500 dark:text-surface-400">No strong matches (82+) yet. Add skills and resume content to improve scores.</p>
+            <p className="text-sm text-surface-500">No strong matches (82+) yet. Add skills and resume content to improve scores.</p>
           )}
         </div>
       </div>
 
       <div>
-        <h4 className="text-xs font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+        <h4 className="text-xs font-semibold text-surface-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
           <AlertCircle size={12} className="text-amber-500" /> Why some roles score lower
         </h4>
         <div className="space-y-4">
@@ -475,10 +475,10 @@ export default function SkillReportTabContent() {
               const matchedKw = (m.matched_keywords || []) as string[];
               const missingKw = (m.missing_keywords || []) as string[];
               return (
-                <div key={m.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/50 dark:bg-surface-700/30 p-4">
+                <div key={m.id} className="rounded-xl border border-surface-300 bg-surface-50/50 p-4">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <p className="font-semibold text-surface-900 dark:text-surface-100">
+                      <p className="font-semibold text-surface-900">
                         {m.job?.title} · {m.job?.company}
                       </p>
                       <ATSScoreBadge score={m.fit_score} />
@@ -486,13 +486,13 @@ export default function SkillReportTabContent() {
                   </div>
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <p className="font-medium text-surface-600 dark:text-surface-300 mb-1">Gaps / risks</p>
-                      {reason.gap && <p className="text-surface-700 dark:text-surface-200">{reason.gap}</p>}
-                      {reason.risk && reason.risk !== 'None' && <p className="text-red-600 dark:text-red-400 mt-0.5">{reason.risk}</p>}
+                      <p className="font-medium text-surface-600 mb-1">Gaps / risks</p>
+                      {reason.gap && <p className="text-surface-700">{reason.gap}</p>}
+                      {reason.risk && reason.risk !== 'None' && <p className="text-red-600 mt-0.5">{reason.risk}</p>}
                       {missingKw.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1">
                           {missingKw.slice(0, 5).map((k: string, i: number) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded bg-red-500/15 dark:bg-red-500/25 text-red-700 dark:text-red-300">
+                            <span key={i} className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-700">
                               ✗ {k}
                             </span>
                           ))}
@@ -500,25 +500,25 @@ export default function SkillReportTabContent() {
                       )}
                     </div>
                     <div>
-                      <p className="font-medium text-surface-600 dark:text-surface-300 mb-1">What matched</p>
+                      <p className="font-medium text-surface-600 mb-1">What matched</p>
                       {matchedKw.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {matchedKw.slice(0, 4).map((k: string, i: number) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300">
+                            <span key={i} className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700">
                               ✓ {k}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-surface-500 dark:text-surface-400">Few keywords matched</p>
+                        <p className="text-surface-500">Few keywords matched</p>
                       )}
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-surface-200 dark:border-surface-600 flex flex-wrap justify-end gap-2">
+                  <div className="mt-3 pt-3 border-t border-surface-300 flex flex-wrap justify-end gap-2">
                     <button
                       onClick={() => runAtsForJob(m.job_id)}
                       disabled={!!atsRunningByJob[m.job_id]}
-                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 dark:text-brand-400"
+                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600"
                     >
                       {atsRunningByJob[m.job_id] ? <Spinner size={12} /> : <BarChart2 size={12} />}
                       {typeof m.ats_score === 'number' ? `ATS ${m.ats_score}` : 'Run ATS check'}
@@ -530,7 +530,7 @@ export default function SkillReportTabContent() {
                         setBriefError(null);
                         generateJobBrief(m.job_id);
                       }}
-                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600 dark:text-brand-400"
+                      className="btn-ghost text-xs py-1.5 px-2.5 flex items-center gap-1 text-brand-600"
                     >
                       <Brain size={12} /> AI brief
                     </button>
@@ -539,18 +539,18 @@ export default function SkillReportTabContent() {
               );
             })}
           {matches.filter((m) => m.fit_score < SCORE_APPLY_OK).length === 0 && (
-            <p className="text-sm text-surface-500 dark:text-surface-400">All your matches are 75+. Great fit profile.</p>
+            <p className="text-sm text-surface-500">All your matches are 75+. Great fit profile.</p>
           )}
         </div>
       </div>
 
       {briefJobId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-          <div className="bg-surface-100 rounded-2xl shadow-xl border border-surface-200 dark:border-surface-600 w-full max-w-lg max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-surface-100 dark:border-surface-700">
+          <div className="bg-surface-50 rounded-3xl shadow-modal border border-surface-300 w-full max-w-lg max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-surface-300">
               <div className="min-w-0">
-                <p className="text-xs font-semibold text-brand-600 dark:text-brand-400 uppercase tracking-wide">AI brief</p>
-                <p className="text-sm font-bold text-surface-900 dark:text-surface-100 truncate">
+                <p className="text-xs font-semibold text-brand-600 uppercase tracking-wide">AI brief</p>
+                <p className="text-sm font-bold text-surface-900 truncate">
                   {matches.find((m: any) => m.job_id === briefJobId)?.job?.title} · {matches.find((m: any) => m.job_id === briefJobId)?.job?.company}
                 </p>
               </div>
@@ -560,21 +560,21 @@ export default function SkillReportTabContent() {
                   setBriefText(null);
                   setBriefError(null);
                 }}
-                className="p-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 dark:text-surface-400 shrink-0"
+                className="p-2 rounded-xl hover:bg-surface-200 text-surface-500 shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
             <div className="p-5 overflow-y-auto flex-1">
               {briefLoading && !briefText && (
-                <div className="flex items-center gap-2 text-surface-500 dark:text-surface-400">
+                <div className="flex items-center gap-2 text-surface-500">
                   <Spinner size={18} /> Generating brief…
                 </div>
               )}
               {briefError && (
-                <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-lg px-3 py-2">{briefError}</p>
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{briefError}</p>
               )}
-              {briefText && <div className="text-sm text-surface-700 dark:text-surface-200 leading-relaxed whitespace-pre-wrap">{briefText}</div>}
+              {briefText && <div className="text-sm text-surface-700 leading-relaxed whitespace-pre-wrap">{briefText}</div>}
             </div>
           </div>
         </div>

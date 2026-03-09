@@ -11,11 +11,11 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabase-browser';
 
 export default function CandidateOnboardingPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -157,8 +157,12 @@ export default function CandidateOnboardingPage() {
     try {
       const rolesArr = targetRoles.split(',').map(s => s.trim()).filter(Boolean);
       const locsArr = targetLocations.split(',').map(s => s.trim()).filter(Boolean);
+      // #region agent log
+      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H1',location:'onboarding/page.tsx:161',message:'Saving candidate preferences from onboarding',data:{candidateId,rolesCount:rolesArr.length,locationsCount:locsArr.length,writesField:'target_roles'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       await supabase.from('candidates').update({
         target_roles: rolesArr,
+        target_job_titles: rolesArr,
         target_locations: locsArr,
         open_to_remote: remote,
         visa_status: visaStatus.trim() || null,
@@ -166,6 +170,9 @@ export default function CandidateOnboardingPage() {
         salary_max: salaryMax ? parseInt(salaryMax) : null,
         onboarding_step: 4,
       }).eq('id', candidateId);
+      // #region agent log
+      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H1',location:'onboarding/page.tsx:170',message:'Candidate preferences saved in onboarding',data:{candidateId,onboardingStep:4},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       next();
     } catch (err: any) {
       setError(err.message || 'Failed to save');

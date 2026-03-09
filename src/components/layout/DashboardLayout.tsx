@@ -12,12 +12,13 @@ import {
   BarChart3, Settings, FileText, Shield, Building2,
   Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,
   Calendar, Target, ChevronDown, Mic, DollarSign, MessageSquare,
-  Bell,
+  Bell, Search, Plus,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { DashboardContent } from '@/components/layout/DashboardContent';
 import { cn } from '@/utils/helpers';
+import { motion } from 'framer-motion';
 
 interface NavItem {
   label: string;
@@ -108,9 +109,8 @@ const candidateNav: NavItem[] = [
     href: '/dashboard/candidate/integrations',
     icon: <Plug size={18} />,
     children: [
-      { label: 'Gmail', href: '/dashboard/candidate/integrations' },
+      { label: 'Email Integration', href: '/dashboard/candidate/integrations' },
       { label: 'Extension', href: '/dashboard/candidate/connect-extension' },
-      { label: 'ATS Connect', href: '/dashboard/candidate/integrations' },
     ],
   },
   { label: 'Messages', href: '/dashboard/candidate/messages', icon: <MessageCircle size={18} /> },
@@ -221,28 +221,41 @@ export default function DashboardLayout({ children, profile }: { children: React
 
   const effectiveRoleForNav = (profile as { effective_role?: string }).effective_role || profile.role;
   const dashboardHref =
-    (effectiveRoleForNav === 'platform_admin' || effectiveRoleForNav === 'admin') ? '/dashboard/admin' :
+    effectiveRoleForNav === 'platform_admin' ? '/dashboard/admin' :
     effectiveRoleForNav === 'company_admin' ? '/dashboard/company' :
     effectiveRoleForNav === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
   const messagesHref =
-    (effectiveRoleForNav === 'platform_admin' || effectiveRoleForNav === 'admin') ? '/dashboard/admin/messages' :
+    effectiveRoleForNav === 'platform_admin' ? '/dashboard/admin/messages' :
     effectiveRoleForNav === 'company_admin' ? '/dashboard/company/messages' :
     effectiveRoleForNav === 'recruiter' ? '/dashboard/recruiter/messages' : '/dashboard/candidate/messages';
 
   const role = profile.role as 'candidate' | 'recruiter' | 'admin';
+  const isAdmin = effectiveRole === 'platform_admin';
 
   return (
-    <div className="min-h-screen flex" data-role={role} style={{ backgroundColor: 'var(--role-main-bg)' }}>
+    <div
+      className={cn(
+        'min-h-screen flex',
+        effectiveRole === 'candidate' && 'candidate-light-theme',
+        isAdmin && 'admin-shell'
+      )}
+      data-role={role}
+      style={{ backgroundColor: 'var(--role-main-bg)' }}
+    >
       {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileOpen(false)} aria-hidden="true" />
       )}
 
       {/* Sidebar - role-specific design via CSS variables */}
-      <aside
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 82 : 260 }}
+        transition={{ duration: 0.2, ease: 'easeOut' }}
         className={cn(
           'fixed lg:sticky top-0 left-0 h-screen flex flex-col z-50 transition-all duration-300 ease-out',
-          collapsed ? 'w-[72px]' : 'w-[256px]',
+          collapsed ? 'w-[82px]' : 'w-[260px]',
+          isAdmin && 'admin-sidebar',
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
         style={{
@@ -412,7 +425,7 @@ export default function DashboardLayout({ children, profile }: { children: React
             {collapsed ? <ChevronRight size={18} /> : <><ChevronLeft size={18} /> Collapse</>}
           </button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
@@ -437,8 +450,28 @@ export default function DashboardLayout({ children, profile }: { children: React
           >
             <Menu size={20} />
           </button>
-          <div />
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className={cn('flex-1 px-2 sm:px-4', !isAdmin && 'hidden')}>
+            {isAdmin && (
+              <label className="admin-topbar-search">
+                <Search size={14} />
+                <input
+                  type="text"
+                  placeholder="Search candidates, jobs, companies..."
+                  className="admin-topbar-search-input"
+                />
+              </label>
+            )}
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            {isAdmin && (
+              <Link
+                href="/dashboard/admin/companies/new"
+                className="admin-quick-action hidden md:inline-flex"
+              >
+                <Plus size={14} />
+                New company
+              </Link>
+            )}
             <ThemeToggle />
             {effectiveRole === 'platform_admin' && <AdminNotificationBell adminId={profile.id} />}
             <Link
@@ -456,20 +489,21 @@ export default function DashboardLayout({ children, profile }: { children: React
               <p className="text-sm font-medium text-surface-900 dark:text-white truncate max-w-[140px]">{profile.name || profile.email}</p>
               <p className="text-xs capitalize" style={{ color: 'var(--role-accent)' }}>{effectiveRole?.replace('_', ' ') || profile.role}</p>
             </div>
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm text-surface-800 dark:text-white border"
-              style={{
+            <button className={cn('w-9 h-9 rounded-xl flex items-center justify-center font-semibold text-sm border', isAdmin ? 'admin-profile-chip' : 'text-surface-800 dark:text-white')}
+              style={!isAdmin ? {
                 backgroundColor: 'var(--role-sidebar-logo-bg)',
                 borderColor: 'var(--role-sidebar-logo-border)',
-              }}
+              } : undefined}
             >
               {(profile.name || profile.email || '?')[0].toUpperCase()}
-            </div>
+            </button>
           </div>
         </header>
 
         <main className="relative flex-1 p-4 sm:p-5 lg:p-8 overflow-x-hidden min-w-0 w-full">
-          <DashboardContent>{children}</DashboardContent>
+          <div className={cn(isAdmin && 'admin-content-shell')}>
+            <DashboardContent>{children}</DashboardContent>
+          </div>
         </main>
       </div>
     </div>

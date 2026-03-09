@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { Spinner } from '@/components/ui';
 import { Settings, Bell, Shield, Trash2, AlertTriangle } from 'lucide-react';
-import { getAppUrl } from '@/config';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 function PrivacyDataSection() {
   const [privacyConsent, setPrivacyConsent] = useState(false);
@@ -204,7 +204,7 @@ function SendPasswordReset() {
       return;
     }
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${(getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '')}/auth/reset-password`,
+      redirectTo: `${getPublicAppUrl()}/auth/reset-password`,
     });
     if (err) setError(err.message);
     else setSent(true);

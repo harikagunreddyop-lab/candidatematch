@@ -24,23 +24,25 @@ export default function CronHistoryPage() {
   }, [supabase]);
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/admin" className="text-surface-400 hover:text-white flex items-center gap-1 text-sm">
+        <Link href="/dashboard/admin" className="text-surface-600 hover:text-surface-900 flex items-center gap-1 text-sm">
           <ChevronLeft size={18} /> Back
         </Link>
       </div>
-      <h1 className="text-2xl font-bold text-white">Cron Job History</h1>
-      <p className="text-surface-400 text-sm">Ingest, match, and other scheduled runs.</p>
+      <div>
+        <h1 className="admin-page-title">Cron Job History</h1>
+        <p className="admin-page-subtitle">Ingest, match, and other scheduled runs.</p>
+      </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-surface-700 bg-surface-800/50 p-8 text-center text-surface-500">Loading…</div>
+        <div className="rounded-2xl border border-surface-300 bg-white p-8 text-center text-surface-500">Loading…</div>
       ) : (
-        <div className="rounded-2xl border border-surface-700 bg-surface-800/50 overflow-hidden">
+        <div className="admin-table-wrap">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-surface-700 text-left text-surface-400">
+                <tr className="border-b border-surface-300 text-left text-surface-500">
                   <th className="px-6 py-3 font-medium">Mode</th>
                   <th className="px-6 py-3 font-medium">Started</th>
                   <th className="px-6 py-3 font-medium">Ended</th>
@@ -54,15 +56,15 @@ export default function CronHistoryPage() {
                   <tr><td colSpan={6} className="px-6 py-8 text-center text-surface-500">No runs yet.</td></tr>
                 ) : (
                   runs.map((r: any) => (
-                    <tr key={r.id} className="border-b border-surface-700/50 hover:bg-surface-700/20">
-                      <td className="px-6 py-3 text-white">{r.mode || '—'}</td>
-                      <td className="px-6 py-3 text-surface-300">{formatRelative(r.started_at)}</td>
-                      <td className="px-6 py-3 text-surface-300">{r.ended_at ? formatRelative(r.ended_at) : '—'}</td>
+                    <tr key={r.id} className="border-b border-surface-200 hover:bg-surface-50">
+                      <td className="px-6 py-3 text-surface-900">{r.mode || '—'}</td>
+                      <td className="px-6 py-3 text-surface-600">{formatRelative(r.started_at)}</td>
+                      <td className="px-6 py-3 text-surface-600">{r.ended_at ? formatRelative(r.ended_at) : '—'}</td>
                       <td className="px-6 py-3">
-                        <span className={r.status === 'ok' ? 'text-emerald-400' : r.status === 'failed' ? 'text-red-400' : 'text-amber-400'}>{r.status}</span>
+                        <span className={r.status === 'ok' ? 'text-emerald-600' : r.status === 'failed' ? 'text-red-600' : 'text-amber-600'}>{r.status}</span>
                       </td>
-                      <td className="px-6 py-3 text-surface-300">{r.candidates_processed ?? r.total_matches_upserted ?? '—'}</td>
-                      <td className="px-6 py-3 text-red-400 truncate max-w-[180px]" title={r.error_message || ''}>{r.error_message || '—'}</td>
+                      <td className="px-6 py-3 text-surface-600">{r.candidates_processed ?? r.total_matches_upserted ?? '—'}</td>
+                      <td className="px-6 py-3 text-red-600 truncate max-w-[180px]" title={r.error_message || ''}>{r.error_message || '—'}</td>
                     </tr>
                   ))
                 )}

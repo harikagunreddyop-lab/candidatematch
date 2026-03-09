@@ -46,31 +46,33 @@ export default function SystemHealthPage() {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/dashboard/admin" className="text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white flex items-center gap-1 text-sm">
+        <Link href="/dashboard/admin" className="text-surface-600 hover:text-surface-900 flex items-center gap-1 text-sm">
           <ChevronLeft size={18} /> Back to Dashboard
         </Link>
-        <button onClick={load} disabled={loading} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-200 dark:bg-surface-700 hover:bg-surface-300 dark:hover:bg-surface-600 text-surface-900 dark:text-white text-sm font-medium disabled:opacity-50">
+        <button onClick={load} disabled={loading} className="btn-secondary text-sm flex items-center gap-2 disabled:opacity-50">
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-white">System Health</h1>
-      <p className="text-surface-600 dark:text-surface-400 text-sm">Database, Redis, and cache status.</p>
+      <div>
+        <h1 className="admin-page-title">System Health</h1>
+        <p className="admin-page-subtitle">Database, Redis, cache, and model provider status.</p>
+      </div>
 
       {loading && !health ? (
-        <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-8 text-center text-surface-600 dark:text-surface-500">
+        <div className="rounded-2xl border border-surface-300 bg-white p-8 text-center text-surface-600">
           Loading…
         </div>
       ) : (
-        <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/50 overflow-hidden">
-          <div className="px-6 py-4 border-b border-surface-200 dark:border-surface-700 flex items-center justify-between">
-            <span className="font-semibold text-surface-900 dark:text-white">Overall</span>
+        <div className="rounded-2xl border border-surface-300 bg-white overflow-hidden shadow-[0_8px_25px_rgba(15,23,42,0.05)]">
+          <div className="px-6 py-4 border-b border-surface-300 flex items-center justify-between">
+            <span className="font-semibold text-surface-900">Overall</span>
             <span className={cn(
               'text-sm font-medium px-2 py-0.5 rounded-full',
-              health?.status === 'healthy' && 'bg-emerald-500/20 text-emerald-400',
-              health?.status === 'degraded' && 'bg-amber-500/20 text-amber-400',
-              (health?.status === 'unhealthy' || health?.status === 'error') && 'bg-red-500/20 text-red-400'
+              health?.status === 'healthy' && 'bg-emerald-50 text-emerald-700',
+              health?.status === 'degraded' && 'bg-amber-50 text-amber-700',
+              (health?.status === 'unhealthy' || health?.status === 'error') && 'bg-red-50 text-red-700'
             )}>
               {health?.status ?? 'unknown'}
             </span>
@@ -80,42 +82,42 @@ export default function SystemHealthPage() {
               <>
                 <div className="flex items-center gap-3">
                   <Database size={20} className="text-surface-500" />
-                  <span className="flex-1 text-surface-900 dark:text-surface-100">Database</span>
+                  <span className="flex-1 text-surface-900">Database</span>
                   <span className={cn(
                     'font-medium',
-                    isHealthy(health.checks.database) && 'text-emerald-600 dark:text-emerald-400',
-                    !isHealthy(health.checks.database) && !isNotConfigured(health.checks.database) && 'text-red-600 dark:text-red-400'
+                    isHealthy(health.checks.database) && 'text-emerald-600',
+                    !isHealthy(health.checks.database) && !isNotConfigured(health.checks.database) && 'text-red-600'
                   )}>{checkStatus(health.checks.database)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Zap size={20} className="text-surface-500" />
-                  <span className="flex-1 text-surface-900 dark:text-surface-100">Redis (queues)</span>
+                  <span className="flex-1 text-surface-900">Redis (queues)</span>
                   <span className={cn(
                     'font-medium',
-                    isHealthy(health.checks.redis) && 'text-emerald-600 dark:text-emerald-400',
-                    isNotConfigured(health.checks.redis) && 'text-surface-600 dark:text-surface-400',
-                    !isHealthy(health.checks.redis) && !isNotConfigured(health.checks.redis) && 'text-amber-600 dark:text-amber-400'
+                    isHealthy(health.checks.redis) && 'text-emerald-600',
+                    isNotConfigured(health.checks.redis) && 'text-surface-600',
+                    !isHealthy(health.checks.redis) && !isNotConfigured(health.checks.redis) && 'text-amber-600'
                   )}>{checkStatus(health.checks.redis)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Cloud size={20} className="text-surface-500" />
-                  <span className="flex-1 text-surface-900 dark:text-surface-100">Cache (Upstash)</span>
+                  <span className="flex-1 text-surface-900">Cache (Upstash)</span>
                   <span className={cn(
                     'font-medium',
-                    isHealthy(health.checks.cache) && 'text-emerald-600 dark:text-emerald-400',
-                    isNotConfigured(health.checks.cache) && 'text-surface-600 dark:text-surface-400',
-                    !isHealthy(health.checks.cache) && !isNotConfigured(health.checks.cache) && 'text-amber-600 dark:text-amber-400'
+                    isHealthy(health.checks.cache) && 'text-emerald-600',
+                    isNotConfigured(health.checks.cache) && 'text-surface-600',
+                    !isHealthy(health.checks.cache) && !isNotConfigured(health.checks.cache) && 'text-amber-600'
                   )}>{checkStatus(health.checks.cache)}</span>
                 </div>
                 {health.checks.anthropic !== undefined && (
                   <div className="flex items-center gap-3">
                     <Bot size={20} className="text-surface-500" />
-                    <span className="flex-1 text-surface-900 dark:text-surface-100">Anthropic</span>
+                    <span className="flex-1 text-surface-900">Anthropic</span>
                     <span className={cn(
                       'font-medium',
-                      isHealthy(health.checks.anthropic) && 'text-emerald-600 dark:text-emerald-400',
-                      isNotConfigured(health.checks.anthropic) && 'text-surface-600 dark:text-surface-400',
-                      !isHealthy(health.checks.anthropic) && !isNotConfigured(health.checks.anthropic) && 'text-amber-600 dark:text-amber-400'
+                      isHealthy(health.checks.anthropic) && 'text-emerald-600',
+                      isNotConfigured(health.checks.anthropic) && 'text-surface-600',
+                      !isHealthy(health.checks.anthropic) && !isNotConfigured(health.checks.anthropic) && 'text-amber-600'
                     )}>{checkStatus(health.checks.anthropic)}</span>
                   </div>
                 )}
@@ -123,7 +125,7 @@ export default function SystemHealthPage() {
             )}
           </div>
           {health?.timestamp && (
-            <div className="px-6 py-2 border-t border-surface-200 dark:border-surface-700 text-xs text-surface-600 dark:text-surface-500">
+            <div className="px-6 py-2 border-t border-surface-300 text-xs text-surface-600">
               Last checked: {new Date(health.timestamp).toLocaleString()}
             </div>
           )}

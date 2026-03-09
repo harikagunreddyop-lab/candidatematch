@@ -13,10 +13,10 @@ import {
   RoleCard,
   EmailVerification,
 } from '@/components/auth';
-import { getAppUrl } from '@/config';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 function getAppUrlWithFallback(): string {
-  return (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+  return getPublicAppUrl();
 }
 
 type SignupRole = 'candidate' | 'company';

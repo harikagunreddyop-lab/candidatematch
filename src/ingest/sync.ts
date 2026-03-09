@@ -5,7 +5,7 @@
 
 import { createServiceClient } from '@/lib/supabase-server';
 import { log, error as logError } from '@/lib/logger';
-import { precomputeJobRequirements } from '@/lib/matching';
+import { precomputeJobRequirements, runMatchingForJobs } from '@/lib/matching';
 import { adapters, type Connector } from './adapters';
 import { promoteIngestJobs, deactivateClosedJobs } from './promote';
 
@@ -17,9 +17,15 @@ export interface SyncResult {
   upserted: number;
   closed: number;
   promoted: number;
+  matching_candidates_processed: number;
+  matching_matches_upserted: number;
+  matching_status: 'skipped' | 'done' | 'error' | 'timed_out';
+  matching_error?: string;
   durationMs: number;
   error?: string;
 }
+
+const MATCHING_BUDGET_MS = Number(process.env.INGEST_MATCHING_BUDGET_MS || 20000);
 
 export async function syncConnector(connectorId: string): Promise<SyncResult> {
   const supabase = createServiceClient();
@@ -51,6 +57,9 @@ export async function syncConnector(connectorId: string): Promise<SyncResult> {
     upserted: 0,
     closed: 0,
     promoted: 0,
+    matching_candidates_processed: 0,
+    matching_matches_upserted: 0,
+    matching_status: 'skipped',
     durationMs: 0,
   };
 
@@ -119,6 +128,28 @@ export async function syncConnector(connectorId: string): Promise<SyncResult> {
         await precomputeJobRequirements(supabase, newJobIds);
       } catch (e) {
         logError('[INGEST] precomputeJobRequirements failed:', e);
+      }
+      try {
+        // Keep sync endpoint responsive in serverless environments by capping
+        // inline matching time. If matching exceeds budget, sync still succeeds.
+        const matchPromise = runMatchingForJobs(newJobIds);
+        const timeoutPromise = new Promise<null>((resolve) => {
+          setTimeout(() => resolve(null), MATCHING_BUDGET_MS);
+        });
+        const match = await Promise.race([matchPromise, timeoutPromise]);
+        if (match) {
+          result.matching_candidates_processed = match.candidates_processed;
+          result.matching_matches_upserted = match.total_matches_upserted;
+          result.matching_status = 'done';
+        } else {
+          result.matching_status = 'timed_out';
+          result.matching_error = `Matching exceeded ${MATCHING_BUDGET_MS}ms budget`;
+        }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        result.matching_status = 'error';
+        result.matching_error = msg;
+        logError('[INGEST] runMatchingForJobs failed:', e);
       }
     }
 

@@ -62,9 +62,9 @@ export function AIProfileOptimizer({
   };
 
   return (
-    <div className={cn('rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50 p-4', className)}>
+    <div className={cn('rounded-xl border border-surface-300 bg-surface-50 p-4', className)}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium text-surface-700 dark:text-surface-200 flex items-center gap-2">
+        <span className="text-sm font-medium text-surface-700 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-brand-500" />
           AI optimization
         </span>
@@ -79,30 +79,30 @@ export function AIProfileOptimizer({
         </button>
       </div>
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400 mt-2" role="alert">
+        <p className="text-sm text-red-600 mt-2" role="alert">
           {error}
         </p>
       )}
       {result && (
         <div className="mt-3 space-y-2">
-          <p className="text-xs text-surface-500 dark:text-surface-400">
-            Score: <strong className="text-surface-700 dark:text-surface-200">{result.score}/100</strong>
+          <p className="text-xs text-surface-500">
+            Score: <strong className="text-surface-700">{result.score}/100</strong>
           </p>
           {result.reasoning && (
-            <p className="text-sm text-surface-600 dark:text-surface-300">{result.reasoning}</p>
+            <p className="text-sm text-surface-600">{result.reasoning}</p>
           )}
           {result.suggestions.length > 0 && (
             <>
               <button
                 type="button"
                 onClick={() => setExpanded((e) => !e)}
-                className="text-xs font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1"
+                className="text-xs font-medium text-brand-600 flex items-center gap-1"
               >
                 {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 {result.suggestions.length} suggestions
               </button>
               {expanded && (
-                <ul className="list-disc list-inside text-sm text-surface-600 dark:text-surface-300 space-y-1">
+                <ul className="list-disc list-inside text-sm text-surface-600 space-y-1">
                   {result.suggestions.map((s, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span>{s}</span>
@@ -110,7 +110,7 @@ export function AIProfileOptimizer({
                         <button
                           type="button"
                           onClick={() => onApplySuggestion(s)}
-                          className="text-brand-600 dark:text-brand-400 hover:underline shrink-0"
+                          className="text-brand-600 hover:underline shrink-0"
                         >
                           Apply
                         </button>

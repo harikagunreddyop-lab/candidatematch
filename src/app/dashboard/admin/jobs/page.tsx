@@ -2,10 +2,25 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal } from '@/components/ui';
-import { Briefcase, Plus, ExternalLink, Eye, RefreshCw, Zap, AlertCircle, Upload } from 'lucide-react';
-import { formatRelative, truncate } from '@/utils/helpers';
+import { Briefcase, ExternalLink, Eye, RefreshCw, AlertCircle } from 'lucide-react';
+import { formatRelative, truncate, cn } from '@/utils/helpers';
 import { JobBoardsPanel } from '@/components/admin/JobBoardsPanel';
 import { useSearchParams, useRouter } from 'next/navigation';
+
+interface AdminJob {
+  id: string;
+  title: string | null;
+  company: string | null;
+  location: string | null;
+  source: string | null;
+  scraped_at: string | null;
+  url: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
+  job_type: string | null;
+  remote_type: string | null;
+  jd_clean: string | null;
+}
 
 export default function JobsPage() {
   const searchParams = useSearchParams();
@@ -13,17 +28,13 @@ export default function JobsPage() {
   const initialTab = (searchParams.get('tab') === 'boards' ? 'boards' : 'jobs') as 'jobs' | 'boards';
   const [tab, setTab] = useState<'jobs' | 'boards'>(initialTab);
 
-  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [showAddJob, setShowAddJob] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
-  const [viewing, setViewing] = useState<any>(null);
+  const [viewing, setViewing] = useState<AdminJob | null>(null);
   const [page, setPage] = useState(0);
-  const [matching, setMatching] = useState(false);
-  const [matchMsg, setMatchMsg] = useState<string | null>(null);
   const [liveMatchCount, setLiveMatchCount] = useState<number | null>(null);
   const [sourceFilter, setSourceFilter] = useState('all');
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -34,6 +45,13 @@ export default function JobsPage() {
 
   const sourceFilterRef = useRef(sourceFilter);
   useEffect(() => { sourceFilterRef.current = sourceFilter; setPage(0); }, [sourceFilter]);
+  const [debouncedSearch, setDebouncedSearch] = useState(search.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+  const searchRef = useRef(debouncedSearch);
+  useEffect(() => { searchRef.current = debouncedSearch; setPage(0); }, [debouncedSearch]);
 
   // Live match count (in sync with Reports & Analytics) — defined before load so load can call it
   const fetchMatchStats = useCallback(async () => {
@@ -52,26 +70,24 @@ export default function JobsPage() {
     loadingRef.current = true;
     const currentPage = pageRef.current;
     const currentSource = sourceFilterRef.current;
+    const currentSearch = searchRef.current;
     if (!silent) setLoading(true);
     setError(null);
 
     try {
-      const params = new URLSearchParams({ page: String(currentPage) });
+      const params = new URLSearchParams({ page: String(currentPage), pageSize: '10' });
       if (currentSource !== 'all') params.set('source', currentSource);
+      if (currentSearch) params.set('q', currentSearch);
       const res = await fetch(`/api/admin/jobs?${params}`, { cache: 'no-store' });
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setError(data.error || 'Failed to load jobs');
       } else {
-        setJobs(data.jobs || []);
+        setJobs((data.jobs || []) as AdminJob[]);
         setTotalCount(data.totalCount || 0);
         setLastRefreshed(new Date());
-        // When there are 0 jobs, clear stale run message so banner shows live match count (0 after CASCADE)
-        if ((data.totalCount ?? 0) === 0) {
-          setMatchMsg(null);
-          fetchMatchStats();
-        }
+        fetchMatchStats();
       }
     } finally {
       loadingRef.current = false;
@@ -93,7 +109,7 @@ export default function JobsPage() {
 
   useEffect(() => {
     if (tab !== 'jobs') return;
-    const interval = setInterval(() => load(true), 10000);
+    const interval = setInterval(() => load(true), 30000);
     return () => clearInterval(interval);
   }, [load, tab]);
 
@@ -113,94 +129,32 @@ export default function JobsPage() {
     return () => { supabase.removeChannel(channel); };
   }, [supabase, load, tab]);
 
-  // ── Run Matching — reads SSE stream from /api/matches ─────────────────────
-  const runMatching = async () => {
-    setMatching(true);
-    setMatchMsg(null);
-
-    try {
-      const res = await fetch('/api/matches', { method: 'POST' });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Server error ${res.status}: ${text}`);
-      }
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      if (!reader) throw new Error('No response body');
-
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-
-          const payload = line.slice(6);
-          if (!payload) continue;
-
-          try {
-            const event = JSON.parse(payload);
-
-            // ✅ backend emits "log" (not progress)
-            if (event.type === 'log' || event.type === 'progress') {
-              setMatchMsg(`⏳ ${event.message}`);
-            } else if (event.type === 'complete') {
-              const r = event.result || {};
-              setMatchMsg(
-                `✅ ${r.total_matches_upserted ?? r.total_matches ?? 0} matches across ${r.candidates_processed ?? 0} candidates`
-              );
-              fetchMatchStats();
-            } else if (event.type === 'error') {
-              throw new Error(event.message || 'Matching failed');
-            }
-          } catch (parseErr: any) {
-            // ignore partial lines / decode artifacts
-            if (!String(parseErr?.message || '').includes('Unexpected token')) {
-              throw parseErr;
-            }
-          }
-        }
-      }
-    } catch (err: any) {
-      setMatchMsg(`❌ Matching failed: ${err.message || String(err)}`);
-    }
-
-    setMatching(false);
+  const formatScrapedAtSafe = (scrapedAt: string | null) => {
+    if (!scrapedAt) return '—';
+    return formatRelative(scrapedAt);
   };
-
-  const filtered = jobs.filter(j =>
-    j.title?.toLowerCase().includes(search.toLowerCase()) ||
-    j.company?.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Jobs</h1>
-          <div className="mt-3 inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-1">
+          <h1 className="admin-page-title">Jobs</h1>
+          <div className="mt-3 admin-segmented">
             <button
               onClick={() => { setTab('jobs'); router.replace('/dashboard/admin/jobs'); }}
-              className={tab === 'jobs' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-100 dark:text-surface-900 dark:font-semibold' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+              className={cn('admin-segmented-btn', tab === 'jobs' && 'is-active')}
             >
               Jobs
             </button>
             <button
               onClick={() => { setTab('boards'); router.replace('/dashboard/admin/jobs?tab=boards'); }}
-              className={tab === 'boards' ? 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-surface-900 text-[#0a0a0a] font-bold dark:bg-surface-100 dark:text-surface-900 dark:font-semibold' : 'px-3 py-1.5 text-sm font-medium rounded-lg text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-surface-100'}
+              className={cn('admin-segmented-btn', tab === 'boards' && 'is-active')}
             >
               Job boards
             </button>
           </div>
           {tab === 'jobs' && (
-            <p className="text-sm text-surface-500 dark:text-surface-400 mt-2">
+            <p className="admin-page-subtitle mt-2">
               {totalCount.toLocaleString()} jobs · page {page + 1}
               {lastRefreshed && (
                 <span className="text-surface-400">
@@ -215,15 +169,6 @@ export default function JobsPage() {
             <button onClick={() => load()} className="btn-ghost text-sm flex items-center gap-1.5">
               <RefreshCw size={14} /> Refresh
             </button>
-            <button onClick={runMatching} disabled={matching} className="btn-secondary text-sm flex items-center gap-1.5">
-              {matching ? <><Spinner size={12} /> Matching...</> : <><Zap size={14} /> Run Matching</>}
-            </button>
-            <button onClick={() => setShowUpload(true)} className="btn-secondary text-sm flex items-center gap-1.5">
-              <Upload size={14} /> Upload CSV/Excel
-            </button>
-            <button onClick={() => setShowAddJob(true)} className="btn-primary text-sm flex items-center gap-1.5">
-              <Plus size={16} /> Add Job
-            </button>
           </div>
         )}
       </div>
@@ -232,13 +177,9 @@ export default function JobsPage() {
         <JobBoardsPanel onSyncComplete={() => load()} />
       ) : (
         <>
-          {(matchMsg || liveMatchCount !== null) && (
-            <div className={`rounded-xl border px-4 py-3 text-sm flex items-center gap-2 ${matchMsg?.startsWith('✅') ? 'border-green-200 dark:border-green-500/40 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-200'
-                : matchMsg?.startsWith('⏳') ? 'border-blue-200 dark:border-blue-500/40 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200'
-                  : matchMsg ? 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-200'
-                    : 'border-surface-200 dark:border-surface-600 bg-surface-100/80 text-surface-700 dark:text-surface-300'
-              }`}>
-              {matchMsg ?? (liveMatchCount !== null ? `${liveMatchCount.toLocaleString()} total matches (same as Reports & Analytics)` : null)}
+          {liveMatchCount !== null && (
+            <div className="rounded-xl border border-surface-200 dark:border-surface-600 bg-surface-100/80 text-surface-700 dark:text-surface-300 px-4 py-3 text-sm">
+              Auto-matching runs whenever new jobs are ingested. Current total matches: {liveMatchCount.toLocaleString()}.
             </div>
           )}
 
@@ -275,11 +216,15 @@ export default function JobsPage() {
 
           {loading ? (
             <div className="flex justify-center py-12"><Spinner size={28} /></div>
-          ) : filtered.length === 0 ? (
+          ) : jobs.length === 0 ? (
             <EmptyState
               icon={<Briefcase size={24} />}
-              title="No jobs yet"
-              description="Switch to the Job boards tab and run Sync all to pull jobs from Lever/Greenhouse, or click Add Job to add manually. Then click Refresh to see them here."
+              title={debouncedSearch ? 'No jobs found' : 'No jobs yet'}
+              description={
+                debouncedSearch
+                  ? 'Try a different search term, clear filters, or refresh.'
+                  : 'Switch to the Job boards tab and run Sync all to pull jobs from enabled connectors. Then click Refresh to see them here.'
+              }
             />
           ) : (
             <div className="table-container">
@@ -295,13 +240,13 @@ export default function JobsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(j => (
+                  {jobs.map(j => (
                     <tr key={j.id}>
-                      <td className="font-medium text-surface-900 max-w-[250px] truncate">{j.title}</td>
-                      <td>{j.company}</td>
+                      <td className="font-medium text-surface-900 max-w-[250px] truncate">{j.title || 'Untitled'}</td>
+                      <td>{j.company || '—'}</td>
                       <td className="text-surface-500">{truncate(j.location || '—', 25)}</td>
-                      <td><span className="badge-neutral text-xs capitalize">{j.source}</span></td>
-                      <td className="text-surface-500 text-xs">{formatRelative(j.scraped_at)}</td>
+                      <td><span className="badge-neutral text-xs capitalize">{j.source || 'unknown'}</span></td>
+                      <td className="text-surface-500 text-xs">{formatScrapedAtSafe(j.scraped_at)}</td>
                       <td>
                         <div className="flex gap-1">
                           <button onClick={() => setViewing(j)} className="btn-ghost p-1.5" title="View JD">
@@ -318,7 +263,7 @@ export default function JobsPage() {
                   ))}
                 </tbody>
               </table>
-              <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200 dark:border-surface-700">
+              <div className="flex items-center justify-between px-5 py-3 border-t border-surface-200">
                 <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="btn-ghost text-xs">← Prev</button>
                 <span className="text-xs text-surface-500">
                   Showing {page * 10 + 1}–{Math.min((page + 1) * 10, totalCount)} of {totalCount.toLocaleString()}
@@ -329,7 +274,7 @@ export default function JobsPage() {
           )}
 
           {viewing && (
-            <Modal open onClose={() => setViewing(null)} title={viewing.title} size="lg">
+            <Modal open onClose={() => setViewing(null)} title={viewing.title || 'Job Details'} size="lg">
               <div className="space-y-3">
                 <p className="text-sm"><strong>Company:</strong> {viewing.company}</p>
                 <p className="text-sm"><strong>Location:</strong> {viewing.location || 'N/A'}</p>
@@ -355,347 +300,8 @@ export default function JobsPage() {
               </div>
             </Modal>
           )}
-
-          {showAddJob && (
-            <Modal open onClose={() => setShowAddJob(false)} title="Add Job Manually" size="lg">
-              <AddJobForm onClose={() => setShowAddJob(false)} onSaved={() => load()} />
-            </Modal>
-          )}
-
-          {showUpload && (
-            <Modal open onClose={() => setShowUpload(false)} title="Upload Jobs (CSV / Excel)" size="xl">
-              <UploadJobsForm onClose={() => setShowUpload(false)} onSaved={() => load()} />
-            </Modal>
-          )}
         </>
       )}
-    </div>
-  );
-}
-
-// ─── Add Job Form ─────────────────────────────────────────────────────────────
-function AddJobForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const supabase = createClient();
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [f, setF] = useState({ title: '', company: '', location: '', url: '', jd_clean: '' });
-  const upd = (k: string, v: string) => setF(p => ({ ...p, [k]: v }));
-
-  const save = async () => {
-    setSaving(true);
-    setError(null);
-    const { error: err } = await supabase.from('jobs').insert({
-      ...f,
-      source: 'manual',
-      is_active: true,
-      jd_raw: f.jd_clean,
-      dedupe_hash: btoa(encodeURIComponent(f.title + f.company + f.location)).slice(0, 32),
-    });
-    if (err) { setError(err.message); setSaving(false); return; }
-    setSaving(false);
-    onSaved();
-    onClose();
-  };
-
-  return (
-    <div className="space-y-4">
-      {([['title', 'Title *'], ['company', 'Company *'], ['location', 'Location'], ['url', 'Job URL']] as const).map(([k, l]) => (
-        <div key={k}>
-          <label className="label">{l}</label>
-          <input className="input text-sm" value={(f as any)[k]} onChange={e => upd(k, e.target.value)} />
-        </div>
-      ))}
-      <div>
-        <label className="label">Job Description</label>
-        <textarea className="input text-sm h-40 resize-none" value={f.jd_clean} onChange={e => upd('jd_clean', e.target.value)} />
-      </div>
-      {error && <p className="text-xs text-red-600 flex items-center gap-1"><AlertCircle size={12} />{error}</p>}
-      <div className="flex justify-end gap-3 pt-4 border-t border-surface-200">
-        <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-        <button onClick={save} disabled={saving || !f.title || !f.company} className="btn-primary text-sm">
-          {saving ? 'Saving...' : 'Add Job'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Upload Jobs Form ─────────────────────────────────────────────────────────
-function UploadJobsForm({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const [stage, setStage] = useState<'pick' | 'preview' | 'uploading' | 'matching' | 'done'>('pick');
-  const [_rows, setRows] = useState<any[]>([]);
-  const [parsed, setParsed] = useState<any[]>([]);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const mapRow = (row: any) => {
-    // Normalize keys once so we can match case-insensitively
-    const norm: Record<string, any> = {};
-    for (const [k, v] of Object.entries(row)) {
-      norm[k.toLowerCase()] = v;
-    }
-
-    const pick = (...keys: string[]) => {
-      for (const k of keys) {
-        const v = norm[k.toLowerCase()];
-        if (v !== undefined && v !== null && String(v).trim() !== '' && v !== 'None') return String(v).trim();
-      }
-      return '';
-    };
-
-    // ✅ supports Apify LinkedIn exports + common CSV headers (case-insensitive)
-    return {
-      title: pick('job_title', 'title', 'Title', 'jobtitle', 'position', 'Job Title'),
-      company: pick(
-        'company_name',
-        'company/name',
-        'company',
-        'companyName',
-        'employer',
-        'organization', // Apify: organization
-        'organisation'
-      ),
-      location: pick('location', 'location/linkedinText', 'location/parsed/text', 'Location', 'city', 'City'),
-      url: pick(
-        'job_url', 'apply_url',
-        'linkedinUrl', 'applyMethod/companyApplyUrl', 'easyApplyUrl',
-        'url', 'URL', 'link', 'Job URL'
-      ),
-      jd: pick(
-        'description_text', 'description_html',
-        'descriptionText', 'descriptionHtml',
-        'description', 'job_description', 'jd', 'Description'
-      ),
-      salary: pick('salary_range', 'salary/text', 'salaryText', 'salary', 'Salary'),
-    };
-  };
-
-  const parseFile = async (file: File) => {
-    setError(null);
-    setFileName(file.name);
-
-    try {
-      const XLSX = await import('xlsx');
-      const buffer = await file.arrayBuffer();
-      const wb = XLSX.read(buffer, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rawRows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
-
-      if (!rawRows.length) { setError('File appears empty.'); return; }
-
-      const mappedRows = rawRows.map(mapRow).filter(r => r.title && r.company);
-
-      if (!mappedRows.length) {
-        setError(
-          `Could not find title/company columns.\nColumns found: ${Object.keys(rawRows[0]).slice(0, 12).join(', ')}...\n` +
-          `Expected columns: job_title + company_name (Apify) OR title + company (simple CSV).`
-        );
-        return;
-      }
-
-      setRows(rawRows);
-      setParsed(mappedRows);
-      setStage('preview');
-    } catch (e: any) {
-      setError(`Failed to parse file: ${e.message}`);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) parseFile(file);
-  };
-
-  const upload = async () => {
-    setStage('uploading');
-
-    try {
-      // ✅ MUST upload parsed (mapped) rows, not raw rows
-      const res = await fetch('/api/upload-jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobs: parsed }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
-
-      setResult(data);
-      onSaved();
-
-      if (data.inserted > 0 && data.matching?.status === 'started') {
-        setStage('done');
-      } else {
-        if (data.inserted > 0) setStage('matching');
-        await new Promise(r => setTimeout(r, 400));
-        setStage('done');
-      }
-    } catch (e: any) {
-      setError(e.message);
-      setStage('preview');
-    }
-  };
-
-  if (stage === 'pick') return (
-    <div className="space-y-4">
-      <div
-        onDrop={handleDrop}
-        onDragOver={e => e.preventDefault()}
-        onClick={() => fileRef.current?.click()}
-        className="border-2 border-dashed border-surface-300 dark:border-surface-600 rounded-xl p-10 text-center cursor-pointer hover:border-brand-400 dark:hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors"
-      >
-        <Upload size={28} className="mx-auto text-surface-400 mb-3" />
-        <p className="text-sm font-medium text-surface-700">Drop your file here or click to browse</p>
-        <p className="text-xs text-surface-400 mt-1">Supports .csv, .xlsx, .xls — including LinkedIn Apify exports</p>
-        <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={e => e.target.files?.[0] && parseFile(e.target.files[0])} className="hidden" />
-      </div>
-
-      {error && <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-xs text-red-700 dark:text-red-200 whitespace-pre-wrap"><AlertCircle size={12} className="inline mr-1" />{error}</div>}
-
-      <div className="flex justify-end pt-2 border-t border-surface-200">
-        <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-      </div>
-    </div>
-  );
-
-  if (stage === 'preview') return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-surface-800">📄 {fileName}</p>
-          <p className="text-xs text-surface-500 mt-0.5">{parsed.length} valid jobs ready to import</p>
-        </div>
-        <button onClick={() => { setRows([]); setParsed([]); setStage('pick'); }} className="btn-ghost text-xs">← Change file</button>
-      </div>
-
-      <div className="rounded-xl border border-surface-200 overflow-hidden">
-        <div className="overflow-x-auto max-h-64">
-          <table className="w-full text-xs">
-            <thead className="bg-surface-100 border-b border-surface-200 dark:border-surface-600">
-              <tr>
-                {['#', 'Title', 'Company', 'Location', 'Has JD'].map(h => (
-                  <th key={h} className="px-3 py-2 text-left font-medium text-surface-500">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-100">
-              {parsed.slice(0, 50).map((r, i) => (
-                <tr key={i} className="hover:bg-surface-100">
-                  <td className="px-3 py-1.5 text-surface-400">{i + 1}</td>
-                  <td className="px-3 py-1.5 font-medium text-surface-800 max-w-[180px] truncate">{r.title}</td>
-                  <td className="px-3 py-1.5 text-surface-600 max-w-[140px] truncate">{r.company}</td>
-                  <td className="px-3 py-1.5 text-surface-500 max-w-[120px] truncate">{r.location || '—'}</td>
-                  <td className="px-3 py-1.5">{r.jd ? <span className="text-green-600 font-medium">✓</span> : <span className="text-surface-300">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {error && <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-xs text-red-700 dark:text-red-200"><AlertCircle size={12} className="inline mr-1" />{error}</div>}
-
-      <div className="flex justify-between pt-2 border-t border-surface-200">
-        <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
-        <button onClick={upload} className="btn-primary text-sm flex items-center gap-1.5">
-          <Upload size={14} /> Import {parsed.length} Jobs
-        </button>
-      </div>
-    </div>
-  );
-
-  if (stage === 'uploading') return (
-    <div className="flex flex-col items-center justify-center py-12 gap-4">
-      <Spinner size={28} />
-      <p className="text-sm font-semibold text-surface-700">Importing jobs...</p>
-      <p className="text-xs text-surface-400">Deduplicating and saving to database</p>
-    </div>
-  );
-
-  if (stage === 'matching') return (
-    <div className="flex flex-col items-center justify-center py-12 gap-4">
-      <Spinner size={28} />
-      <p className="text-sm font-semibold text-surface-700">Running matching engine...</p>
-      <p className="text-xs text-surface-400">Matching new jobs to candidates by title (fast, no AI)</p>
-    </div>
-  );
-
-  const matchingResult = result?.matching;
-  const matchingOk = matchingResult?.status === 'completed' || matchingResult?.status === 'done';
-  const matchingStarted = matchingResult?.status === 'started';
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
-        <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-2xl">✅</div>
-        <p className="text-lg font-semibold text-surface-900 dark:text-surface-100">Import Complete</p>
-
-        <div className="flex gap-6 text-sm">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-brand-600">{result?.inserted}</p>
-            <p className="text-xs text-surface-500 mt-0.5">Jobs added</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-surface-400">{result?.duplicates}</p>
-            <p className="text-xs text-surface-500 mt-0.5">Duplicates skipped</p>
-          </div>
-          <div className="text-center">
-            <p className="text-2xl font-bold text-surface-400">{result?.skipped}</p>
-            <p className="text-xs text-surface-500 mt-0.5">Invalid rows</p>
-          </div>
-          {(result?.skipped_no_url ?? 0) > 0 && (
-            <div className="text-center">
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{result?.skipped_no_url}</p>
-              <p className="text-xs text-surface-500 mt-0.5">No valid URL</p>
-            </div>
-          )}
-          <div className="text-center">
-            <p className="text-2xl font-bold text-surface-700 dark:text-surface-300">{result?.total}</p>
-            <p className="text-xs text-surface-500 mt-0.5">Total rows</p>
-          </div>
-        </div>
-
-        {matchingResult && (
-          <div className={`w-full rounded-xl border px-5 py-4 text-sm mt-2 ${matchingOk
-              ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
-              : matchingStarted
-                ? 'border-brand-200 dark:border-brand-500/40 bg-brand-50 dark:bg-brand-500/10'
-                : matchingResult.status === 'skipped'
-                  ? 'border-surface-200 dark:border-surface-600 bg-surface-100'
-                  : 'border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/20'
-            }`}>
-            {matchingOk ? (
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="text-left">
-                  <p className="font-semibold text-brand-700 dark:text-brand-300">🤖 Auto-matching ran</p>
-                  <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">
-                    {matchingResult.candidates_processed} candidate{matchingResult.candidates_processed !== 1 ? 's' : ''} scored ·{' '}
-                    {matchingResult.total_matches_upserted} matches saved
-                  </p>
-                </div>
-              </div>
-            ) : matchingStarted ? (
-              <div className="text-left">
-                <p className="font-semibold text-brand-700 dark:text-brand-300">🤖 Matching running in background</p>
-                <p className="text-xs text-brand-600 dark:text-brand-400 mt-0.5">
-                  {matchingResult.message ?? 'Matches will appear in candidate dashboards in a few minutes.'}
-                </p>
-              </div>
-            ) : matchingResult.status === 'skipped' ? (
-              <p className="text-surface-500 dark:text-surface-400 text-xs">No new jobs were inserted — matching skipped</p>
-            ) : (
-              <p className="text-red-600 dark:text-red-400 text-xs">⚠️ Matching failed: {matchingResult.error || matchingResult.message || 'Unknown error'}</p>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-center pt-2 border-t border-surface-200">
-        <button onClick={onClose} className="btn-primary text-sm">Done</button>
-      </div>
     </div>
   );
 }

@@ -41,10 +41,10 @@ export default function AdminAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Audit log</h1>
-          <p className="text-sm text-surface-500 mt-1">Recent actions: jobs created, candidate contact views</p>
+          <h1 className="admin-page-title">Audit Log</h1>
+          <p className="admin-page-subtitle">Recent actions: jobs created, candidate contact views.</p>
         </div>
         <select value={limit} onChange={e => setLimit(Number(e.target.value))} className="input text-sm py-2 px-3 w-full sm:w-28">
           <option value={50}>Last 50</option>
@@ -58,8 +58,8 @@ export default function AdminAuditPage() {
         <div className="flex justify-center py-12"><Spinner size={28} /></div>
       ) : loadError ? (
         <div className="card p-12 text-center">
-          <p className="text-surface-700 dark:text-surface-200 font-medium">Failed to load activity</p>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">{loadError}</p>
+          <p className="text-surface-700 font-medium">Failed to load activity</p>
+          <p className="text-sm text-surface-500 mt-1">{loadError}</p>
           <button type="button" onClick={() => load()} className="btn-primary mt-4">Try again</button>
         </div>
       ) : entries.length === 0 ? (
@@ -68,10 +68,10 @@ export default function AdminAuditPage() {
           <p>No activity yet. Job creation and candidate contact views will appear here.</p>
         </div>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="admin-table-wrap">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-surface-100 border-b border-surface-200 dark:border-surface-600">
+              <thead className="bg-surface-100 border-b border-surface-300">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Time</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Actor</th>
@@ -80,15 +80,15 @@ export default function AdminAuditPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-surface-500">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-surface-100 dark:divide-surface-700">
+              <tbody className="divide-y divide-surface-200">
                 {entries.map((log) => (
-                  <tr key={log.id} className="hover:bg-surface-100 dark:hover:bg-surface-800/50">
+                  <tr key={log.id} className="hover:bg-surface-50">
                     <td className="px-4 py-3 text-surface-500 whitespace-nowrap">{formatRelative(log.created_at)}</td>
-                    <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
+                    <td className="px-4 py-3 text-surface-600">
                       {log.actor_name ?? (log.user_id ? `${String(log.user_id).slice(0, 8)}…` : '—')}
                     </td>
-                    <td className="px-4 py-3 text-surface-700 dark:text-surface-200">{log.action}</td>
-                    <td className="px-4 py-3 text-surface-600 dark:text-surface-300">
+                    <td className="px-4 py-3 text-surface-700">{log.action}</td>
+                    <td className="px-4 py-3 text-surface-600">
                       {log.resource_type ?? '—'}
                       {log.resource_id ? ` · ${String(log.resource_id).slice(0, 8)}…` : ''}
                     </td>

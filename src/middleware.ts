@@ -66,7 +66,28 @@ export async function middleware(request: NextRequest) {
   );
 
   // Securely fetch user - validates JWT with Supabase Auth server
-  const { data: { user }, error } = await supabase.auth.getUser();
+  let user: Awaited<ReturnType<typeof supabase.auth.getUser>>['data']['user'] = null;
+  let error: Awaited<ReturnType<typeof supabase.auth.getUser>>['error'] = null;
+  let shouldResetSupabaseCookies = false;
+  try {
+    const authResult = await supabase.auth.getUser();
+    user = authResult.data.user;
+    error = authResult.error;
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    // Guard against corrupted serialized auth cookie/session shapes observed in runtime logs.
+    shouldResetSupabaseCookies = message.includes("Cannot create property 'user' on string");
+  }
+
+  if (shouldResetSupabaseCookies) {
+    const cleared = NextResponse.next({ request: { headers: requestHeaders } });
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith('sb-')) {
+        cleared.cookies.set({ name: cookie.name, value: '', path: '/', maxAge: 0 });
+      }
+    }
+    return addTracingHeaders(cleared, requestId, start);
+  }
 
   const pathname = request.nextUrl.pathname;
 

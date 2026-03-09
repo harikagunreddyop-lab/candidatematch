@@ -25,6 +25,9 @@ export function useProfile() {
       if (cancelled) return;
       if (!session) { setLoading(false); return; }
       const { data } = await c.from('profiles').select('*').eq('id', session.user.id).single();
+      // #region agent log
+      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'60e030'},body:JSON.stringify({sessionId:'60e030',runId:'baseline',hypothesisId:'H1',location:'src/hooks/index.ts:27',message:'useProfile resolved auth/profile context',data:{hasSession:Boolean(session),profileFound:Boolean(data),profileRole:data?.role??null,effectiveRole:(data as { effective_role?: string } | null)?.effective_role ?? null,companyId:data?.company_id??null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       if (cancelled) return;
       setProfile(data ?? null);
       setLoading(false);

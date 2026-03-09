@@ -1,62 +1,51 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { Star, MapPin, DollarSign, Briefcase, ChevronLeft } from 'lucide-react';
 
 export default function CandidateMatchesPage() {
   const [matches, setMatches] = useState<any[]>([]);
+  const [allApiMatches, setAllApiMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [minScore, setMinScore] = useState(50);
-  const supabase = createClient();
+  const [limitReached, setLimitReached] = useState(false);
+  const [usedThisWeek, setUsedThisWeek] = useState(0);
+  const [weeklyLimit, setWeeklyLimit] = useState<number | null>(null);
+  const [hasResume, setHasResume] = useState<boolean | null>(null);
+  const [hasCandidateProfile, setHasCandidateProfile] = useState<boolean | null>(null);
 
   useEffect(() => {
-    loadMatches();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- loadMatches keyed by minScore only
-  }, [minScore]);
+    (async function loadMatches() {
+      setLoading(true);
+      try {
+        const [matchesRes, resumeRes] = await Promise.all([
+          fetch('/api/candidate/matches', { credentials: 'include' }),
+          fetch('/api/candidate/resume', { credentials: 'include' }),
+        ]);
+        const data = await matchesRes.json().catch(() => ({}));
+        const resumeData = await resumeRes.json().catch(() => ({}));
+        const apiMatches = Array.isArray(data.matches) ? data.matches : [];
+        const activeOnly = apiMatches.filter((m: any) => {
+          const job = Array.isArray(m.job) ? m.job[0] : m.job;
+          return !job || job.is_active !== false;
+        });
+        setAllApiMatches(activeOnly);
+        setLimitReached(Boolean(data?.limitReached));
+        setUsedThisWeek(typeof data?.usedThisWeek === 'number' ? data.usedThisWeek : activeOnly.length);
+        setWeeklyLimit(typeof data?.limit === 'number' && data.limit >= 0 ? data.limit : null);
+        setHasCandidateProfile(resumeRes.status !== 404);
+        setHasResume(Array.isArray(resumeData?.resumes) ? resumeData.resumes.length > 0 : false);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
-  async function loadMatches() {
-    setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setLoading(false);
-      return;
-    }
-
-    const { data: candidate } = await supabase
-      .from('candidates')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .single();
-
-    if (!candidate) {
-      setMatches([]);
-      setLoading(false);
-      return;
-    }
-
-    const { data: matchesData } = await supabase
-      .from('candidate_job_matches')
-      .select(`
-        id, fit_score, matched_at, job_id,
-        job:jobs(
-          id, title, company, location,
-          salary_min, salary_max, remote_type,
-          is_active
-        )
-      `)
-      .eq('candidate_id', candidate.id)
-      .gte('fit_score', minScore)
-      .order('fit_score', { ascending: false });
-
-    const list = (matchesData || []).filter((m: any) => {
-      const job = Array.isArray(m.job) ? m.job[0] : m.job;
-      return job && job.is_active !== false;
-    });
-    setMatches(list);
-    setLoading(false);
-  }
+  useEffect(() => {
+    const filtered = allApiMatches.filter((m: any) => (m.fit_score ?? 0) >= minScore);
+    setMatches(filtered);
+  }, [allApiMatches, minScore]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -66,7 +55,14 @@ export default function CandidateMatchesPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold text-white">Job Matches</h1>
-          <p className="text-surface-400 mt-1">{matches.length} jobs matched for you</p>
+          <p className="text-surface-400 mt-1">
+            {matches.length} matches at {minScore}%+ ({usedThisWeek} available this week)
+          </p>
+          {limitReached && weeklyLimit != null && (
+            <p className="text-xs text-amber-300 mt-1">
+              Weekly free limit reached ({weeklyLimit}). Upgrade to Pro for unlimited matches.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <label className="text-sm text-surface-400">Min score:</label>
@@ -90,9 +86,38 @@ export default function CandidateMatchesPage() {
       ) : matches.length === 0 ? (
         <div className="rounded-2xl border border-surface-700/60 bg-surface-800/50 p-12 text-center">
           <Star className="w-12 h-12 text-surface-500 mx-auto mb-4" />
-          <p className="text-surface-400">No matches yet at {minScore}% or above.</p>
-          <p className="text-surface-500 text-sm mt-1">Complete your profile and resume to get better matches.</p>
-          <Link href="/dashboard/candidate/profile" className="inline-block mt-4 text-brand-400 hover:text-brand-300 font-medium">Edit profile →</Link>
+          {limitReached ? (
+            <>
+              <p className="text-surface-300">You reached your weekly match limit.</p>
+              <p className="text-surface-500 text-sm mt-1">
+                {weeklyLimit != null ? `You have used ${weeklyLimit}/${weeklyLimit} matches this week.` : 'Upgrade to Pro for unlimited matches.'}
+              </p>
+            </>
+          ) : allApiMatches.length > 0 ? (
+            <>
+              <p className="text-surface-300">No matches at {minScore}% or above.</p>
+              <p className="text-surface-500 text-sm mt-1">Lower the minimum score to see more opportunities.</p>
+            </>
+          ) : hasCandidateProfile === false ? (
+            <>
+              <p className="text-surface-300">No candidate profile found.</p>
+              <p className="text-surface-500 text-sm mt-1">Complete onboarding so we can generate role-based matches.</p>
+            </>
+          ) : hasResume === false ? (
+            <>
+              <p className="text-surface-300">No resume on file yet.</p>
+              <p className="text-surface-500 text-sm mt-1">Upload a resume to improve scoring and unlock better matches.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-surface-300">No active matches available right now.</p>
+              <p className="text-surface-500 text-sm mt-1">We&apos;ll show new matches as soon as fresh jobs are scored.</p>
+            </>
+          )}
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <Link href="/dashboard/candidate/profile" className="text-brand-400 hover:text-brand-300 font-medium">Edit profile →</Link>
+            <Link href="/dashboard/candidate/profile/resume" className="text-brand-400 hover:text-brand-300 font-medium">Upload resume →</Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

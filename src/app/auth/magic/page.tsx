@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 import { FloatingInput } from '@/components/auth';
-import { getAppUrl } from '@/config';
 
 function getAppUrlWithFallback(): string {
-  return (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+  return getPublicAppUrl();
 }
 
 export default function MagicLinkPage() {

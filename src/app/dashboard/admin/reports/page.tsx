@@ -28,12 +28,12 @@ const STAGE_COLORS: Record<string, string> = {
 function SectionHeader({ title, subtitle, icon }: { title: string; subtitle?: string; icon: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3 mb-5">
-      <div className="w-9 h-9 rounded-xl bg-surface-100 dark:bg-surface-700 flex items-center justify-center shrink-0 mt-0.5">
+      <div className="w-9 h-9 rounded-xl bg-surface-100 border border-surface-300 flex items-center justify-center shrink-0 mt-0.5 text-[#2563EB]">
         {icon}
       </div>
       <div>
-        <h2 className="text-base font-semibold text-surface-900 dark:text-surface-100">{title}</h2>
-        {subtitle && <p className="text-xs text-surface-500 dark:text-surface-400 mt-0.5">{subtitle}</p>}
+        <h2 className="text-base font-semibold text-surface-900">{title}</h2>
+        {subtitle && <p className="text-xs text-surface-500 mt-0.5">{subtitle}</p>}
       </div>
     </div>
   );
@@ -42,9 +42,9 @@ function SectionHeader({ title, subtitle, icon }: { title: string; subtitle?: st
 function KPI({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
   return (
     <div className="card p-4">
-      <p className={cn('text-2xl font-bold', color || 'text-surface-900 dark:text-surface-100')}>{value}</p>
-      <p className="text-xs font-medium text-surface-700 dark:text-surface-400 mt-0.5">{label}</p>
-      {sub && <p className="text-[10px] text-surface-400 dark:text-surface-500 mt-0.5">{sub}</p>}
+      <p className={cn('text-2xl font-bold', color || 'text-surface-900')}>{value}</p>
+      <p className="text-xs font-medium text-surface-700 mt-0.5">{label}</p>
+      {sub && <p className="text-[10px] text-surface-400 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -57,8 +57,8 @@ function PipelineFunnel({ data }: { data: { stage: string; count: number; pct: n
       {data.map((d, i) => (
         <div key={d.stage}>
           <div className="flex items-center gap-3 mb-1">
-            <span className="text-xs text-surface-500 dark:text-surface-400 w-20 capitalize">{d.stage}</span>
-            <div className="flex-1 bg-surface-100 dark:bg-surface-700 rounded-full h-6 overflow-hidden">
+            <span className="text-xs text-surface-500 w-20 capitalize">{d.stage}</span>
+            <div className="flex-1 bg-surface-100 rounded-full h-6 overflow-hidden">
               <div
                 className="h-full rounded-full flex items-center px-2 transition-all"
                 style={{
@@ -69,14 +69,14 @@ function PipelineFunnel({ data }: { data: { stage: string; count: number; pct: n
                 <span className="text-[11px] text-white font-bold">{d.count}</span>
               </div>
             </div>
-            <span className="text-xs text-surface-400 dark:text-surface-500 w-12 text-right">
+            <span className="text-xs text-surface-400 w-12 text-right">
               {i === 0 ? '100%' : `${d.pct.toFixed(0)}%`}
             </span>
           </div>
           {i < data.length - 1 && (
             <div className="flex items-center gap-1 pl-20 mb-1">
               <ArrowRight size={10} className="text-surface-300" />
-              <span className="text-[10px] text-surface-400 dark:text-surface-500">
+              <span className="text-[10px] text-surface-400">
                 {data[i + 1].count > 0
                   ? `${((data[i + 1].count / Math.max(1, d.count)) * 100).toFixed(0)}% converted`
                   : 'no conversion'}
@@ -406,17 +406,16 @@ export default function AdminReportsPage() {
     <DashboardErrorBoundary sectionName="Reports">
       <div className="space-y-8">
       {/* ── Header ── */}
-      <div className="flex items-start justify-between flex-wrap gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Reports & Analytics</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">Full pipeline intelligence · {PERIOD_LABELS[period]}</p>
+          <h1 className="admin-page-title">Reports & Analytics</h1>
+          <p className="admin-page-subtitle">Full pipeline intelligence · {PERIOD_LABELS[period]}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex p-1 bg-surface-100 dark:bg-surface-700 rounded-lg gap-1">
+          <div className="admin-segmented">
             {(['week', 'month', 'quarter'] as Period[]).map(p => (
               <button key={p} onClick={() => setPeriod(p)}
-                className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
-                  period === p ? 'bg-surface-200 text-surface-900 dark:text-surface-100 shadow-sm' : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-300')}>
+                className={cn('admin-segmented-btn capitalize', period === p && 'is-active')}>
                 {p}
               </button>
             ))}

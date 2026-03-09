@@ -6,11 +6,12 @@
 import pino from 'pino';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
+const enablePrettyLogs = process.env.ENABLE_PRETTY_LOGS === 'true';
 
 const logger = pino({
   level: isDevelopment ? 'debug' : 'info',
   transport:
-    isDevelopment
+    isDevelopment && enablePrettyLogs
       ? { target: 'pino-pretty', options: { colorize: true } }
       : undefined,
   base: {

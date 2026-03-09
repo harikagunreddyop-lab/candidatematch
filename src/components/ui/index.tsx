@@ -48,14 +48,20 @@ export function Modal({ open, onClose, title, children, size = 'md' }: {
   if (!open) return null;
   const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
-      <div ref={contentRef} tabIndex={-1} className={cn('relative rounded-2xl w-full max-w-[95vw] p-6 animate-slide-up outline-none', widths[size])}
-           style={{ backgroundColor: 'var(--tile-hover-bg, #1e2228)', border: '1px solid var(--tile-hover-border, rgba(255,255,255,0.08))', boxShadow: '0 20px 50px -12px rgba(0,0,0,0.4)' }}
-           onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-5">
-          <h2 id="modal-title" className="text-lg font-bold text-surface-900 dark:text-surface-100 font-display">{title}</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 dark:text-surface-300 hover:text-surface-600 dark:hover:text-surface-100 transition-colors" aria-label="Close modal">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div className="fixed inset-0 bg-black/25 backdrop-blur-sm" />
+      <div
+        ref={contentRef}
+        tabIndex={-1}
+        className={cn(
+          'relative w-full max-w-[95vw] rounded-3xl border border-surface-300 bg-surface-50 p-5 sm:p-6 shadow-modal animate-slide-up outline-none',
+          widths[size]
+        )}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 id="modal-title" className="text-lg font-bold text-surface-900 font-display">{title}</h2>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-surface-200 text-surface-500 hover:text-surface-800 transition-colors" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>

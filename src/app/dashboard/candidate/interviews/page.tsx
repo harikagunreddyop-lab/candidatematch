@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
-import { Calendar, List, Plus, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react';
+import { Calendar, List, Plus, ChevronLeft, ChevronRight, Briefcase, SlidersHorizontal } from 'lucide-react';
 import { EmptyState, Modal } from '@/components/ui';
 import {
   InterviewCalendar,
@@ -33,6 +33,7 @@ export default function CandidateInterviewsPage() {
   const [notLinked, setNotLinked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const load = useCallback(async () => {
     const {
@@ -48,6 +49,9 @@ export default function CandidateInterviewsPage() {
       .eq('user_id', session.user.id)
       .single();
     if (!cand) {
+      // #region agent log
+      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H4',location:'interviews/page.tsx:52',message:'Candidate interviews page has no linked candidate',data:{hasSession:true},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       setNotLinked(true);
       setLoading(false);
       return;
@@ -200,23 +204,23 @@ export default function CandidateInterviewsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">
+          <h1 className="text-xl font-bold text-surface-900 font-display">
             Interviews
           </h1>
-          <p className="text-surface-500 dark:text-surface-400 mt-0.5">
+          <p className="text-surface-600 mt-0.5">
             Schedule, prepare, and track your interviews.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 w-fit">
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 border border-surface-300 w-fit">
             <button
               type="button"
               onClick={() => setViewMode('calendar')}
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                 viewMode === 'calendar'
-                  ? 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
-                  : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+                  ? 'bg-surface-200 text-surface-900 shadow-sm'
+                  : 'text-surface-600 hover:text-surface-900'
               )}
               aria-pressed={viewMode === 'calendar'}
             >
@@ -229,8 +233,8 @@ export default function CandidateInterviewsPage() {
               className={cn(
                 'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
                 viewMode === 'list'
-                  ? 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
-                  : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+                  ? 'bg-surface-200 text-surface-900 shadow-sm'
+                  : 'text-surface-600 hover:text-surface-900'
               )}
               aria-pressed={viewMode === 'list'}
             >
@@ -250,8 +254,8 @@ export default function CandidateInterviewsPage() {
       </div>
 
       {viewMode === 'calendar' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-xl border border-surface-300 bg-surface-100 px-3 py-2">
             <button
               type="button"
               onClick={() => changeMonth(-1)}
@@ -260,7 +264,7 @@ export default function CandidateInterviewsPage() {
             >
               <ChevronLeft size={20} />
             </button>
-            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+            <h2 className="text-base font-semibold text-surface-900">
               {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
             <button
@@ -272,23 +276,62 @@ export default function CandidateInterviewsPage() {
               <ChevronRight size={20} />
             </button>
           </div>
-          <InterviewCalendar
-            interviews={interviews}
-            month={calendarMonth}
-            onSelectInterview={setSelectedInterview}
-          />
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+            <InterviewCalendar
+              interviews={interviews}
+              month={calendarMonth}
+              onSelectInterview={setSelectedInterview}
+              className="xl:col-span-2"
+            />
+            <div className="rounded-2xl border border-surface-300 bg-surface-100 p-4">
+              <h3 className="text-sm font-semibold text-surface-900 mb-3">Upcoming this month</h3>
+              {upcoming.filter((i) => {
+                const d = new Date(i.scheduled_at);
+                return d.getMonth() === calendarMonth.getMonth() && d.getFullYear() === calendarMonth.getFullYear();
+              }).slice(0, 5).length === 0 ? (
+                <p className="text-xs text-surface-600">No upcoming interviews in this month.</p>
+              ) : (
+                <div className="space-y-2">
+                  {upcoming
+                    .filter((i) => {
+                      const d = new Date(i.scheduled_at);
+                      return d.getMonth() === calendarMonth.getMonth() && d.getFullYear() === calendarMonth.getFullYear();
+                    })
+                    .slice(0, 5)
+                    .map((inv) => {
+                      const job = getJob(inv);
+                      const dt = new Date(inv.scheduled_at);
+                      return (
+                        <button
+                          key={inv.id}
+                          type="button"
+                          onClick={() => setSelectedInterview(inv)}
+                          className="w-full text-left rounded-xl border border-surface-300 bg-surface-50 p-2.5 hover:border-brand-300 hover:bg-brand-50 transition-colors"
+                        >
+                          <p className="text-xs font-semibold text-surface-800 truncate">{job?.title ?? 'Interview'}</p>
+                          <p className="text-[11px] text-surface-600 truncate">{job?.company ?? '—'}</p>
+                          <p className="text-[11px] text-surface-500 mt-1">
+                            {dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          </p>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {viewMode === 'list' && (
         <>
-          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 w-fit">
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 border border-surface-300 w-fit">
             <button
               type="button"
               onClick={() => setListTab('upcoming')}
               className={cn(
                 'px-4 py-2 rounded-lg text-sm font-medium',
-                listTab === 'upcoming' ? 'bg-surface-200 dark:bg-surface-700' : 'text-surface-600 dark:text-surface-400'
+                listTab === 'upcoming' ? 'bg-surface-200 text-surface-900' : 'text-surface-600'
               )}
             >
               Upcoming ({upcoming.length})
@@ -298,7 +341,7 @@ export default function CandidateInterviewsPage() {
               onClick={() => setListTab('past')}
               className={cn(
                 'px-4 py-2 rounded-lg text-sm font-medium',
-                listTab === 'past' ? 'bg-surface-200 dark:bg-surface-700' : 'text-surface-600 dark:text-surface-400'
+                listTab === 'past' ? 'bg-surface-200 text-surface-900' : 'text-surface-600'
               )}
             >
               Past ({past.length})
@@ -343,7 +386,12 @@ export default function CandidateInterviewsPage() {
                     key={inv.id}
                     interview={inv}
                     showCountdown={false}
-                    onMarkThankYou={() => window.location.href = `/dashboard/candidate/interview-prep?interviewId=${inv.id}&tab=thankyou`}
+                    onMarkThankYou={() => {
+                      // #region agent log
+                      fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'candidate-audit-1',hypothesisId:'H3',location:'interviews/page.tsx:349',message:'Thank-you action uses hard navigation',data:{interviewId:inv.id,navigationMethod:'window.location.href'},timestamp:Date.now()})}).catch(()=>{});
+                      // #endregion
+                      window.location.href = `/dashboard/candidate/interview-prep?interviewId=${inv.id}&tab=thankyou`;
+                    }}
                   />
                 ))}
               </div>
@@ -353,26 +401,26 @@ export default function CandidateInterviewsPage() {
       )}
 
       {interviews.length > 0 && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/50 p-5">
-          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">
+        <div className="rounded-xl border border-surface-300 bg-surface-100 p-5">
+          <h3 className="text-lg font-semibold text-surface-900 mb-4">
             Performance at a glance
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <p className="text-xs text-surface-500 dark:text-surface-400">Total interviews</p>
-              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.total}</p>
+              <p className="text-xs text-surface-600">Total interviews</p>
+              <p className="text-2xl font-bold text-surface-900">{performance.total}</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 dark:text-surface-400">Avg self-assessment</p>
-              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.avgSelfAssessment}/10</p>
+              <p className="text-xs text-surface-600">Avg self-assessment</p>
+              <p className="text-2xl font-bold text-surface-900">{performance.avgSelfAssessment}/10</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 dark:text-surface-400">Pass rate</p>
-              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.successRate}%</p>
+              <p className="text-xs text-surface-600">Pass rate</p>
+              <p className="text-2xl font-bold text-surface-900">{performance.successRate}%</p>
             </div>
             <div>
-              <p className="text-xs text-surface-500 dark:text-surface-400">By type</p>
-              <p className="text-sm text-surface-700 dark:text-surface-300">
+              <p className="text-xs text-surface-600">By type</p>
+              <p className="text-sm text-surface-700">
                 {Object.entries(performance.byType)
                   .map(([t, n]) => `${t}: ${n}`)
                   .join(', ') || '—'}
@@ -400,129 +448,132 @@ export default function CandidateInterviewsPage() {
         )}
       </Modal>
 
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add interview" size="lg">
+      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add interview" size="md">
         <form onSubmit={handleAddInterview} className="space-y-4">
           {formError && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm">
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 text-sm">
               {formError}
             </div>
           )}
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Job *</label>
-            <select
-              name="job_id"
-              required
-              className="input w-full dark:bg-surface-700 dark:border-surface-600"
-            >
-              <option value="">Select a job</option>
-              {applications.map((app) => {
-                const job = Array.isArray(app.job) ? app.job[0] : app.job;
-                if (!job) return null;
-                return (
-                  <option key={app.id} value={job.id}>
-                    {job.title} — {job.company}
-                  </option>
-                );
-              })}
-            </select>
-            {applications.length === 0 && (
-              <p className="text-xs text-surface-500 mt-1">
-                <Link href="/dashboard/candidate/applications" className="underline">Add an application</Link> first to link an interview to a job.
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Link to application (optional)</label>
-            <select name="application_id" className="input w-full dark:bg-surface-700 dark:border-surface-600">
-              <option value="">None</option>
-              {applications.map((app) => (
-                <option key={app.id} value={app.id}>
-                  {(() => {
-                    const job = Array.isArray(app.job) ? app.job[0] : app.job;
-                    return job ? `${job.title} — ${job.company}` : app.id;
-                  })()}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <p className="text-xs text-surface-600 -mt-1">Quick schedule first. Add optional details only if needed.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className="label text-surface-700">Job *</label>
+              <select
+                name="job_id"
+                required
+                className="input w-full h-10"
+              >
+                <option value="">Select a job</option>
+                {applications.map((app) => {
+                  const job = Array.isArray(app.job) ? app.job[0] : app.job;
+                  if (!job) return null;
+                  return (
+                    <option key={app.id} value={job.id}>
+                      {job.title} — {job.company}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
             <div>
-              <label className="label text-surface-700 dark:text-surface-200">Date & time *</label>
+              <label className="label text-surface-700">Date & time *</label>
               <input
                 type="datetime-local"
                 name="scheduled_at"
                 required
-                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+                className="input w-full h-10"
               />
             </div>
             <div>
-              <label className="label text-surface-700 dark:text-surface-200">Duration (minutes)</label>
+              <label className="label text-surface-700">Duration</label>
               <input
                 type="number"
                 name="duration_minutes"
                 defaultValue={60}
                 min={15}
                 step={15}
-                className="input w-full dark:bg-surface-700 dark:border-surface-600"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Type</label>
-            <select name="interview_type" className="input w-full dark:bg-surface-700 dark:border-surface-600">
-              <option value="">Select</option>
-              <option value="phone">Phone</option>
-              <option value="video">Video</option>
-              <option value="onsite">On-site</option>
-              <option value="technical">Technical</option>
-              <option value="behavioral">Behavioral</option>
-              <option value="case_study">Case study</option>
-            </select>
-          </div>
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Meeting link</label>
-            <input
-              type="url"
-              name="virtual_meeting_link"
-              placeholder="https://..."
-              className="input w-full dark:bg-surface-700 dark:border-surface-600"
-            />
-          </div>
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Location (for on-site)</label>
-            <input
-              type="text"
-              name="location"
-              placeholder="Address or building"
-              className="input w-full dark:bg-surface-700 dark:border-surface-600"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="label text-surface-700 dark:text-surface-200">Interviewer name</label>
-              <input
-                type="text"
-                name="interviewer_name"
-                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+                className="input w-full h-10"
               />
             </div>
             <div>
-              <label className="label text-surface-700 dark:text-surface-200">Title</label>
+              <label className="label text-surface-700">Type</label>
+              <select name="interview_type" className="input w-full h-10">
+                <option value="">Select</option>
+                <option value="phone">Phone</option>
+                <option value="video">Video</option>
+                <option value="onsite">On-site</option>
+                <option value="technical">Technical</option>
+                <option value="behavioral">Behavioral</option>
+                <option value="case_study">Case study</option>
+              </select>
+            </div>
+            <div>
+              <label className="label text-surface-700">Meeting link</label>
               <input
-                type="text"
-                name="interviewer_title"
-                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+                type="url"
+                name="virtual_meeting_link"
+                placeholder="https://..."
+                className="input w-full h-10"
               />
             </div>
           </div>
-          <div>
-            <label className="label text-surface-700 dark:text-surface-200">Interviewer email</label>
-            <input
-              type="email"
-              name="interviewer_email"
-              className="input w-full dark:bg-surface-700 dark:border-surface-600"
-            />
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            className="btn-ghost text-xs inline-flex items-center gap-1"
+          >
+            <SlidersHorizontal size={14} />
+            {showAdvanced ? 'Hide advanced fields' : 'Show advanced fields'}
+          </button>
+
+          {showAdvanced && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 rounded-xl border border-surface-300 bg-surface-100 p-3">
+              <div className="sm:col-span-2">
+                <label className="label text-surface-700">Link to application</label>
+                <select name="application_id" className="input w-full h-10">
+                  <option value="">None</option>
+                  {applications.map((app) => (
+                    <option key={app.id} value={app.id}>
+                      {(() => {
+                        const job = Array.isArray(app.job) ? app.job[0] : app.job;
+                        return job ? `${job.title} — ${job.company}` : app.id;
+                      })()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label text-surface-700">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  placeholder="Address or building"
+                  className="input w-full h-10"
+                />
+              </div>
+              <div>
+                <label className="label text-surface-700">Interviewer name</label>
+                <input type="text" name="interviewer_name" className="input w-full h-10" />
+              </div>
+              <div>
+                <label className="label text-surface-700">Interviewer title</label>
+                <input type="text" name="interviewer_title" className="input w-full h-10" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label text-surface-700">Interviewer email</label>
+                <input type="email" name="interviewer_email" className="input w-full h-10" />
+              </div>
+            </div>
+          )}
+
+          {applications.length === 0 && (
+            <p className="text-xs text-surface-600">
+              <Link href="/dashboard/candidate/applications" className="underline">Add an application</Link> first to link an interview to a job.
+            </p>
+          )}
+
           <div className="flex gap-3 justify-end pt-2">
             <button type="button" onClick={() => setAddModalOpen(false)} className="btn-secondary">
               Cancel

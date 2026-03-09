@@ -24,6 +24,7 @@ export interface JobCardJob {
   referral_available?: boolean;
   /** Optional URL to company logo image. */
   company_logo_url?: string | null;
+  jd_excerpt?: string | null;
 }
 
 export interface JobCardProps {
@@ -92,12 +93,12 @@ export function JobCard({
   return (
     <article
       className={cn(
-        'rounded-2xl border border-surface-700/60 bg-surface-800/50 p-5 hover:border-brand-500/40 hover:bg-surface-800/80 transition-all duration-200',
+        'rounded-2xl border border-surface-300 bg-surface-50 p-5 shadow-card hover:-translate-y-0.5 hover:border-brand-300 hover:bg-surface-100 hover:shadow-elevated transition-all duration-200',
         className
       )}
     >
       <div className="flex gap-3">
-        <div className="w-12 h-12 rounded-xl bg-surface-700 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-12 h-12 rounded-xl border border-surface-300 bg-surface-100 flex items-center justify-center shrink-0 overflow-hidden">
           {job.company_logo_url ? (
             <Image
               src={job.company_logo_url}
@@ -116,7 +117,7 @@ export function JobCard({
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-bold text-surface-100 truncate">{job.title || 'Untitled'}</h3>
+                <h3 className="truncate text-xl font-extrabold text-surface-900">{job.title || 'Untitled'}</h3>
                 {isNewJob && (
                   <span className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 text-xs font-medium" title="Posted in the last 7 days">
                     <Sparkles size={10} />
@@ -130,7 +131,7 @@ export function JobCard({
                   </span>
                 )}
               </div>
-              <p className="text-sm text-surface-400 mt-0.5">{job.company || '—'}</p>
+              <p className="mt-0.5 text-sm font-semibold text-surface-700">{job.company || '—'}</p>
             </div>
             {job.match_score != null && (
               <div
@@ -149,15 +150,15 @@ export function JobCard({
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-surface-400">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm font-semibold text-white">
             {job.location && (
-              <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1 rounded-full bg-surface-100 px-2 py-0.5 text-xs font-semibold text-surface-700">
                 <MapPin size={12} />
                 {job.location}
               </span>
             )}
             {job.remote_type && (
-              <span className="px-1.5 py-0.5 rounded bg-surface-700 text-surface-300 text-xs capitalize">
+              <span className="rounded-full bg-surface-100 px-2 py-0.5 text-xs font-semibold capitalize text-surface-700">
                 {job.remote_type}
               </span>
             )}
@@ -167,23 +168,29 @@ export function JobCard({
                 Referral
               </span>
             )}
-            {salaryStr && <span>{salaryStr}</span>}
+            {salaryStr && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-200">{salaryStr}</span>}
           </div>
 
           {job.match_reasons && job.match_reasons.length > 0 && (
-            <ul className="mt-2 text-xs text-surface-500 space-y-0.5">
+            <ul className="mt-2 text-xs text-surface-600 space-y-0.5">
               {job.match_reasons.slice(0, 3).map((r, i) => (
                 <li key={i}>• {r}</li>
               ))}
             </ul>
           )}
 
-          <div className="flex flex-wrap items-center gap-2 mt-4">
+          {job.jd_excerpt && (
+            <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-surface-700">
+              {job.jd_excerpt}
+            </p>
+          )}
+
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-surface-300 pt-2.5">
             {onApply && !isApplied && (
               <button
                 type="button"
                 onClick={() => onApply(job)}
-                className="btn-primary text-sm py-2 px-4 rounded-xl inline-flex items-center gap-1.5"
+                className="btn-primary text-xs py-1.5 px-3 rounded-lg inline-flex items-center gap-1.5"
               >
                 One-click apply
               </button>
@@ -196,7 +203,7 @@ export function JobCard({
                 href={applyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost text-sm py-2 px-4 rounded-xl inline-flex items-center gap-1.5 text-surface-300 hover:text-surface-100"
+                className="btn-ghost text-xs py-1.5 px-3 rounded-lg inline-flex items-center gap-1.5 text-surface-600 hover:text-surface-900"
               >
                 View job
                 <ExternalLink size={14} />
@@ -207,7 +214,7 @@ export function JobCard({
                 href={companyReviewsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost text-sm py-2 px-4 rounded-xl inline-flex items-center gap-1.5 text-surface-400 hover:text-surface-200"
+                className="btn-ghost text-xs py-1.5 px-3 rounded-lg inline-flex items-center gap-1.5 text-surface-600 hover:text-surface-900"
                 title="Company reviews (Glassdoor)"
               >
                 <Star size={14} />
@@ -219,7 +226,7 @@ export function JobCard({
                 href={directionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-ghost text-sm py-2 px-4 rounded-xl inline-flex items-center gap-1.5 text-surface-400 hover:text-surface-200"
+                className="btn-ghost text-xs py-1.5 px-3 rounded-lg inline-flex items-center gap-1.5 text-surface-600 hover:text-surface-900"
                 title="Get directions (Google Maps)"
               >
                 <Navigation size={14} />
@@ -230,7 +237,7 @@ export function JobCard({
               <button
                 type="button"
                 onClick={() => onSave(job.id)}
-                className="p-2 rounded-lg hover:bg-surface-700 text-surface-400 hover:text-surface-200"
+                className="p-2 rounded-lg hover:bg-surface-200 text-surface-500 hover:text-surface-800"
                 title="Save job"
               >
                 <Bookmark size={16} />
@@ -240,7 +247,7 @@ export function JobCard({
               <button
                 type="button"
                 onClick={() => onUnsave(job.id)}
-                className="p-2 rounded-lg hover:bg-surface-700 text-brand-400"
+                className="p-2 rounded-lg hover:bg-surface-200 text-brand-600"
                 title="Unsave job"
               >
                 <BookmarkCheck size={16} />
@@ -249,7 +256,7 @@ export function JobCard({
             <button
               type="button"
               onClick={handleShare}
-              className="p-2 rounded-lg hover:bg-surface-700 text-surface-400 hover:text-surface-200"
+              className="p-2 rounded-lg hover:bg-surface-200 text-surface-500 hover:text-surface-800"
               title="Share"
             >
               <Share2 size={16} />
@@ -259,8 +266,8 @@ export function JobCard({
                 type="button"
                 onClick={() => onCompare(job)}
                 className={cn(
-                  'p-2 rounded-lg hover:bg-surface-700 transition-colors',
-                  isComparing ? 'text-brand-400 bg-brand-500/20' : 'text-surface-400 hover:text-surface-200'
+                  'p-2 rounded-lg hover:bg-surface-200 transition-colors',
+                  isComparing ? 'text-brand-700 bg-brand-500/15' : 'text-surface-500 hover:text-surface-800'
                 )}
                 title={isComparing ? 'Remove from comparison' : 'Add to comparison'}
               >
@@ -271,7 +278,7 @@ export function JobCard({
               <button
                 type="button"
                 onClick={() => onSeeSimilar(job)}
-                className="p-2 rounded-lg hover:bg-surface-700 text-surface-400 hover:text-surface-200"
+                className="p-2 rounded-lg hover:bg-surface-200 text-surface-500 hover:text-surface-800"
                 title="See similar jobs"
               >
                 <Layers size={16} />

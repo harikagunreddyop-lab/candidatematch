@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 import { FloatingInput } from '@/components/auth';
-import { getAppUrl } from '@/config';
 
 function GoogleIcon() {
   return (
@@ -74,7 +74,7 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     setError(null);
-    const appUrl = (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+    const appUrl = getPublicAppUrl();
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${appUrl}/auth/callback` },
@@ -84,7 +84,7 @@ export default function LoginPage() {
 
   const handleLinkedIn = async () => {
     setError(null);
-    const appUrl = (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+    const appUrl = getPublicAppUrl();
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'linkedin_oidc',
       options: { redirectTo: `${appUrl}/auth/callback` },
@@ -95,7 +95,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-8 py-12" style={{ background: 'linear-gradient(140deg, #080909 0%, #0a0d08 60%, #080909 100%)' }}>
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 1, y: 0 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"

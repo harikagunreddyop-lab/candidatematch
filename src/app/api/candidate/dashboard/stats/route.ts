@@ -6,6 +6,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { profileCompletionPercent } from '@/lib/profile-completion';
+import { FREE_TIER_WEEKLY_MATCH_LIMIT } from '@/lib/usage-limits';
+
+function getWeekStartUtc(now: Date): string {
+  const d = new Date(now);
+  const day = d.getUTCDay();
+  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+  d.setUTCDate(diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate', 'platform_admin', 'company_admin', 'recruiter'] });
@@ -13,6 +23,14 @@ export async function GET(req: NextRequest) {
 
   const supabase = createServiceClient();
   const userId = authResult.user.id;
+  const weekStartUtc = getWeekStartUtc(new Date());
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('subscription_tier')
+    .eq('id', userId)
+    .single();
+  const isPro = (profile?.subscription_tier ?? 'free') === 'pro';
 
   const { data: candidate } = await supabase
     .from('candidates')
@@ -21,6 +39,9 @@ export async function GET(req: NextRequest) {
     .single();
 
   if (!candidate) {
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H1',location:'dashboard/stats/route.ts:24',message:'Dashboard stats candidate not found',data:{userIdPresent:Boolean(userId)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({
       applicationsTotal: 0,
       applicationsByStatus: {},
@@ -43,6 +64,16 @@ export async function GET(req: NextRequest) {
   weekStart.setHours(0, 0, 0, 0);
   const weekStartIso = weekStart.toISOString();
 
+  const matchesQuery = supabase
+    .from('candidate_job_matches')
+    .select('id, fit_score, ats_score')
+    .eq('candidate_id', candidateId)
+    .order('fit_score', { ascending: false });
+
+  if (!isPro) {
+    matchesQuery.gte('matched_at', weekStartUtc).limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
+  }
+
   const [
     { data: applications },
     { data: matches },
@@ -53,10 +84,7 @@ export async function GET(req: NextRequest) {
       .from('applications')
       .select('id, status, applied_at')
       .eq('candidate_id', candidateId),
-    supabase
-      .from('candidate_job_matches')
-      .select('id, fit_score, ats_score')
-      .eq('candidate_id', candidateId),
+    matchesQuery,
     supabase
       .from('applications')
       .select('id, interview_date, status')
@@ -108,6 +136,10 @@ export async function GET(req: NextRequest) {
   const profileCompletionPercentValue = profileCompletionPercent(candidate as Record<string, unknown>);
 
   const applicationsThisWeek = (applicationsThisWeekCount ?? []).length;
+
+  // #region agent log
+  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:'f6067c',runId:'candidate-dashboard-post-fix',hypothesisId:'H3',location:'src/app/api/candidate/dashboard/stats/route.ts:136',message:'stats computed with tier-aware match scope',data:{candidateId,isPro,weekStart:!isPro?weekStartUtc:null,activeMatches:matchList.length,averageMatchScore},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   return NextResponse.json({
     applicationsTotal: apps.length,

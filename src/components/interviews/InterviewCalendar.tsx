@@ -53,15 +53,15 @@ export function InterviewCalendar({ interviews, month, onSelectInterview, classN
   const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   return (
-    <div className={cn('rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 overflow-hidden', className)}>
-      <div className="grid grid-cols-7 text-center text-xs font-medium text-surface-500 dark:text-surface-400 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-800/50">
+    <div className={cn('rounded-2xl border border-surface-300 bg-surface-100 overflow-hidden shadow-sm', className)}>
+      <div className="grid grid-cols-7 text-center text-[11px] font-semibold text-surface-600 border-b border-surface-300 bg-surface-50">
         {weekDays.map((d) => (
-          <div key={d} className="py-2">
+          <div key={d} className="py-2.5 tracking-wide uppercase">
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 auto-rows-fr min-h-[280px]">
+      <div className="grid grid-cols-7 auto-rows-fr min-h-[210px]">
         {days.map((cell, idx) => {
           const key = `${cell.date.getFullYear()}-${String(cell.date.getMonth() + 1).padStart(2, '0')}-${String(cell.dayNum).padStart(2, '0')}`;
           const dayInterviews = interviewsByDay.get(key) ?? [];
@@ -73,38 +73,41 @@ export function InterviewCalendar({ interviews, month, onSelectInterview, classN
             <div
               key={idx}
               className={cn(
-                'min-h-[60px] p-1 border-b border-r border-surface-200 dark:border-surface-700',
-                !cell.isCurrentMonth && 'bg-surface-50 dark:bg-surface-800/30',
-                isToday && 'bg-brand-500/10 dark:bg-brand-500/20'
+                'min-h-[54px] p-1 border-b border-r border-surface-300',
+                !cell.isCurrentMonth && 'bg-surface-50/60',
+                isToday && 'bg-brand-500/8'
               )}
             >
               <span
                 className={cn(
-                  'inline-block w-7 h-7 text-sm flex items-center justify-center rounded-full',
-                  cell.isCurrentMonth ? 'text-surface-800 dark:text-surface-200' : 'text-surface-400 dark:text-surface-500',
+                  'inline-flex w-6 h-6 text-xs items-center justify-center rounded-full font-semibold',
+                  cell.isCurrentMonth ? 'text-surface-800' : 'text-surface-400',
                   isToday && 'bg-brand-500 text-white font-semibold'
                 )}
               >
                 {cell.dayNum}
               </span>
-              <div className="mt-0.5 space-y-0.5">
-                {dayInterviews.slice(0, 2).map((inv) => {
+              <div className="mt-1 space-y-1">
+                {dayInterviews.slice(0, 1).map((inv, eventIdx) => {
                   const job = getJob(inv);
                   return (
                     <button
                       key={inv.id}
                       type="button"
                       onClick={() => onSelectInterview?.(inv)}
-                      className="w-full text-left text-[10px] sm:text-xs truncate rounded px-1 py-0.5 bg-brand-500/20 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200 hover:bg-brand-500/30 dark:hover:bg-brand-500/40"
+                      className="w-full text-left text-[10px] truncate rounded-md px-1 py-0.5 bg-surface-50 border border-surface-300 text-surface-700 hover:border-brand-300 hover:bg-brand-50"
                       title={`${job?.company ?? 'Interview'} – ${formatTime(inv.scheduled_at)}`}
                     >
-                      {job?.company ?? 'Interview'} {formatTime(inv.scheduled_at)}
+                      <span className="inline-flex items-center gap-1">
+                        <span className={cn('inline-block w-1.5 h-1.5 rounded-full', eventIdx === 0 ? 'bg-brand-500' : 'bg-surface-500')} />
+                        <span className="truncate">{job?.company ?? 'Interview'} {formatTime(inv.scheduled_at)}</span>
+                      </span>
                     </button>
                   );
                 })}
-                {dayInterviews.length > 2 && (
-                  <span className="text-[10px] text-surface-500 dark:text-surface-400 px-1">
-                    +{dayInterviews.length - 2}
+                {dayInterviews.length > 1 && (
+                  <span className="text-[10px] text-surface-500 px-1">
+                    +{dayInterviews.length - 1}
                   </span>
                 )}
               </div>

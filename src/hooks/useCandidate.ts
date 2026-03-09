@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import type { Candidate, UseCandidateReturn } from '@/types';
 
+const DEBUG_ENDPOINT = 'http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50';
+const DEBUG_SESSION_ID = 'f6067c';
+const DEBUG_RUN_ID = 'candidate-dashboard-run1';
+
 export function useCandidate(): UseCandidateReturn {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +27,10 @@ export function useCandidate(): UseCandidateReturn {
       .select('*')
       .eq('user_id', session.user.id)
       .single();
+
+    // #region agent log
+    fetch(DEBUG_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:DEBUG_SESSION_ID,runId:DEBUG_RUN_ID,hypothesisId:'H1',location:'src/hooks/useCandidate.ts:29',message:'useCandidate load result',data:{sessionPresent:Boolean(session),candidateFound:Boolean(data)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
     setCandidate((data as Candidate | null) ?? null);
     setLoading(false);

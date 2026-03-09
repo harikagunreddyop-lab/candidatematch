@@ -27,5 +27,18 @@ export async function POST(req: NextRequest) {
   if (!res.ok) {
     return NextResponse.json(data, { status: res.status });
   }
-  return NextResponse.json(data);
+
+  // Best effort: run saved-search alerts after ingest so newly ingested jobs can notify candidates quickly.
+  const alertsRes = await fetch(`${base}/api/cron/saved-search-alerts`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${cronSecret}` },
+  });
+  const alertsData = await alertsRes.json().catch(() => ({}));
+
+  return NextResponse.json({
+    ...data,
+    saved_search_alerts: alertsRes.ok
+      ? { ok: true, ...(alertsData ?? {}) }
+      : { ok: false, status: alertsRes.status, ...(alertsData ?? {}) },
+  });
 }

@@ -33,6 +33,11 @@ export function CandidateJobSearch() {
   const [similarJobs, setSimilarJobs] = useState<JobCardJob[]>([]);
   const [similarLoading, setSimilarLoading] = useState(false);
 
+  const handleSearch = useCallback((next: JobSearchParams) => {
+    setParams((prev) => ({ ...prev, ...next }));
+    setPage(1);
+  }, []);
+
   const handleSaveCurrentSearch = async () => {
     const name = saveSearchName.trim() || 'My search';
     const res = await fetch('/api/candidate/saved-searches', {
@@ -85,8 +90,14 @@ export function CandidateJobSearch() {
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     const queryString = buildSearchUrl(params, page);
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0753dd'},body:JSON.stringify({sessionId:'0753dd',runId:'initial',hypothesisId:'H2_client_request_shape',location:'src/components/jobs/CandidateJobSearch.tsx:93',message:'Client fetchJobs start',data:{page,params,queryString},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     const res = await fetch(`/api/jobs/search?${queryString}`, { credentials: 'include' });
     const data = await res.json().catch(() => ({}));
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0753dd'},body:JSON.stringify({sessionId:'0753dd',runId:'initial',hypothesisId:'H4_client_response_shape',location:'src/components/jobs/CandidateJobSearch.tsx:97',message:'Client fetchJobs response',data:{total:data?.total ?? null,jobsCount:Array.isArray(data?.jobs)?data.jobs.length:null,remoteTypeParam:params.remote_type ?? null,resultRemoteTypes:Array.isArray(data?.jobs)?Array.from(new Set(data.jobs.map((j: { remote_type?: string | null }) => j?.remote_type ?? null))).slice(0,8):[]},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     setJobs(data.jobs ?? []);
     setTotal(data.total ?? 0);
     setLoading(false);
@@ -167,6 +178,8 @@ export function CandidateJobSearch() {
   }, []);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const startResult = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const endResult = total === 0 ? 0 : Math.min(page * PAGE_SIZE, total);
 
   const filterChips: { key: string; label: string }[] = [];
   if (params.remote_type) filterChips.push({ key: 'remote_type', label: `Work: ${params.remote_type}` });
@@ -196,51 +209,65 @@ export function CandidateJobSearch() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-900 text-surface-100">
-      <div className="border-b border-surface-700/60">
-        <div className="px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-surface-bg text-surface-900">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
+        <div className="relative overflow-hidden rounded-xl border border-surface-300 bg-surface-100 p-3 sm:p-4 shadow-card">
           <Link
             href="/dashboard/candidate"
-            className="text-surface-400 hover:text-surface-200 flex items-center gap-1 text-sm mb-4"
+            className="relative z-10 text-surface-600 hover:text-surface-900 flex items-center gap-1 text-xs mb-2"
           >
             <ChevronLeft size={18} /> Dashboard
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">Find your next role</h1>
-          <p className="text-surface-400 mt-1 text-sm">
+          <h1 className="relative z-10 text-xl sm:text-2xl font-bold font-display tracking-tight text-surface-900">Find your next role</h1>
+          <p className="relative z-10 mt-0.5 text-xs font-medium text-surface-600">
             {total > 0 ? `${total.toLocaleString()} jobs` : 'Search with filters and get match scores'}
           </p>
+          <div className="relative z-10 mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+            <span className="rounded-full border border-surface-300 bg-surface-200 px-2.5 py-0.5 font-semibold text-surface-700">
+              Saved: {savedJobIds.size}
+            </span>
+            <span className="rounded-full border border-surface-300 bg-surface-200 px-2.5 py-0.5 font-semibold text-surface-700">
+              Comparing: {compareJobs.length}/3
+            </span>
+          </div>
 
-          <div className="mt-6 space-y-4">
+          <div className="relative z-10 mt-2.5 space-y-2 rounded-lg border border-surface-300 bg-surface-50 p-2.5">
             <JobSearchBar
               initialQuery={params.query}
               initialLocation={params.location}
-              onSearch={(next) => { setParams((p) => ({ ...p, ...next })); setPage(1); }}
+              onSearch={handleSearch}
             />
             <FilterPanel
               params={params}
-              onChange={(next) => { setParams(next); setPage(1); }}
+              onChange={(next) => {
+                // #region agent log
+                fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0753dd'},body:JSON.stringify({sessionId:'0753dd',runId:'initial',hypothesisId:'H1_filter_state_update',location:'src/components/jobs/CandidateJobSearch.tsx:239',message:'FilterPanel onChange',data:{prevRemoteType:params.remote_type ?? null,nextRemoteType:next.remote_type ?? null,nextParams:next},timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                setParams(next);
+                setPage(1);
+              }}
             />
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setSaveSearchOpen(true)}
-                className="text-sm text-surface-400 hover:text-surface-200 flex items-center gap-1.5"
+                className="text-[11px] text-surface-700 hover:text-surface-900 flex items-center gap-1 rounded-md border border-surface-300 bg-surface-100 px-2 py-1"
               >
                 <BookmarkPlus size={14} /> Save this search
               </button>
               {saveSearchOpen && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap rounded-lg border border-surface-300 bg-surface-100 px-2 py-1.5">
                   <input
                     type="text"
                     value={saveSearchName}
                     onChange={(e) => setSaveSearchName(e.target.value)}
                     placeholder="Search name"
-                    className="input text-sm py-1.5 px-2 w-40 bg-surface-800 border-surface-700 text-surface-100"
+                    className="input w-36 border-surface-300 bg-surface-50 px-2 py-1 text-xs font-medium text-surface-900 placeholder:text-surface-500"
                   />
                   <select
                     value={saveSearchAlert}
                     onChange={(e) => setSaveSearchAlert(e.target.value)}
-                    className="input text-sm py-1.5 px-2 bg-surface-800 border-surface-700 text-surface-100"
+                    className="input border-surface-300 bg-surface-50 px-2 py-1 text-xs font-medium text-surface-900"
                     title="Email alert frequency"
                     aria-label="Alert frequency"
                   >
@@ -249,10 +276,10 @@ export function CandidateJobSearch() {
                     <option value="daily">Daily digest</option>
                     <option value="weekly">Weekly digest</option>
                   </select>
-                  <button type="button" onClick={handleSaveCurrentSearch} className="btn-primary text-sm py-1.5 px-3">
+                  <button type="button" onClick={handleSaveCurrentSearch} className="btn-primary text-xs py-1.5 px-2.5">
                     Save
                   </button>
-                  <button type="button" onClick={() => { setSaveSearchOpen(false); setSaveSearchName(''); setSaveSearchAlert(''); }} className="btn-ghost text-sm">
+                  <button type="button" onClick={() => { setSaveSearchOpen(false); setSaveSearchName(''); setSaveSearchAlert(''); }} className="btn-ghost text-xs">
                     Cancel
                   </button>
                 </div>
@@ -261,11 +288,11 @@ export function CandidateJobSearch() {
             <SavedSearchesList key={savedSearchesKey} onLoadSearch={(next) => { setParams(next); setPage(1); }} />
             {filterChips.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs text-surface-500">Active:</span>
+                <span className="text-[11px] font-semibold text-surface-700">Active:</span>
                 {filterChips.map((chip) => (
                   <span
                     key={chip.key}
-                    className="inline-flex items-center gap-1 pl-2 pr-1 py-1 rounded-lg bg-surface-700/80 text-surface-200 text-xs"
+                    className="inline-flex items-center gap-1 rounded-full border border-surface-300 bg-surface-100 py-0.5 pl-2 pr-1 text-[11px] font-semibold text-surface-800"
                   >
                     {chip.label}
                     <button
@@ -282,9 +309,17 @@ export function CandidateJobSearch() {
             )}
           </div>
         </div>
-      </div>
-
-      <div className="px-4 sm:px-6 py-6">
+      
+        <div className="py-6">
+          {!loading && jobs.length > 0 && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-surface-300 bg-surface-50 px-4 py-3 text-sm">
+              <p className="font-semibold text-surface-700">
+                Showing <span className="font-semibold text-surface-900">{startResult}-{endResult}</span> of{' '}
+                <span className="font-semibold text-surface-900">{total.toLocaleString()}</span> jobs
+              </p>
+              <p className="text-xs font-semibold text-surface-600">Tip: Compare up to 3 jobs side-by-side</p>
+            </div>
+          )}
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -342,8 +377,8 @@ export function CandidateJobSearch() {
             </div>
 
             {compareJobs.length >= 2 && (
-              <div className="mt-6 p-4 rounded-xl border border-brand-500/40 bg-brand-500/10 flex flex-wrap items-center justify-between gap-3">
-                <span className="text-surface-200 flex items-center gap-2">
+              <div className="mt-6 p-4 rounded-2xl border border-brand-300 bg-brand-50/60 flex flex-wrap items-center justify-between gap-3">
+                <span className="flex items-center gap-2 font-semibold text-surface-900">
                   <GitCompare size={18} />
                   Comparing {compareJobs.length} jobs
                 </span>
@@ -379,8 +414,8 @@ export function CandidateJobSearch() {
             )}
 
             {similarForJob && (
-              <div className="mt-8 pt-6 border-t border-surface-700/60">
-                <h2 className="text-lg font-semibold text-surface-100 mb-3 flex items-center gap-2">
+              <div className="mt-8 rounded-2xl border border-surface-300 bg-surface-50 p-5">
+                <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-surface-900">
                   <Layers size={18} />
                   Similar to &quot;{similarForJob.title}&quot;
                 </h2>
@@ -391,7 +426,7 @@ export function CandidateJobSearch() {
                     ))}
                   </div>
                 ) : similarJobs.length === 0 ? (
-                  <p className="text-sm text-surface-500">No similar jobs found.</p>
+                  <p className="text-sm font-semibold text-surface-700">No similar jobs found.</p>
                 ) : (
                   <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
                     {similarJobs.map((job) => (
@@ -413,7 +448,7 @@ export function CandidateJobSearch() {
                 <button
                   type="button"
                   onClick={() => { setSimilarForJob(null); setSimilarJobs([]); }}
-                  className="mt-3 text-sm text-surface-400 hover:text-surface-200"
+                  className="mt-3 text-sm font-semibold text-surface-700 hover:text-surface-900"
                 >
                   Close similar jobs
                 </button>
@@ -421,8 +456,8 @@ export function CandidateJobSearch() {
             )}
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-surface-700/60">
-                <p className="text-sm text-surface-500">
+              <div className="flex items-center justify-between mt-8 rounded-xl border border-surface-300 bg-surface-50 px-4 py-3">
+                <p className="text-sm font-semibold text-surface-700">
                   Page {page} of {totalPages} · {total} jobs
                 </p>
                 <div className="flex gap-2">
@@ -445,6 +480,7 @@ export function CandidateJobSearch() {
             )}
           </>
         )}
+        </div>
       </div>
 
       <QuickApplyModal

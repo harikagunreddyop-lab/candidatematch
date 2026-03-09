@@ -12,7 +12,7 @@ export function JobCardSkeleton({ className }: JobCardSkeletonProps) {
   return (
     <div
       className={cn(
-        'rounded-2xl border border-surface-700/60 bg-surface-800/50 p-5 animate-pulse',
+        'rounded-2xl border border-surface-300 bg-surface-50 p-5 animate-pulse',
         className
       )}
     >

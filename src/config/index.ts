@@ -1,6 +1,6 @@
 /**
  * Centralized configuration with Zod validation.
- * Loads at startup (via instrumentation). Fails fast with clear errors.
+ * Loads at startup. Fails fast with clear errors.
  *
  * - Required vars: Supabase (app won't start without them)
  * - Optional vars: Stripe, Resend, Redis, etc. (features degrade gracefully)
@@ -108,9 +108,6 @@ const envSchema = z.object({
 export type Config = z.infer<typeof envSchema>;
 
 function loadConfig(): Config {
-  // #region agent log
-  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3504db'},body:JSON.stringify({sessionId:'3504db',runId:'pre-fix',hypothesisId:'H1',location:'src/config/index.ts:101',message:'Config parse input snapshot for optional URLs',data:{nextPhase:process.env.NEXT_PHASE||null,nodeEnv:process.env.NODE_ENV||null,resumeWorkerUrlState:typeof process.env.RESUME_WORKER_URL==='string'?(process.env.RESUME_WORKER_URL.trim()? 'present_non_empty':'present_empty'):'unset'},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const parsed = envSchema.safeParse({
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -163,9 +160,6 @@ function loadConfig(): Config {
   });
 
   if (!parsed.success) {
-    // #region agent log
-    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3504db'},body:JSON.stringify({sessionId:'3504db',runId:'pre-fix',hypothesisId:'H4',location:'src/config/index.ts:154',message:'Config schema validation failed',data:{issueCount:parsed.error.issues.length,issuePaths:parsed.error.issues.map((i)=>i.path.join('.'))},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment configuration:\n${issues.join('\n')}`);
   }

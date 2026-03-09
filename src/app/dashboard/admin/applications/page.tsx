@@ -136,14 +136,16 @@ export default function AdminApplicationsPage() {
   });
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
-      <div>
-        <h1 className="text-2xl font-bold text-surface-900 font-display">Applications</h1>
-        <p className="text-sm text-surface-500 mt-1">All applications across candidates · filter by recruiter or status</p>
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Applications</h1>
+          <p className="admin-page-subtitle">All applications across candidates, with recruiter and status filters.</p>
+        </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="admin-toolbar items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Search candidate, job, or company…" className="w-full sm:min-w-[200px]" />
         <select value={recruiterFilter} onChange={e => setRecruiterFilter(e.target.value)} className="input text-sm py-2 px-3 w-full sm:w-48">
           <option value="all">All recruiters</option>
@@ -152,11 +154,11 @@ export default function AdminApplicationsPage() {
           ))}
         </select>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setStatusFilter('all')} className={cn('px-3 py-1.5 rounded-full text-xs font-medium', statusFilter === 'all' ? 'bg-surface-900 text-[#0a0a0a] font-bold' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
+          <button onClick={() => setStatusFilter('all')} className={cn('px-3 py-1.5 rounded-full text-xs font-medium', statusFilter === 'all' ? 'bg-[#2563EB] text-white font-semibold' : 'bg-surface-100 text-surface-600 hover:bg-surface-200')}>
             All ({applications.length})
           </button>
           {STATUS_OPTIONS.filter(s => counts[s] > 0).map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} className={cn('px-3 py-1.5 rounded-full text-xs font-medium capitalize', statusFilter === s ? 'bg-surface-900 text-[#0a0a0a] font-bold' : STATUS_PILL[s], 'hover:opacity-80')}>
+            <button key={s} onClick={() => setStatusFilter(s)} className={cn('px-3 py-1.5 rounded-full text-xs font-medium capitalize', statusFilter === s ? 'bg-[#2563EB] text-white font-semibold' : STATUS_PILL[s], 'hover:opacity-80')}>
               {s} ({counts[s]})
             </button>
           ))}
@@ -168,7 +170,7 @@ export default function AdminApplicationsPage() {
       ) : filtered.length === 0 ? (
         <EmptyState icon={<ClipboardList size={24} />} title={applications.length === 0 ? 'No applications yet' : 'No results'} description={applications.length === 0 ? 'Applications appear when candidates apply or recruiters mark applied' : 'Try adjusting filters'} />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filtered.map(a => (
             <div key={a.id} className="card p-4">
               <div className="flex items-start gap-4 flex-wrap">

@@ -4,6 +4,8 @@ import { requireAdmin } from '@/lib/api-auth';
 import { stripHtml } from '@/utils/helpers';
 import { runMatchingForJobs } from '@/lib/matching';
 import { log as devLog, error as logError } from '@/lib/logger';
+import { apiLogger } from '@/lib/logger';
+import { logAuditServer } from '@/lib/audit';
 import { isValidJobUrl } from '@/lib/job-url';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import crypto from 'crypto';
@@ -13,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const authResult = await requireAdmin(req);
   if (authResult instanceof Response) return authResult;
+  const startedAt = Date.now();
 
   const rl = await rateLimitResponse(req, 'admin_heavy', authResult.user.id);
   if (rl) return rl;
@@ -91,6 +94,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    try {
+      await logAuditServer(supabase as never, {
+        actor_id: authResult.user.id,
+        actor_role: authResult.profile.effective_role,
+      }, {
+        action: 'job.upload',
+        resourceType: 'jobs',
+        details: {
+          inserted,
+          duplicates,
+          skipped,
+          skipped_no_url,
+          total: rows.length,
+          matching_status: matchingResult?.status ?? 'unknown',
+        },
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      apiLogger.warn({ route: '/api/upload-jobs', user_id: authResult.user.id, err: message }, 'audit log failed for upload jobs');
+    }
+
+    apiLogger.info({
+      route: '/api/upload-jobs',
+      user_id: authResult.user.id,
+      inserted,
+      duplicates,
+      skipped,
+      skipped_no_url,
+      total: rows.length,
+      duration_ms: Date.now() - startedAt,
+    }, 'admin upload jobs completed');
+
     return NextResponse.json({
       inserted,
       duplicates,
@@ -101,6 +136,14 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (err: any) {
+    apiLogger.error(
+      {
+        route: '/api/upload-jobs',
+        user_id: authResult.user.id,
+        err: err?.message ?? String(err),
+      },
+      'admin upload jobs failed',
+    );
     const status = err instanceof SyntaxError ? 400 : 500;
     return NextResponse.json({ error: err?.message ?? 'Request failed' }, { status });
   }

@@ -67,7 +67,7 @@ export function JobSearchBar({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={cn('flex flex-col sm:flex-row gap-2', className)}>
+    <form onSubmit={handleSubmit} className={cn('flex flex-col sm:flex-row gap-1.5', className)}>
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" aria-hidden />
         <input
@@ -75,7 +75,7 @@ export function JobSearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="input pl-10 w-full py-2.5 rounded-xl bg-surface-800/80 border-surface-700 text-surface-100 placeholder-surface-500 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+          className="input w-full rounded-lg border-surface-300 bg-surface-50 py-2 pl-9 text-sm font-medium text-surface-900 placeholder:text-surface-500 focus:border-brand-500 focus:ring-2 focus:ring-brand-500"
           aria-label="Search jobs"
         />
       </div>
@@ -84,10 +84,10 @@ export function JobSearchBar({
         value={location}
         onChange={(e) => setLocation(e.target.value)}
         placeholder="Location"
-        className="input w-full sm:w-44 py-2.5 rounded-xl bg-surface-800/80 border-surface-700 text-surface-100 placeholder-surface-500"
+        className="input w-full rounded-lg border-surface-300 bg-surface-50 py-2 text-sm font-medium text-surface-900 placeholder:text-surface-500 sm:w-40"
         aria-label="Location"
       />
-      <button type="submit" className="btn-primary py-2.5 px-4 rounded-xl shrink-0">
+      <button type="submit" className="btn-primary shrink-0 rounded-lg px-3.5 py-2 text-sm font-bold">
         Search
       </button>
     </form>

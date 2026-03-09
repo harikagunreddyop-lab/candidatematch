@@ -7,11 +7,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { syncConnector } from '@/ingest/sync';
+import { logAuditServer } from '@/lib/audit';
+import { apiLogger } from '@/lib/logger';
 
 const CONCURRENCY = 4;
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
   const auth = await requireAdmin(req);
   if (auth instanceof NextResponse) return auth;
 
@@ -80,12 +83,47 @@ export async function POST(req: NextRequest) {
 
   const successCount = results.filter((r) => !r.error).length;
   const totalPromoted = results.reduce((s, r) => s + r.promoted, 0);
+  const totalMatchesUpserted = results.reduce((s, r) => s + ((r as any).matching_matches_upserted || 0), 0);
+  const totalCandidatesProcessed = results.reduce((s, r) => s + ((r as any).matching_candidates_processed || 0), 0);
+
+  try {
+    await logAuditServer(supabase as never, {
+      actor_id: auth.user.id,
+      actor_role: auth.profile.effective_role,
+    }, {
+      action: 'connector.sync',
+      resourceType: 'ingest_connectors',
+      details: {
+        mode: 'sync_all',
+        total_connectors: results.length,
+        synced: successCount,
+        failed: results.length - successCount,
+        total_promoted: totalPromoted,
+        total_matches_upserted: totalMatchesUpserted,
+      },
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    apiLogger.warn({ route: '/api/connectors/sync-all', user_id: auth.user.id, err: message }, 'connector sync-all audit log failed');
+  }
+
+  apiLogger.info({
+    route: '/api/connectors/sync-all',
+    user_id: auth.user.id,
+    synced: successCount,
+    failed: results.length - successCount,
+    total_promoted: totalPromoted,
+    total_matches_upserted: totalMatchesUpserted,
+    duration_ms: Date.now() - startedAt,
+  }, 'connector sync-all completed');
 
   return NextResponse.json({
     ok: true,
     synced: successCount,
     failed: results.length - successCount,
     totalPromoted,
+    totalMatchesUpserted,
+    totalCandidatesProcessed,
     results,
   });
 }

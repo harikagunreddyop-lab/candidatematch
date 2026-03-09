@@ -107,8 +107,9 @@ export function JobBoardsPanel({ onSyncComplete }: { onSyncComplete?: () => void
       if (!res.ok) {
         throw new Error(data.error || 'Sync failed');
       }
+      const matched = data.matching_matches_upserted ?? 0;
       setSyncMsg(
-        `Synced ${data.provider}/${data.sourceOrg} – fetched ${data.fetched ?? 0}, upserted ${data.upserted ?? 0}, closed ${data.closed ?? 0}, promoted ${data.promoted ?? 0} to jobs`
+        `Synced ${data.provider}/${data.sourceOrg} – fetched ${data.fetched ?? 0}, upserted ${data.upserted ?? 0}, closed ${data.closed ?? 0}, promoted ${data.promoted ?? 0} to jobs, matched ${matched}`
       );
       onSyncComplete?.();
       await load();
@@ -129,10 +130,11 @@ export function JobBoardsPanel({ onSyncComplete }: { onSyncComplete?: () => void
         throw new Error(data.error || 'Sync all failed');
       }
       const totalPromoted = data.totalPromoted ?? 0;
+      const totalMatches = data.totalMatchesUpserted ?? 0;
       const successCount = data.synced ?? 0;
       const failedCount = data.failed ?? 0;
       setSyncMsg(
-        `Synced ${successCount} connector(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''} – ${totalPromoted} jobs promoted to listings`
+        `Synced ${successCount} connector(s)${failedCount > 0 ? ` (${failedCount} failed)` : ''} – ${totalPromoted} jobs promoted, ${totalMatches} matches upserted`
       );
       onSyncComplete?.();
       await load();

@@ -7,11 +7,11 @@ import { formatDate, formatRelative } from '@/utils/helpers';
 type Tab = 'overview' | 'deletion' | 'retention' | 'consent';
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  processing: 'bg-brand-400/10 text-brand-400 border-brand-400/20',
-  completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  approved: 'bg-blue-50 text-blue-700 border-blue-200',
+  processing: 'bg-[#EFF6FF] text-[#2563EB] border-[#DBEAFE]',
+  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  rejected: 'bg-red-50 text-red-700 border-red-200',
 };
 
 export default function AdminCompliancePage() {
@@ -126,33 +126,33 @@ export default function AdminCompliancePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Compliance & Data Governance</h1>
-        <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">Manage consent, data deletion, and retention policies</p>
+        <h1 className="admin-page-title">Compliance & Data Governance</h1>
+        <p className="admin-page-subtitle">Manage consent, data deletion, and retention policies.</p>
       </div>
 
       {message && (
-        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400 flex items-center gap-2">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 flex items-center gap-2">
           <CheckCircle size={16} /> {message}
-          <button onClick={() => setMessage(null)} className="ml-auto text-emerald-300 hover:text-white">&times;</button>
+          <button onClick={() => setMessage(null)} className="ml-auto text-emerald-500 hover:text-emerald-700">&times;</button>
         </div>
       )}
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400 flex items-center gap-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
           <AlertTriangle size={16} /> {error}
-          <button onClick={() => setError(null)} className="ml-auto text-red-300 hover:text-white">&times;</button>
+          <button onClick={() => setError(null)} className="ml-auto text-red-500 hover:text-red-700">&times;</button>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto border-b border-surface-200 dark:border-surface-700 pb-px">
+      <div className="flex gap-1 overflow-x-auto border-b border-surface-300 pb-px">
         {tabs.map(t => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors ${
               tab === t.id
-                ? 'text-brand-400 border-b-2 border-brand-400 bg-brand-500/5'
-                : 'text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200'
+                ? 'text-[#2563EB] border-b-2 border-[#2563EB] bg-[#EFF6FF]'
+                : 'text-surface-500 hover:text-surface-900'
             }`}
           >
             {t.icon} <span className="hidden sm:inline">{t.label}</span>

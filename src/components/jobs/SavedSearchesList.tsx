@@ -55,17 +55,17 @@ export function SavedSearchesList({ onLoadSearch, className }: SavedSearchesList
   if (loading || list.length === 0) return null;
 
   return (
-    <div className={cn('rounded-xl border border-surface-700 bg-surface-800/50 p-4', className)}>
-      <h3 className="text-sm font-semibold text-surface-200 mb-2 flex items-center gap-2">
+    <div className={cn('rounded-2xl border border-surface-300 bg-surface-50 p-4', className)}>
+      <h3 className="mb-2 flex items-center gap-2 text-sm font-bold text-surface-900">
         <Bookmark size={14} /> Saved searches
       </h3>
       <ul className="space-y-2">
         {list.map((s) => (
-          <li key={s.id} className="flex items-center justify-between gap-2 group">
+          <li key={s.id} className="flex items-center justify-between gap-2 group rounded-lg border border-surface-300 bg-surface-100 px-2 py-1.5">
             <button
               type="button"
               onClick={() => onLoadSearch(toParams(s.search_params))}
-              className="flex-1 text-left text-sm text-surface-300 hover:text-surface-100 truncate flex items-center gap-1.5"
+              className="flex flex-1 items-center gap-1.5 truncate text-left text-sm font-semibold text-surface-800 hover:text-surface-900"
             >
               <Search size={12} />
               {s.search_name}
@@ -73,7 +73,7 @@ export function SavedSearchesList({ onLoadSearch, className }: SavedSearchesList
             <button
               type="button"
               onClick={() => handleDelete(s.id)}
-              className="p-1.5 rounded hover:bg-surface-700 text-surface-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="p-1.5 rounded text-surface-500 opacity-0 transition-opacity hover:bg-surface-200 hover:text-red-600 group-hover:opacity-100"
               title="Delete saved search"
             >
               <Trash2 size={14} />

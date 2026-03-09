@@ -25,6 +25,32 @@ interface SearchParams {
   sort_by?: string;
 }
 
+interface SavedSearchRow {
+  id: string;
+  candidate_id: string;
+  search_name: string;
+  search_params: SearchParams;
+  alert_frequency: string | null;
+  last_notified_at: string | null;
+}
+
+interface JobRow {
+  id: string;
+  title: string;
+  company: string | null;
+  location: string | null;
+  url: string | null;
+}
+
+function shouldRunForFrequency(freq: string | null, lastNotified: Date | null, now: Date): boolean {
+  const dailyCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const weeklyCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  if (freq === 'instant') return true;
+  if (freq === 'weekly') return !lastNotified || lastNotified < weeklyCutoff;
+  // default and daily behave as daily
+  return !lastNotified || lastNotified < dailyCutoff;
+}
+
 function buildJobsQuery(
   supabase: ReturnType<typeof createServiceClient>,
   params: SearchParams,
@@ -111,19 +137,12 @@ async function runAlerts(req: NextRequest) {
   }
 
   const now = new Date();
-  const dailyCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const weeklyCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const results: { searchId: string; email: string; sent: boolean; jobCount: number; error?: string }[] = [];
 
-  for (const row of searches ?? []) {
+  for (const row of (searches ?? []) as SavedSearchRow[]) {
     const lastNotified = row.last_notified_at ? new Date(row.last_notified_at) : null;
-    const freq = row.alert_frequency as string;
-    let shouldRun = false;
-    if (freq === 'instant') shouldRun = true;
-    else if (freq === 'daily') shouldRun = !lastNotified || lastNotified < dailyCutoff;
-    else if (freq === 'weekly') shouldRun = !lastNotified || lastNotified < weeklyCutoff;
-    else shouldRun = !lastNotified || lastNotified < dailyCutoff;
+    const shouldRun = shouldRunForFrequency(row.alert_frequency, lastNotified, now);
 
     if (!shouldRun) continue;
 
@@ -144,7 +163,7 @@ async function runAlerts(req: NextRequest) {
     const email = profile?.email?.trim();
     if (!email) continue;
 
-    const params = (row.search_params || {}) as SearchParams;
+    const params = row.search_params || {};
     const postedAfter = lastNotified ? lastNotified.toISOString() : undefined;
     const query = buildJobsQuery(supabase, params, postedAfter);
     const { data: jobs, error: jobsErr } = await query;
@@ -154,8 +173,61 @@ async function runAlerts(req: NextRequest) {
       continue;
     }
 
-    const jobList = jobs ?? [];
+    const jobList = (jobs ?? []) as JobRow[];
     if (jobList.length === 0) {
+      results.push({ searchId: row.id, email, sent: false, jobCount: 0 });
+      continue;
+    }
+
+    // In-app channel dedupe: create per-job events (only if not already sent).
+    const jobIds = jobList.map((j) => j.id);
+    const { data: inAppDelivered } = await supabase
+      .from('candidate_job_alert_events')
+      .select('job_id')
+      .eq('saved_search_id', row.id)
+      .eq('channel', 'in_app')
+      .eq('delivery_status', 'sent')
+      .in('job_id', jobIds);
+    const deliveredInAppSet = new Set((inAppDelivered ?? []).map((x: { job_id: string }) => x.job_id));
+    const inAppRows = jobList
+      .filter((j) => !deliveredInAppSet.has(j.id))
+      .map((j) => ({
+        saved_search_id: row.id,
+        candidate_id: row.candidate_id,
+        job_id: j.id,
+        channel: 'in_app' as const,
+        delivery_status: 'sent' as const,
+        delivered_at: now.toISOString(),
+        payload: {
+          search_name: row.search_name,
+          title: j.title,
+          company: j.company,
+          location: j.location,
+          url: j.url,
+        },
+      }));
+    if (inAppRows.length > 0) {
+      await supabase.from('candidate_job_alert_events').upsert(inAppRows, {
+        onConflict: 'saved_search_id,job_id,channel',
+      });
+    }
+
+    // Email channel dedupe: only send jobs that have not been sent for this search.
+    const { data: emailDelivered } = await supabase
+      .from('candidate_job_alert_events')
+      .select('job_id')
+      .eq('saved_search_id', row.id)
+      .eq('channel', 'email')
+      .eq('delivery_status', 'sent')
+      .in('job_id', jobIds);
+    const deliveredEmailSet = new Set((emailDelivered ?? []).map((x: { job_id: string }) => x.job_id));
+    const jobsForEmail = jobList.filter((j) => !deliveredEmailSet.has(j.id));
+
+    if (jobsForEmail.length === 0) {
+      await supabase
+        .from('candidate_saved_searches')
+        .update({ last_notified_at: now.toISOString() })
+        .eq('id', row.id);
       results.push({ searchId: row.id, email, sent: false, jobCount: 0 });
       continue;
     }
@@ -163,9 +235,9 @@ async function runAlerts(req: NextRequest) {
     const { subject, html } = templateSavedSearchAlert({
       candidateName: profile?.name || undefined,
       searchName: row.search_name,
-      jobs: jobList.map((j: { title: string; company?: string; location?: string; url?: string }) => ({
+      jobs: jobsForEmail.map((j) => ({
         title: j.title || 'Untitled',
-        company: j.company,
+        company: j.company ?? undefined,
         location: j.location ?? undefined,
         url: j.url ?? undefined,
       })),
@@ -174,16 +246,54 @@ async function runAlerts(req: NextRequest) {
 
     const sendResult = await sendEmail({ to: email, subject, html });
     if (sendResult.error) {
-      results.push({ searchId: row.id, email, sent: false, jobCount: jobList.length, error: sendResult.error });
+      const failedRows = jobsForEmail.map((j) => ({
+        saved_search_id: row.id,
+        candidate_id: row.candidate_id,
+        job_id: j.id,
+        channel: 'email' as const,
+        delivery_status: 'failed' as const,
+        error_message: sendResult.error,
+        payload: {
+          search_name: row.search_name,
+          title: j.title,
+          company: j.company,
+          location: j.location,
+          url: j.url,
+        },
+      }));
+      await supabase.from('candidate_job_alert_events').upsert(failedRows, {
+        onConflict: 'saved_search_id,job_id,channel',
+      });
+      results.push({ searchId: row.id, email, sent: false, jobCount: jobsForEmail.length, error: sendResult.error });
       continue;
     }
+
+    const sentRows = jobsForEmail.map((j) => ({
+      saved_search_id: row.id,
+      candidate_id: row.candidate_id,
+      job_id: j.id,
+      channel: 'email' as const,
+      delivery_status: 'sent' as const,
+      delivered_at: now.toISOString(),
+      error_message: null,
+      payload: {
+        search_name: row.search_name,
+        title: j.title,
+        company: j.company,
+        location: j.location,
+        url: j.url,
+      },
+    }));
+    await supabase.from('candidate_job_alert_events').upsert(sentRows, {
+      onConflict: 'saved_search_id,job_id,channel',
+    });
 
     await supabase
       .from('candidate_saved_searches')
       .update({ last_notified_at: now.toISOString() })
       .eq('id', row.id);
 
-    results.push({ searchId: row.id, email, sent: true, jobCount: jobList.length });
+    results.push({ searchId: row.id, email, sent: true, jobCount: jobsForEmail.length });
   }
 
   return NextResponse.json({

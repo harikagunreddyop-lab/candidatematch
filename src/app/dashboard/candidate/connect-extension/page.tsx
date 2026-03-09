@@ -87,7 +87,7 @@ export default function ConnectExtensionPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#0f0f1a] px-4">
+        <div className="min-h-screen flex items-center justify-center bg-surface-bg px-4">
             {/* Hidden token element — content script reads this */}
             {token && (
                 <div
@@ -104,14 +104,14 @@ export default function ConnectExtensionPage() {
                 {/* Logo + title */}
                 <div className="text-center mb-8">
                     <div className="text-5xl mb-3">🤖</div>
-                    <h1 className="text-2xl font-bold text-white">Connect Extension</h1>
-                    <p className="text-[#888] text-sm mt-1">Link your account to the CandidateMatch autofill extension</p>
+                    <h1 className="text-2xl font-bold text-surface-900">Connect Extension</h1>
+                    <p className="text-surface-600 text-sm mt-1">Link your account to the CandidateMatch autofill extension</p>
                 </div>
 
-                <div className="bg-[#1a1a2e] border border-[#2a2a4c] rounded-2xl p-6 space-y-6">
+                <div className="bg-surface-100 border border-surface-300 rounded-2xl p-6 space-y-6">
 
                     {status === 'loading' && (
-                        <div className="text-center text-[#888] py-4">
+                        <div className="text-center text-surface-600 py-4">
                             <div className="animate-spin text-2xl mb-2">⟳</div>
                             Checking session…
                         </div>
@@ -120,8 +120,8 @@ export default function ConnectExtensionPage() {
                     {status === 'no-session' && (
                         <div className="text-center">
                             <div className="text-amber-400 text-lg mb-3">⚠ Not signed in</div>
-                            <p className="text-[#aaa] text-sm mb-4">Please sign in first, then return here.</p>
-                            <a href="/" className="inline-block px-5 py-2.5 bg-[#7c83fd] text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity">
+                            <p className="text-surface-600 text-sm mb-4">Please sign in first, then return here.</p>
+                            <a href="/" className="inline-block px-5 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity">
                                 Sign In
                             </a>
                         </div>
@@ -130,8 +130,8 @@ export default function ConnectExtensionPage() {
                     {status === 'waiting' && (
                         <div className="text-center py-2">
                             <div className="text-4xl mb-3 animate-pulse">🔗</div>
-                            <p className="text-white font-semibold">Connecting to extension…</p>
-                            <p className="text-[#888] text-sm mt-1">Make sure the CandidateMatch extension is installed in Chrome.</p>
+                            <p className="text-surface-900 font-semibold">Connecting to extension…</p>
+                            <p className="text-surface-600 text-sm mt-1">Make sure the CandidateMatch extension is installed in Chrome.</p>
                         </div>
                     )}
 
@@ -139,12 +139,12 @@ export default function ConnectExtensionPage() {
                         <div className="text-center py-2">
                             <div className="text-5xl mb-3">✅</div>
                             <p className="text-emerald-400 font-bold text-lg">Extension connected!</p>
-                            <p className="text-[#888] text-sm mt-1">
+                            <p className="text-surface-600 text-sm mt-1">
                                 Session valid for ~{minutesLeft} min. Press{' '}
-                                <kbd className="bg-[#2a2a4c] text-[#7c83fd] px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+F</kbd>{' '}
+                                <kbd className="bg-surface-200 text-brand-700 px-1.5 py-0.5 rounded text-xs">Ctrl+Shift+F</kbd>{' '}
                                 on any job page to autofill.
                             </p>
-                            <p className="text-[#555] text-xs mt-4">Come back here when session expires to reconnect.</p>
+                            <p className="text-surface-500 text-xs mt-4">Come back here when session expires to reconnect.</p>
                         </div>
                     )}
 
@@ -152,10 +152,10 @@ export default function ConnectExtensionPage() {
                         <div className="text-center py-2">
                             <div className="text-4xl mb-3">⏰</div>
                             <p className="text-amber-400 font-semibold">Session expired</p>
-                            <p className="text-[#888] text-sm mt-1 mb-4">Refresh to generate a new token.</p>
+                            <p className="text-surface-600 text-sm mt-1 mb-4">Refresh to generate a new token.</p>
                             <button
                                 onClick={handleRefresh}
-                                className="px-5 py-2.5 bg-[#7c83fd] text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity"
+                                className="px-5 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity"
                             >
                                 Refresh Session
                             </button>
@@ -166,24 +166,24 @@ export default function ConnectExtensionPage() {
                         <>
                             <div className="text-center">
                                 <div className="text-4xl mb-3">⬇️</div>
-                                <p className="text-white font-semibold">Extension not detected</p>
-                                <p className="text-[#888] text-sm mt-1">
+                                <p className="text-surface-900 font-semibold">Extension not detected</p>
+                                <p className="text-surface-600 text-sm mt-1">
                                     Install the CandidateMatch extension in Chrome, reload this page, and try again.
                                     Or copy the token below to paste manually.
                                 </p>
                             </div>
                             <div>
-                                <p className="text-xs text-[#888] uppercase tracking-wide font-semibold mb-2">
+                                <p className="text-xs text-surface-600 uppercase tracking-wide font-semibold mb-2">
                                     Manual token ({minutesLeft} min remaining)
                                 </p>
                                 <div className="flex gap-2">
                                     <input
                                         readOnly value={token} type="password"
-                                        className="flex-1 bg-[#0f0f1a] border border-[#2a2a4c] rounded-xl px-3 py-2 text-xs text-[#7c83fd] font-mono"
+                                        className="flex-1 bg-surface-50 border border-surface-300 rounded-xl px-3 py-2 text-xs text-brand-700 font-mono"
                                     />
                                     <button
                                         onClick={handleCopyToken}
-                                        className="px-3 py-2 bg-[#2a2a4c] text-white rounded-xl text-sm hover:bg-[#3a3a5c] transition-colors"
+                                        className="px-3 py-2 bg-surface-200 text-surface-800 rounded-xl text-sm hover:bg-surface-300 transition-colors"
                                     >
                                         {copied ? '✓' : '📋'}
                                     </button>
@@ -191,7 +191,7 @@ export default function ConnectExtensionPage() {
                             </div>
                             <button
                                 onClick={handleRefresh}
-                                className="w-full px-4 py-2.5 bg-[#7c83fd] text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity"
+                                className="w-full px-4 py-2.5 bg-brand-500 text-white rounded-xl text-sm font-semibold hover:opacity-85 transition-opacity"
                             >
                                 Reload &amp; Try Again
                             </button>
@@ -199,20 +199,20 @@ export default function ConnectExtensionPage() {
                     )}
 
                     {(status === 'waiting' || status === 'connected' || status === 'no-extension') && (
-                        <div className="border-t border-[#2a2a4c] pt-4">
-                            <p className="text-xs text-[#555] font-semibold uppercase tracking-wide mb-3">How it works</p>
-                            <ol className="space-y-2 text-xs text-[#888]">
-                                <li className="flex gap-2"><span className="text-[#7c83fd] font-bold">1.</span> Open any job application in Chrome</li>
-                                <li className="flex gap-2"><span className="text-[#7c83fd] font-bold">2.</span> Press <kbd className="bg-[#2a2a4c] text-[#7c83fd] px-1 rounded">Ctrl+Shift+F</kbd> (Mac: <kbd className="bg-[#2a2a4c] text-[#7c83fd] px-1 rounded">⌘⇧F</kbd>)</li>
-                                <li className="flex gap-2"><span className="text-[#7c83fd] font-bold">3.</span> Fields fill instantly from your profile</li>
-                                <li className="flex gap-2"><span className="text-[#7c83fd] font-bold">4.</span> Review highlighted fields, then submit manually</li>
+                        <div className="border-t border-surface-300 pt-4">
+                            <p className="text-xs text-surface-500 font-semibold uppercase tracking-wide mb-3">How it works</p>
+                            <ol className="space-y-2 text-xs text-surface-600">
+                                <li className="flex gap-2"><span className="text-brand-700 font-bold">1.</span> Open any job application in Chrome</li>
+                                <li className="flex gap-2"><span className="text-brand-700 font-bold">2.</span> Press <kbd className="bg-surface-200 text-brand-700 px-1 rounded">Ctrl+Shift+F</kbd> (Mac: <kbd className="bg-surface-200 text-brand-700 px-1 rounded">⌘⇧F</kbd>)</li>
+                                <li className="flex gap-2"><span className="text-brand-700 font-bold">3.</span> Fields fill instantly from your profile</li>
+                                <li className="flex gap-2"><span className="text-brand-700 font-bold">4.</span> Review highlighted fields, then submit manually</li>
                             </ol>
                         </div>
                     )}
 
-                    <div className="bg-[#0f0f1a] border border-[#2a2a4c] rounded-xl p-3">
-                        <p className="text-[#555] text-xs">
-                            🔒 <strong className="text-[#777]">Security:</strong> Only a short-lived session token is stored in the extension.
+                    <div className="bg-surface-50 border border-surface-300 rounded-xl p-3">
+                        <p className="text-surface-500 text-xs">
+                            🔒 <strong className="text-surface-600">Security:</strong> Only a short-lived session token is stored in the extension.
                             No passwords stored. Forms are never auto-submitted.
                         </p>
                     </div>

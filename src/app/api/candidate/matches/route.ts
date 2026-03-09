@@ -35,6 +35,9 @@ export async function GET(req: NextRequest) {
   ]);
 
   if (!candidate) {
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H4',location:'api/candidate/matches/route.ts:38',message:'Candidate matches API no candidate linked',data:{userIdPresent:Boolean(userId)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({
       matches: [],
       limitReached: false,
@@ -50,9 +53,12 @@ export async function GET(req: NextRequest) {
   if (isPro) {
     const { data: matches } = await supabase
       .from('candidate_job_matches')
-      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
+      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
       .order('fit_score', { ascending: false });
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H3',location:'api/candidate/matches/route.ts:58',message:'Candidate matches API pro response',data:{candidateId:candidate.id,tier:subscriptionTier,returnedCount:(matches??[]).length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({
       matches: matches ?? [],
       limitReached: false,
@@ -68,11 +74,14 @@ export async function GET(req: NextRequest) {
   if (usedThisWeek >= FREE_TIER_WEEKLY_MATCH_LIMIT) {
     const { data: capped } = await supabase
       .from('candidate_job_matches')
-      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
+      .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
       .gte('matched_at', weekStart)
       .order('fit_score', { ascending: false })
       .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H3',location:'api/candidate/matches/route.ts:79',message:'Candidate matches API free limit reached',data:{candidateId:candidate.id,usedThisWeek,limit:FREE_TIER_WEEKLY_MATCH_LIMIT,returnedCount:(capped??[]).length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return NextResponse.json({
       matches: capped ?? [],
       limitReached: true,
@@ -85,11 +94,14 @@ export async function GET(req: NextRequest) {
 
   const { data: matches } = await supabase
     .from('candidate_job_matches')
-    .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at)')
+    .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
     .eq('candidate_id', candidate.id)
     .gte('matched_at', weekStart)
     .order('fit_score', { ascending: false })
     .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
+  // #region agent log
+  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H3',location:'api/candidate/matches/route.ts:98',message:'Candidate matches API free response',data:{candidateId:candidate.id,usedThisWeek,limit:FREE_TIER_WEEKLY_MATCH_LIMIT,returnedCount:(matches??[]).length,weekStart},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
 
   return NextResponse.json({
     matches: matches ?? [],

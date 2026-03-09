@@ -42,9 +42,12 @@ export default function CareerCoachPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
-      <h1 className="text-2xl font-bold text-surface-900 dark:text-white mb-4">Career coach</h1>
-      <div className="flex-1 rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 flex flex-col overflow-hidden">
+    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-8rem)]">
+      <div className="mb-3 rounded-2xl border border-surface-300 bg-surface-100 px-4 py-3">
+        <h1 className="text-xl font-bold text-surface-900">Career coach</h1>
+        <p className="text-xs text-surface-600 mt-1">Ask focused questions and get practical next steps for your search.</p>
+      </div>
+      <div className="flex-1 rounded-2xl border border-surface-300 bg-surface-100 flex flex-col overflow-hidden shadow-sm">
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.map((msg, i) => (
             <div
@@ -55,8 +58,8 @@ export default function CareerCoachPage() {
               )}
             >
               {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-brand-400/20 flex items-center justify-center shrink-0">
-                  <MessageCircle className="w-4 h-4 text-brand-400" />
+                <div className="w-8 h-8 rounded-full bg-brand-500/15 border border-brand-300 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4 text-brand-600" />
                 </div>
               )}
               <div
@@ -64,7 +67,7 @@ export default function CareerCoachPage() {
                   'max-w-[85%] rounded-xl px-4 py-2.5 text-sm',
                   msg.role === 'user'
                     ? 'bg-brand-400 text-[#0a0f00]'
-                    : 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white'
+                    : 'bg-surface-50 border border-surface-300 text-surface-800'
                 )}
               >
                 {msg.content}
@@ -73,15 +76,15 @@ export default function CareerCoachPage() {
           ))}
           {loading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-brand-400/20 flex items-center justify-center shrink-0">
-                <MessageCircle className="w-4 h-4 text-brand-400" />
+              <div className="w-8 h-8 rounded-full bg-brand-500/15 border border-brand-300 flex items-center justify-center shrink-0">
+                <MessageCircle className="w-4 h-4 text-brand-600" />
               </div>
-              <div className="rounded-xl px-4 py-2.5 bg-surface-200 dark:bg-surface-700 text-surface-500">Thinking…</div>
+              <div className="rounded-xl px-4 py-2.5 bg-surface-50 border border-surface-300 text-surface-600">Thinking…</div>
             </div>
           )}
           <div ref={bottomRef} />
         </div>
-        <form onSubmit={handleSubmit} className="p-4 border-t border-surface-200 dark:border-surface-700">
+        <form onSubmit={handleSubmit} className="p-4 border-t border-surface-300 bg-surface-50">
           <div className="flex gap-2">
             <input
               type="text"
@@ -91,7 +94,7 @@ export default function CareerCoachPage() {
               className="input flex-1"
               disabled={loading}
             />
-            <button type="submit" disabled={loading || !input.trim()} className="btn-primary px-4">
+            <button type="submit" disabled={loading || !input.trim()} className="btn-primary px-4 h-10 rounded-xl">
               <Send size={18} />
             </button>
           </div>

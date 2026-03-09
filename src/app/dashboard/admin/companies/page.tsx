@@ -43,22 +43,22 @@ export default function CompaniesPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-3xl font-bold text-white">Companies</h1>
-          <p className="text-surface-400 mt-1">{companies.length} total companies</p>
+          <h1 className="admin-page-title">Companies</h1>
+          <p className="admin-page-subtitle">{companies.length} total companies</p>
         </div>
         <Link
           href="/dashboard/admin/companies/new"
-          className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
+          className="btn-primary text-sm flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           New Company
         </Link>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
+      <div className="admin-toolbar">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-500" />
           <input
@@ -66,13 +66,13 @@ export default function CompaniesPage() {
             placeholder="Search companies..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-medium placeholder-surface-500 focus:outline-none focus:border-brand-400"
+            className="input text-sm w-full pl-10 pr-4 py-2.5"
           />
         </div>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
-          className="px-4 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-bold focus:outline-none focus:border-brand-400"
+          className="input text-sm px-4 py-2.5 w-full sm:w-52"
         >
           <option value="all">All Companies</option>
           <option value="active">Active</option>
@@ -81,14 +81,14 @@ export default function CompaniesPage() {
         </select>
       </div>
 
-      <div className="bg-surface-800/50 border border-surface-700/60 rounded-xl overflow-hidden">
+      <div className="admin-table-wrap">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-6 h-6 border-2 border-brand-400 border-t-transparent rounded-full" />
+            <div className="animate-spin w-6 h-6 border-2 border-[#2563EB] border-t-transparent rounded-full" />
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-surface-900/50 border-b border-surface-700">
+            <thead className="bg-white border-b border-surface-300">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-surface-400 uppercase">Company</th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-surface-400 uppercase">Plan</th>
@@ -98,27 +98,27 @@ export default function CompaniesPage() {
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-surface-700/50">
+            <tbody className="divide-y divide-surface-200">
               {filteredCompanies.map((company) => (
-                <tr key={company.id} className="hover:bg-surface-900/30 transition-colors">
+                <tr key={company.id} className="hover:bg-surface-50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Building2 className="w-5 h-5 text-surface-500 shrink-0" />
                       <div className="min-w-0">
-                        <div className="font-medium text-white truncate">{company.name}</div>
+                        <div className="font-medium text-surface-900 truncate">{company.name}</div>
                         <div className="text-xs text-surface-500 truncate">{company.slug || '—'}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-brand-400/10 text-brand-400 text-xs font-medium rounded">
+                    <span className="px-2 py-1 bg-[#EFF6FF] text-[#2563EB] text-xs font-medium rounded">
                       {company.subscription_plan}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <StatusBadge status={company.subscription_status} />
                   </td>
-                  <td className="px-6 py-4 text-white font-medium">
+                  <td className="px-6 py-4 text-surface-900 font-medium">
                     ${getMRR(company.subscription_plan)}
                   </td>
                   <td className="px-6 py-4 text-surface-400 text-sm">
@@ -127,7 +127,7 @@ export default function CompaniesPage() {
                   <td className="px-6 py-4">
                     <Link
                       href={`/dashboard/admin/companies/${company.id}`}
-                      className="inline-flex text-brand-400 hover:text-brand-300 transition-colors"
+                      className="inline-flex text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
                       aria-label="View company"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -143,7 +143,7 @@ export default function CompaniesPage() {
             {companies.length === 0 ? (
               <>
                 No companies yet.{' '}
-                <Link href="/dashboard/admin/companies/new" className="text-brand-400 hover:underline">
+                <Link href="/dashboard/admin/companies/new" className="text-[#2563EB] hover:underline">
                   Create the first one →
                 </Link>
               </>
@@ -159,11 +159,11 @@ export default function CompaniesPage() {
 
 function StatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
-    active: 'bg-emerald-500/10 text-emerald-400',
-    trialing: 'bg-blue-500/10 text-blue-400',
-    past_due: 'bg-red-500/10 text-red-400',
-    canceled: 'bg-surface-500/10 text-surface-400',
-    paused: 'bg-amber-500/10 text-amber-400',
+    active: 'bg-emerald-50 text-emerald-700',
+    trialing: 'bg-blue-50 text-blue-700',
+    past_due: 'bg-red-50 text-red-700',
+    canceled: 'bg-surface-100 text-surface-500',
+    paused: 'bg-amber-50 text-amber-700',
   };
   return (
     <span

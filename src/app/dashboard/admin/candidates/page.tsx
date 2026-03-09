@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner, Modal, ToastContainer } from '@/components/ui';
-import { useToast } from '@/hooks';
+import { useToast, useProfile } from '@/hooks';
 import {
   Users,
   RefreshCw,
@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<string, string> = {
 function CandidatesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { profile } = useProfile();
   const highlightId = searchParams.get('highlight');
   const supabase = createClient();
 
@@ -209,15 +210,25 @@ function CandidatesPageContent() {
   });
 
   const unassignedCount = candidates.filter((c) => !(assignments[c.id] || []).length).length;
+  const effectiveRole = (profile as (typeof profile & { effective_role?: string }) | null)?.effective_role ?? null;
+  const isPlatformAdmin = effectiveRole === 'platform_admin';
+  const showRecruiterAssignmentUI = !isPlatformAdmin;
+
+  useEffect(() => {
+    if (!profile) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'60e030'},body:JSON.stringify({sessionId:'60e030',runId:'baseline',hypothesisId:'H2',location:'src/app/dashboard/admin/candidates/page.tsx:220',message:'Candidates admin visibility model',data:{profileRole:profile.role,effectiveRole,isPlatformAdmin,showRecruiterAssignmentUI,candidatesCount:candidates.length,recruitersCount:recruiters.length,unassignedCount},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }, [profile, effectiveRole, isPlatformAdmin, showRecruiterAssignmentUI, candidates.length, recruiters.length, unassignedCount]);
 
   return (
     <div className="space-y-6">
       <ToastContainer toasts={toasts} dismiss={dismiss} />
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Candidates</h1>
-          <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
+          <h1 className="admin-page-title">Candidates</h1>
+          <p className="admin-page-subtitle">
             {candidates.length} total
             {lastRefreshed && (
               <span className="text-surface-400">
@@ -238,20 +249,20 @@ function CandidatesPageContent() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-200 flex items-center gap-2">
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
           <AlertCircle size={14} /> {error}
         </div>
       )}
 
-      {unassignedCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
-          <UserPlus size={15} className="text-amber-600 dark:text-amber-400 shrink-0" />
-          <p className="text-sm text-amber-800 dark:text-amber-200">
+      {showRecruiterAssignmentUI && unassignedCount > 0 && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+          <UserPlus size={15} className="text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800">
             <span className="font-semibold">{unassignedCount} candidate{unassignedCount !== 1 ? 's' : ''}</span> waiting for recruiter assignment.
           </p>
           <button
             onClick={() => setFilterAssignment('unassigned')}
-            className="ml-auto text-xs text-amber-700 dark:text-amber-300 underline"
+            className="ml-auto text-xs text-amber-700 underline"
           >
             Show them
           </button>
@@ -259,24 +270,28 @@ function CandidatesPageContent() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="admin-toolbar items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, title, location..." />
-        <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value as 'all' | 'unassigned' | 'assigned')} className="input text-sm w-full sm:w-44" aria-label="Assignment filter">
-          <option value="all">All</option>
-          <option value="unassigned">Waiting for recruiter</option>
-          <option value="assigned">Assigned</option>
-        </select>
+        {showRecruiterAssignmentUI && (
+          <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value as 'all' | 'unassigned' | 'assigned')} className="input text-sm w-full sm:w-44" aria-label="Assignment filter">
+            <option value="all">All</option>
+            <option value="unassigned">Waiting for recruiter</option>
+            <option value="assigned">Assigned</option>
+          </select>
+        )}
         <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} className="input text-sm w-full sm:w-32" aria-label="Active filter">
           <option value="all">All</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        <select value={filterRecruiter} onChange={(e) => setFilterRecruiter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Recruiter filter">
-          <option value="all">All recruiters</option>
-          {recruiters.map((r) => (
-            <option key={r.id} value={r.id}>{r.name || r.email}</option>
-          ))}
-        </select>
+        {showRecruiterAssignmentUI && (
+          <select value={filterRecruiter} onChange={(e) => setFilterRecruiter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Recruiter filter">
+            <option value="all">All recruiters</option>
+            {recruiters.map((r) => (
+              <option key={r.id} value={r.id}>{r.name || r.email}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {!loading && <p className="text-xs text-surface-500">Showing {filtered.length} of {candidates.length}</p>}
@@ -299,19 +314,19 @@ function CandidatesPageContent() {
       ) : (
         <div className="card overflow-hidden min-w-0">
           <div className="divide-y divide-surface-50 min-w-0 overflow-x-auto">
-            <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 bg-surface-100 text-xs font-semibold text-surface-600 dark:text-surface-400 uppercase tracking-wide">
+            <div className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 bg-surface-100 text-xs font-semibold text-surface-600 uppercase tracking-wide">
               <div className="w-10 shrink-0" />
               <div className="flex-1 flex items-center gap-2 min-w-0">
-                <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+                <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-surface-900">
                   Name {sortBy === 'name' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
                 </button>
                 <span className="text-surface-400">·</span>
-                <button onClick={() => toggleSort('title')} className="flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+                <button onClick={() => toggleSort('title')} className="flex items-center gap-1 hover:text-surface-900">
                   Title {sortBy === 'title' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
                 </button>
               </div>
               <div className="hidden md:block w-24" />
-              <button onClick={() => toggleSort('created_at')} className="shrink-0 flex items-center gap-1 hover:text-surface-900 dark:hover:text-surface-200">
+              <button onClick={() => toggleSort('created_at')} className="shrink-0 flex items-center gap-1 hover:text-surface-900">
                 Added {sortBy === 'created_at' ? (sortAsc ? <ChevronUp size={12} /> : <ChevronDown size={12} />) : null}
               </button>
             </div>
@@ -325,10 +340,10 @@ function CandidatesPageContent() {
                 <div
                   key={c.id}
                   id={`candidate-row-${c.id}`}
-                  className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-100 dark:hover:bg-surface-700/30 transition-colors group min-w-0"
+                  className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-100 transition-colors group min-w-0"
                 >
                   <div
-                    className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-500/30 flex items-center justify-center text-brand-700 dark:text-brand-300 font-bold text-sm shrink-0 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-sm shrink-0 cursor-pointer"
                     onClick={() => router.push(`/dashboard/admin/candidates/${c.id}`)}
                   >
                     {c.full_name?.[0] || '?'}
@@ -336,7 +351,7 @@ function CandidatesPageContent() {
 
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => router.push(`/dashboard/admin/candidates/${c.id}`)}>
                     <div className="flex items-center gap-2 flex-wrap min-w-0">
-                      <p className="text-sm font-semibold text-surface-900 dark:text-surface-100 truncate max-w-[180px] sm:max-w-none">{c.full_name}</p>
+                      <p className="text-sm font-semibold text-surface-900 truncate max-w-[180px] sm:max-w-none">{c.full_name}</p>
                       {c.rating > 0 && (
                         <div className="flex gap-0.5">
                           {Array.from({ length: c.rating }).map((_, i) => (
@@ -344,15 +359,17 @@ function CandidatesPageContent() {
                           ))}
                         </div>
                       )}
-                      <span className={cn(
-                        'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                        isAssigned ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300'
-                      )}>
-                        {isAssigned ? 'Assigned' : 'Waiting for recruiter'}
-                      </span>
+                      {showRecruiterAssignmentUI && (
+                        <span className={cn(
+                          'px-1.5 py-0.5 rounded text-[10px] font-medium',
+                          isAssigned ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                        )}>
+                          {isAssigned ? 'Assigned' : 'Waiting for recruiter'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                      <span className="text-xs text-surface-600 dark:text-surface-400 font-medium">
+                      <span className="text-xs text-surface-600 font-medium">
                         {c.primary_title || <span className="italic text-surface-400">No title yet</span>}
                       </span>
                       {c.location && (
@@ -365,18 +382,19 @@ function CandidatesPageContent() {
                     </div>
                   </div>
 
+                  {showRecruiterAssignmentUI && (
                   <div className="hidden md:flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {!isAssigned ? (
                       <button
                         onClick={() => { setAssignTarget(c); setAssigningId(''); }}
-                        className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 transition-colors"
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 border border-blue-200 transition-colors"
                       >
                         <UserPlus size={11} /> Assign
                       </button>
                     ) : (
                       <>
                         {assignedRecruiters.slice(0, 2).map((r) => (
-                          <span key={r.id} className="px-2 py-0.5 bg-brand-50 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 rounded-full text-[10px] font-medium">
+                          <span key={r.id} className="px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full text-[10px] font-medium">
                             {r.name || r.email}
                           </span>
                         ))}
@@ -390,6 +408,7 @@ function CandidatesPageContent() {
                       </>
                     )}
                   </div>
+                  )}
 
                   <div className="shrink-0 flex items-center gap-3">
                     {latestStatus && (
@@ -407,7 +426,7 @@ function CandidatesPageContent() {
       )}
 
       {/* ── Assign Recruiter Modal ── */}
-      {assignTarget && (
+      {showRecruiterAssignmentUI && assignTarget && (
         <Modal open onClose={() => { setAssignTarget(null); setAssigningId(''); }} title={`Assign recruiter — ${assignTarget.full_name}`} size="sm">
           <div className="space-y-4">
             {(assignments[assignTarget.id] || []).length > 0 && (

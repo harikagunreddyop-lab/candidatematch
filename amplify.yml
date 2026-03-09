@@ -9,8 +9,6 @@ frontend:
       commands:
         # Avoid stale Next.js cache causing "Cannot find module for page" during Collecting page data
         - rm -rf .next
-        # Debug: print non-secret env presence before writing .env.production
-        - node -e "const keys=['NEXT_PUBLIC_SUPABASE_URL','NEXT_PUBLIC_SUPABASE_ANON_KEY','SUPABASE_SERVICE_ROLE_KEY','CRON_SECRET','REDIS_URL','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN','NEXT_PUBLIC_APP_URL']; const out=Object.fromEntries(keys.map(k=>[k,Boolean(process.env[k])])); console.log('[amplify-debug][env-presence][pre-write]', JSON.stringify(out));"
         # EventBridge: see infrastructure/eventbridge-rules.json and docs/CRON_AMPLIFY.md for scheduler setup.
         # Write selected env vars into .env.production for Next.js (overwrite first to avoid stale cache)
         - echo "" > .env.production
@@ -23,8 +21,6 @@ frontend:
         - env | grep -e AUTOFILL_ALLOWED_ORIGINS >> .env.production || true
         - env | grep -e NEXT_PUBLIC_APP_URL >> .env.production || true
         - env | grep -e GMAIL_ >> .env.production || true
-        # Debug: verify required keys made it into .env.production (presence only)
-        - node -e "const fs=require('fs'); const text=fs.readFileSync('.env.production','utf8'); const keys=text.split(/\r?\n/).filter(Boolean).map(l=>l.split('=')[0]); const has=(k)=>keys.includes(k); const out={NEXT_PUBLIC_SUPABASE_URL:has('NEXT_PUBLIC_SUPABASE_URL'),NEXT_PUBLIC_SUPABASE_ANON_KEY:has('NEXT_PUBLIC_SUPABASE_ANON_KEY'),SUPABASE_SERVICE_ROLE_KEY:has('SUPABASE_SERVICE_ROLE_KEY'),CRON_SECRET:has('CRON_SECRET'),REDIS_URL:has('REDIS_URL')}; console.log('[amplify-debug][env-presence][post-write]', JSON.stringify(out));"
         # Increase Node heap for Next.js build (helps avoid OOM on Amplify)
         - export NODE_OPTIONS="--max-old-space-size=4096"
         - npm run build

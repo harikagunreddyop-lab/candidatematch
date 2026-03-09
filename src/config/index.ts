@@ -145,12 +145,15 @@ function loadConfig(): Config {
   }
 
   const data = parsed.data;
+  const isProductionBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
 
-  // Production: fail fast if auth-critical shared secrets are missing.
-  if (data.NODE_ENV === 'production' && !data.CRON_SECRET) {
+  // Production runtime: fail fast if auth-critical shared secrets are missing.
+  // During Next.js production build, API route modules are evaluated and these
+  // secrets may be injected only at deploy/runtime, so we skip this strict gate.
+  if (data.NODE_ENV === 'production' && !isProductionBuildPhase && !data.CRON_SECRET) {
     throw new Error('Invalid environment configuration:\n  CRON_SECRET: required in production');
   }
-  if (data.NODE_ENV === 'production' && !data.EMAIL_TRACKING_SECRET) {
+  if (data.NODE_ENV === 'production' && !isProductionBuildPhase && !data.EMAIL_TRACKING_SECRET) {
     throw new Error('Invalid environment configuration:\n  EMAIL_TRACKING_SECRET: required in production');
   }
 

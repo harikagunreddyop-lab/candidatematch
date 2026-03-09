@@ -11,7 +11,17 @@ import { z } from 'zod';
 const optionalUrl = z.preprocess(
   (value) => {
     if (typeof value !== 'string') return value;
-    const normalized = value.trim();
+    let normalized = value.trim();
+    if (!normalized || normalized === 'undefined' || normalized === 'null') return undefined;
+    if (
+      (normalized.startsWith('"') && normalized.endsWith('"')) ||
+      (normalized.startsWith("'") && normalized.endsWith("'"))
+    ) {
+      normalized = normalized.slice(1, -1).trim();
+    }
+    if (normalized.startsWith('<') && normalized.endsWith('>')) {
+      normalized = normalized.slice(1, -1).trim();
+    }
     if (!normalized || normalized === 'undefined' || normalized === 'null') return undefined;
     return normalized;
   },

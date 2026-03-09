@@ -120,6 +120,12 @@ export const SKILL_IMPLICATIONS: Record<string, string[]> = {
   'agile development':    ['scrum', 'kanban', 'sprint', 'jira', 'retrospective'],
 };
 
+/** Canonical skill names for autocomplete (synonym group canonicals + implication keys). */
+export const SKILL_SUGGESTIONS: string[] = [
+  ...SYNONYM_GROUPS.map((g) => g[0]),
+  ...Object.keys(SKILL_IMPLICATIONS).filter((k) => !SYNONYM_GROUPS.some((g) => g[0].toLowerCase() === k.toLowerCase())),
+].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
 // ── Lookup maps (built once) ─────────────────────────────────────────────────
 
 const synonymMap = new Map<string, string>();

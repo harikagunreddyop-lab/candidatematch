@@ -8,13 +8,23 @@
  */
 import { z } from 'zod';
 
+const optionalUrl = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    const normalized = value.trim();
+    if (!normalized || normalized === 'undefined' || normalized === 'null') return undefined;
+    return normalized;
+  },
+  z.string().url().optional(),
+);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   // App URL — required for auth redirects, invite links, webhooks
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_APP_URL: optionalUrl,
   VERCEL_URL: z.string().optional(), // Set by Vercel
-  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SITE_URL: optionalUrl,
 
   // Supabase (required)
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
@@ -57,22 +67,22 @@ const envSchema = z.object({
   FROM_EMAIL: z.string().email().optional(),
 
   // Redis
-  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_URL: optionalUrl,
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
   REDIS_URL: z.string().optional(),
 
   // Resume worker
-  RESUME_WORKER_URL: z.string().url().optional(),
+  RESUME_WORKER_URL: optionalUrl,
   INGEST_CONCURRENCY: z.string().optional().transform((v) => parseInt(v || '5', 10)),
   INGEST_BATCH_SIZE: z.string().optional().transform((v) => parseInt(v || '100', 10)),
   INGEST_TIMEOUT_MS: z.string().optional().transform((v) => parseInt(v || '30000', 10)),
 
   // Monitoring
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
-  SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
+  SENTRY_DSN: optionalUrl,
   SENTRY_AUTH_TOKEN: z.string().optional(),
   NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
-  NEXT_PUBLIC_POSTHOG_HOST: z.string().url().optional(),
+  NEXT_PUBLIC_POSTHOG_HOST: optionalUrl,
 
   // Feature flags (env-based)
   FEATURE_BILLING_ENABLED: z.string().optional().transform((v) => v === 'true'),
@@ -88,6 +98,9 @@ const envSchema = z.object({
 export type Config = z.infer<typeof envSchema>;
 
 function loadConfig(): Config {
+  // #region agent log
+  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3504db'},body:JSON.stringify({sessionId:'3504db',runId:'pre-fix',hypothesisId:'H1',location:'src/config/index.ts:101',message:'Config parse input snapshot for optional URLs',data:{nextPhase:process.env.NEXT_PHASE||null,nodeEnv:process.env.NODE_ENV||null,resumeWorkerUrlState:typeof process.env.RESUME_WORKER_URL==='string'?(process.env.RESUME_WORKER_URL.trim()? 'present_non_empty':'present_empty'):'unset'},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const parsed = envSchema.safeParse({
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -140,6 +153,9 @@ function loadConfig(): Config {
   });
 
   if (!parsed.success) {
+    // #region agent log
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'3504db'},body:JSON.stringify({sessionId:'3504db',runId:'pre-fix',hypothesisId:'H4',location:'src/config/index.ts:154',message:'Config schema validation failed',data:{issueCount:parsed.error.issues.length,issuePaths:parsed.error.issues.map((i)=>i.path.join('.'))},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     const issues = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment configuration:\n${issues.join('\n')}`);
   }

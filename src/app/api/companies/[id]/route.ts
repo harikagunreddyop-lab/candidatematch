@@ -8,7 +8,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter'] });
   if (auth instanceof Response) return auth;
 
   const { id } = await params;

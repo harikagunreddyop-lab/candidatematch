@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** POST { candidate_id, job_id, reason? } — candidate marks job as "not interested" / hidden. */
 export async function POST(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const body = await req.json().catch(() => ({}));
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
 /** DELETE ?candidate_id= & job_id= — unhide. */
 export async function DELETE(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const candidateId = req.nextUrl.searchParams.get('candidate_id');

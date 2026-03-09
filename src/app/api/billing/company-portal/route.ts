@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAppUrl } from '@/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
-  const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const APP_URL = getAppUrl();
 
   if (!STRIPE_SECRET) {
     return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });

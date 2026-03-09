@@ -46,7 +46,7 @@ export default function SourcingPage() {
               </div>
               <span className="font-medium text-white">View matched candidates</span>
             </div>
-            <p className="text-sm text-surface-500">See AI-matched candidates for your jobs</p>
+            <p className="text-sm text-surface-500">See AI-matched candidates for your company jobs</p>
           </Link>
         </div>
       </div>

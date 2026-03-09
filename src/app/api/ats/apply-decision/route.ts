@@ -10,7 +10,7 @@ import { getApplyDecision } from '@/lib/ai';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   if (!process.env.ANTHROPIC_API_KEY) {

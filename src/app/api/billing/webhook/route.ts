@@ -6,24 +6,54 @@
  * Supports both profile (candidate Pro) and company subscriptions via metadata.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac } from 'crypto';
+import { z } from 'zod';
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCompanyPlanLimits, isCompanyPlanId } from '@/lib/plan-limits';
 
 export const dynamic = 'force-dynamic';
 
-// Stripe sends raw body — Next.js App Router handles this natively
+const stripeEventSchema = z.object({
+    type: z.string().min(1),
+    data: z.object({
+        object: z.record(z.string(), z.any()).optional(),
+    }).optional(),
+});
+
+function toHexHmac(payload: string, secret: string): string {
+    return createHmac('sha256', secret).update(payload, 'utf8').digest('hex');
+}
+
+function verifyStripeSignature(rawBody: string, signatureHeader: string | null, signingSecret: string): boolean {
+    if (!signatureHeader) return false;
+    const values = signatureHeader.split(',').map((part) => part.trim());
+    const timestamp = values.find((part) => part.startsWith('t='))?.slice(2);
+    const signature = values.find((part) => part.startsWith('v1='))?.slice(3);
+    if (!timestamp || !signature) return false;
+
+    const signedPayload = `${timestamp}.${rawBody}`;
+    const expected = toHexHmac(signedPayload, signingSecret);
+    if (expected.length !== signature.length) return false;
+    return Buffer.from(expected, 'utf8').equals(Buffer.from(signature, 'utf8'));
+}
+
 export async function POST(req: NextRequest) {
     const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
+    const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-    if (!STRIPE_SECRET) {
+    if (!STRIPE_SECRET || !STRIPE_WEBHOOK_SECRET) {
         return NextResponse.json({ error: 'Stripe not configured' }, { status: 503 });
     }
 
-    // In production, verify Stripe signature
-    // For now, we trust the event (add signature verification with stripe SDK later)
-    let event: { type: string; data?: { object?: any } };
+    const rawBody = await req.text();
+    const signatureHeader = req.headers.get('stripe-signature');
+    if (!verifyStripeSignature(rawBody, signatureHeader, STRIPE_WEBHOOK_SECRET)) {
+        return NextResponse.json({ error: 'Invalid Stripe signature' }, { status: 401 });
+    }
+
+    let event: z.infer<typeof stripeEventSchema>;
     try {
-        event = await req.json();
+        event = stripeEventSchema.parse(JSON.parse(rawBody));
     } catch {
         return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }

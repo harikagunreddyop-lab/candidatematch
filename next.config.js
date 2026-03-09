@@ -2,6 +2,7 @@
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-XSS-Protection', value: '1; mode=block' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
 ];
@@ -23,7 +24,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
+    // Avoid noisy PackFileCacheStrategy "Serializing big strings" warnings in dev.
+    // Production builds keep webpack's default filesystem cache behavior.
+    if (dev) {
+      config.cache = { type: 'memory' };
+    }
     if (isServer) {
       // pdf-parse uses 'canvas' optionally — tell webpack to ignore it
       config.externals = [...(config.externals || []), 'canvas'];

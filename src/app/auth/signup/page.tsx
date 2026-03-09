@@ -13,9 +13,10 @@ import {
   RoleCard,
   EmailVerification,
 } from '@/components/auth';
+import { getAppUrl } from '@/config';
 
-function getAppUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+function getAppUrlWithFallback(): string {
+  return (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
 }
 
 type SignupRole = 'candidate' | 'company';
@@ -53,7 +54,7 @@ export default function SignupPage() {
     }
 
     setLoading(true);
-    const appUrl = getAppUrl();
+    const appUrl = getAppUrlWithFallback();
     const signupRole = role === 'company' ? 'recruiter' : 'candidate';
 
     const { data, error: err } = await supabase.auth.signUp({

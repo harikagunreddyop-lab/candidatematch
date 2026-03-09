@@ -6,9 +6,10 @@ import { motion } from 'framer-motion';
 import { Sparkles, Mail } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 import { FloatingInput } from '@/components/auth';
+import { getAppUrl } from '@/config';
 
-function getAppUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+function getAppUrlWithFallback(): string {
+  return (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
 }
 
 export default function MagicLinkPage() {
@@ -30,7 +31,7 @@ export default function MagicLinkPage() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${getAppUrl()}/auth/callback`,
+        emailRedirectTo: `${getAppUrlWithFallback()}/auth/callback`,
       },
     });
 

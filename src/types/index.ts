@@ -177,6 +177,9 @@ export interface Candidate {
   years_of_experience?: number;
   last_seen_matches_at?: string;
   onboarding_completed?: boolean;
+  /** Optional salary range for profile/preview (not always present). */
+  salary_min?: number;
+  salary_max?: number;
   created_at: string;
   updated_at: string;
 }
@@ -200,7 +203,7 @@ export interface Job {
   scraped_at: string;
   expires_at?: string;
   created_at: string;
-  structured_requirements?: any;
+  structured_requirements?: Record<string, unknown>;
   must_have_skills?: string[];
   nice_to_have_skills?: string[];
   seniority_level?: string;
@@ -266,7 +269,7 @@ export interface CandidateJobMatch {
   /** On-demand ATS check (computed only when recruiter/admin runs it for a job). */
   ats_score?: number | null;
   ats_reason?: string | null;
-  ats_breakdown?: any;
+  ats_breakdown?: Record<string, unknown> | null;
   ats_checked_at?: string | null;
   ats_resume_id?: string | null;
   job?: Job;
@@ -485,3 +488,10 @@ export type Optional<T> = T | undefined;
 export type DeepPartial<T> = {
   [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
 };
+
+/** Type for API error objects. */
+export interface APIError {
+  message: string;
+  code?: string;
+  details?: unknown;
+}

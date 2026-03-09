@@ -19,8 +19,12 @@ export async function cached<T>(
 ): Promise<T> {
   if (!upstash) return fetcher();
   try {
-    const raw = await upstash.get<string>(key);
-    if (raw !== null) return JSON.parse(raw) as T;
+    const raw = await upstash.get<unknown>(key);
+    if (raw !== null) {
+      // Upstash may return either a JSON string or a parsed value depending on client behavior.
+      if (typeof raw === 'string') return JSON.parse(raw) as T;
+      return raw as T;
+    }
     const data = await fetcher();
     await upstash.setex(key, ttlSeconds, JSON.stringify(data));
     return data;

@@ -37,7 +37,7 @@ async function getResumeText(
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   let body: { resume_id?: string; job_id?: string; candidate_id?: string };

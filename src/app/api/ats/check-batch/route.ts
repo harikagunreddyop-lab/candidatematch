@@ -13,7 +13,7 @@ import { rateLimitResponse } from '@/lib/rate-limit';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   const rl = await rateLimitResponse(req, 'ats', auth.user.id);

@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/ChatComponents';
 import type { Profile } from '@/types';
 
-/** Messageable user or assigned candidate not yet signed in (shown disabled). */
+/** Messageable user or company candidate not yet signed in (shown disabled). */
 type ListUser = Profile & { notSignedIn?: boolean };
 
 export default function RecruiterMessagesPage() {
@@ -90,30 +90,59 @@ export default function RecruiterMessagesPage() {
     setLoadingUsers(true);
     setAvailableUsersHint(null);
     try {
-      // 1) Get assigned candidate IDs for this recruiter
-      const { data: assignments, error: assignErr } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('candidate_id')
-        .eq('recruiter_id', profile.id);
-      if (assignErr) {
+      const { data: roleCtx } = await supabase
+        .from('profile_roles')
+        .select('company_id')
+        .eq('id', profile.id)
+        .single();
+      const companyId = roleCtx?.company_id;
+      if (!companyId) {
         setAvailableUsers([]);
-        setAvailableUsersHint('Could not load assignments.');
+        setAvailableUsersHint('No company linked. Ask your company admin to add you to a company.');
         setLoadingUsers(false);
         return;
       }
-      const candidateIds = (assignments || []).map((a: any) => a.candidate_id).filter(Boolean);
-      const { data: admins } = await supabase.from('profiles').select('*').eq('role', 'admin');
-      const adminList = (admins || []).filter((u: any) => u.id !== profile.id) as ListUser[];
+
+      const { data: team } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('company_id', companyId)
+        .in('effective_role', ['company_admin', 'recruiter']);
+      const teamList = (team || []).filter((u: any) => u.id !== profile.id) as ListUser[];
+
+      const { data: companyJobs } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('company_id', companyId);
+      const jobIds = (companyJobs || []).map((j: any) => j.id);
+
+      if (jobIds.length === 0) {
+        setAvailableUsers(teamList);
+        setAvailableUsersHint('No company jobs yet. Create jobs to start messaging candidates.');
+        setLoadingUsers(false);
+        return;
+      }
+
+      const [matchRes, appRes] = await Promise.all([
+        supabase.from('candidate_job_matches').select('candidate_id').in('job_id', jobIds),
+        supabase.from('applications').select('candidate_id').in('job_id', jobIds),
+      ]);
+      const candidateIds = Array.from(new Set([
+        ...((matchRes.data || []).map((m: any) => m.candidate_id)),
+        ...((appRes.data || []).map((a: any) => a.candidate_id)),
+      ].filter(Boolean)));
 
       if (candidateIds.length === 0) {
-        setAvailableUsers(adminList);
-        if (adminList.length === 0) {
-          setAvailableUsersHint('No candidates assigned yet. Ask an admin to assign candidates to you, or message an admin below.');
-        }
+        setAvailableUsers(teamList);
+        setAvailableUsersHint(
+          teamList.length > 0
+            ? 'No candidates in your company pipeline yet. You can still message your team.'
+            : 'No messageable users found.'
+        );
         setLoadingUsers(false);
         return;
       }
-      // 2) Get assigned candidates (id, user_id, full_name, email) so we can show all assigned
+
       const { data: candidateRows } = await supabase
         .from('candidates')
         .select('id, user_id, full_name, email')
@@ -132,10 +161,10 @@ export default function RecruiterMessagesPage() {
       }));
 
       if (userIds.length === 0) {
-        setAvailableUsers([...notSignedInEntries, ...adminList]);
+        setAvailableUsers([...notSignedInEntries, ...teamList]);
         setAvailableUsersHint(
           notSignedInEntries.length > 0
-            ? 'Your assigned candidate(s) have not signed in yet. They need to sign in (or use the invite link from admin) before you can message them. You can still message admins below.'
+            ? 'Some candidates have not signed in yet. They need to sign in before you can message them. You can still message your team.'
             : 'No messageable users found.'
         );
         setLoadingUsers(false);
@@ -156,11 +185,11 @@ export default function RecruiterMessagesPage() {
           updated_at: '',
         }));
 
-      const combined = [...candidateProfiles, ...missingFromProfiles, ...notSignedInEntries, ...adminList];
+      const combined = [...candidateProfiles, ...missingFromProfiles, ...notSignedInEntries, ...teamList];
       const seen = new Set<string>();
       setAvailableUsers(combined.filter(u => { if (seen.has(u.id)) return false; seen.add(u.id); return true; }));
       if (notSignedInEntries.length > 0) {
-        setAvailableUsersHint(`${notSignedInEntries.length} assigned candidate(s) have not signed in yet and cannot be messaged.`);
+        setAvailableUsersHint(`${notSignedInEntries.length} candidate(s) have not signed in yet and cannot be messaged.`);
       }
     } finally {
       setLoadingUsers(false);
@@ -258,7 +287,7 @@ export default function RecruiterMessagesPage() {
                 </div>
                 <button onClick={() => { setShowNewConv(false); setSelectedUsers([]); }} className="btn-ghost p-1.5"><X size={16} /></button>
               </div>
-              <p className="text-xs font-semibold text-surface-400 dark:text-surface-300 uppercase tracking-wide mb-3">Your candidates & admins</p>
+              <p className="text-xs font-semibold text-surface-400 dark:text-surface-300 uppercase tracking-wide mb-3">Company candidates & team</p>
               {loadingUsers ? (
                 <div className="flex items-center gap-2 py-6 text-surface-500 dark:text-surface-400">
                   <Spinner size={18} />
@@ -272,7 +301,7 @@ export default function RecruiterMessagesPage() {
                   <div className="space-y-1 mb-6">
                     {availableUsers.length === 0 && (
                       <p className="text-sm text-surface-500 dark:text-surface-400 py-2">
-                        No one to message yet. Get an admin to assign you candidates, or they can invite candidates who will then appear here once they sign in.
+                        No one to message yet. Add candidates to your company pipeline or invite candidates so they appear here after sign-in.
                       </p>
                     )}
                     {availableUsers.map(u => (
@@ -324,7 +353,7 @@ export default function RecruiterMessagesPage() {
                 <MessageCircle size={28} className="text-brand-400" />
               </div>
               <p className="text-surface-800 dark:text-surface-100 font-medium">Select a conversation</p>
-              <p className="text-sm text-surface-400 dark:text-surface-300">Message your assigned candidates or the admin team</p>
+              <p className="text-sm text-surface-400 dark:text-surface-300">Message candidates in your company pipeline or your team</p>
             </div>
           )}
         </div>

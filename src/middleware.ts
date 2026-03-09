@@ -2,6 +2,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { EffectiveRole } from '@/types';
 import { cached } from '@/lib/redis-upstash';
+import { authLogger } from '@/lib/logger';
 
 const PROFILE_CACHE_TTL = 300; // 5 minutes
 
@@ -71,7 +72,7 @@ export async function middleware(request: NextRequest) {
 
   // Only warn when on a protected route and auth failed (e.g. expired/invalid session)
   if (error && pathname.startsWith('/dashboard')) {
-    console.warn('Middleware Auth Warning:', error.message);
+    authLogger.warn({ error: error.message }, 'middleware auth warning');
   }
 
   // ── Not logged in → send to auth page ──────────────────────────────────

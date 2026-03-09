@@ -1,12 +1,28 @@
 'use client';
-// B2B SaaS: recruiter sees only THEIR jobs (posted_by = me) and candidates matched/applied to those jobs. No recruiter_candidate_assignments.
+// Productivity-focused recruiter dashboard: AI task prioritization, quick actions, goals, follow-ups.
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
-import { Briefcase, Users, Plus, Sparkles } from 'lucide-react';
+import { Briefcase, Users, Plus, Sparkles, HelpCircle } from 'lucide-react';
+import {
+  QuickActionsPanel,
+  DailyTaskList,
+  FollowUpQueue,
+  PerformanceGoalsWidget,
+  UpcomingInterviewsCalendar,
+  ActivityTimeline,
+  LeaderboardPositionCard,
+  useKeyboardShortcuts,
+  KeyboardShortcutsPanel,
+  CommandPalette,
+  BulkFollowUpModal,
+} from '@/components/recruiter-dashboard';
 
 export default function RecruiterDashboard() {
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showBulkFollowUp, setShowBulkFollowUp] = useState(false);
   const [data, setData] = useState<{
     jobCount: number;
     myJobs: { id: string; title: string; is_active: boolean; applications_count: number }[];
@@ -16,6 +32,16 @@ export default function RecruiterDashboard() {
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+
+  useKeyboardShortcuts({
+    onHelp: () => setShowShortcuts((s) => !s),
+    onEscape: () => {
+      setShowShortcuts(false);
+      setShowCommandPalette(false);
+      setShowBulkFollowUp(false);
+    },
+    onCommandPalette: () => setShowCommandPalette((s) => !s),
+  });
 
   useEffect(() => {
     loadDashboard();
@@ -30,12 +56,28 @@ export default function RecruiterDashboard() {
     }
 
     const userId = session.user.id;
+    const { data: roleCtx } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', userId)
+      .single();
+    const companyId = roleCtx?.company_id;
+    if (!companyId) {
+      setData({
+        jobCount: 0,
+        myJobs: [],
+        newMatches: [],
+        applications: [],
+        totalApplicationsCount: 0,
+      });
+      setLoading(false);
+      return;
+    }
 
-    // MY jobs only (posted_by = me)
     const { data: myJobs, count: jobCount } = await supabase
       .from('jobs')
       .select('id, title, is_active, applications_count', { count: 'exact' })
-      .eq('posted_by', userId)
+      .eq('company_id', companyId)
       .eq('is_active', true)
       .order('created_at', { ascending: false });
 
@@ -111,23 +153,65 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">My Dashboard</h1>
-          <p className="text-surface-400 mt-1">{jobCount} active jobs</p>
+          <p className="text-surface-400 mt-1">{jobCount} active company jobs</p>
         </div>
-        <Link
-          href="/dashboard/recruiter/jobs/new"
-          className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Post Job
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowCommandPalette(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-600 text-surface-400 hover:text-white hover:bg-surface-200/50 transition-colors"
+            title="Command palette"
+          >
+            <span className="text-sm hidden sm:inline">Search</span>
+            <kbd className="hidden sm:inline px-1.5 py-0.5 rounded bg-surface-700 text-xs">⌘K</kbd>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowShortcuts(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-600 text-surface-400 hover:text-white hover:bg-surface-200/50 transition-colors"
+            title="Keyboard shortcuts"
+          >
+            <HelpCircle className="w-4 h-4" />
+            <span className="text-sm hidden sm:inline">Shortcuts</span>
+          </button>
+          <Link
+            href="/dashboard/recruiter/jobs/new"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Post Job
+          </Link>
+        </div>
       </div>
 
+      {/* Quick actions */}
+      <QuickActionsPanel />
+
+      {/* Main grid: tasks + goals + interviews + leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <DailyTaskList />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <FollowUpQueue onBulkFollowUp={() => setShowBulkFollowUp(true)} />
+            <UpcomingInterviewsCalendar />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <PerformanceGoalsWidget />
+          <LeaderboardPositionCard />
+        </div>
+      </div>
+
+      {/* Activity timeline */}
+      <ActivityTimeline />
+
+      {/* Legacy: KPIs + New Matches + My Jobs */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KPICard
-          label="My Active Jobs"
+          label="Active Company Jobs"
           value={jobCount}
           icon={<Briefcase className="w-5 h-5" />}
           color="from-brand-400 to-brand-600"
@@ -200,7 +284,7 @@ export default function RecruiterDashboard() {
 
       <div className="bg-surface-100 border border-surface-700/60 rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">My Jobs</h2>
+          <h2 className="text-xl font-semibold text-white">Company Jobs</h2>
           <Link href="/dashboard/recruiter/jobs" className="text-sm text-brand-400 hover:text-brand-300">
             View All →
           </Link>
@@ -224,6 +308,14 @@ export default function RecruiterDashboard() {
           )}
         </div>
       </div>
+
+      {showShortcuts && <KeyboardShortcutsPanel onClose={() => setShowShortcuts(false)} />}
+      <CommandPalette
+        open={showCommandPalette}
+        onClose={() => setShowCommandPalette(false)}
+        onShowShortcuts={() => setShowShortcuts(true)}
+      />
+      <BulkFollowUpModal open={showBulkFollowUp} onClose={() => setShowBulkFollowUp(false)} />
     </div>
   );
 }

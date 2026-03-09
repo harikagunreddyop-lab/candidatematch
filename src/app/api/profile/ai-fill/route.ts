@@ -14,7 +14,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = 'claude-sonnet-4-20250514';
 
 export async function POST(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['candidate', 'recruiter', 'admin'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate', 'recruiter', 'platform_admin', 'company_admin'] });
   if (authResult instanceof Response) return authResult as NextResponse;
 
   if (!ANTHROPIC_API_KEY) {

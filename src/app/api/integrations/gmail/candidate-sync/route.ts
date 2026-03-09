@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['candidate'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['candidate'] });
   if (auth instanceof Response) return auth;
 
   const service = createServiceClient();

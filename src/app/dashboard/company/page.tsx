@@ -5,34 +5,34 @@ import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  Briefcase,
-  Users,
-  TrendingUp,
-  Target,
   DollarSign,
   Plus,
   Building2,
   UserPlus,
-  BarChart2,
-  ChevronRight,
-  Clock,
   Zap,
+  BarChart2,
 } from 'lucide-react';
 import { cn, formatRelative } from '@/utils/helpers';
-import type { Company, CompanyAnalytics } from '@/types';
+import type { Company } from '@/types';
+import {
+  DashboardMetricsGrid,
+  HiringFunnelChart,
+} from '@/components/company/analytics';
+import type { DashboardMetrics, FunnelData } from '@/components/company/analytics';
 
 export default function CompanyDashboard() {
   const [data, setData] = useState<{
     profile: { name?: string; company_id: string; effective_role?: string } | null;
     company: Company | null;
-    analytics: CompanyAnalytics | null;
-    activeJobs: number;
     team: { id: string; name: string | null; email: string | null; effective_role: string }[];
     teamPerf: Record<string, { hires_completed: number; interviews_secured: number; total_candidates: number }>;
     recentJobs: { id: string; title: string; is_active: boolean; applications_count: number; created_at: string }[];
     successFeesPendingCents: number;
     activity: { id: string; event_type: string; created_at: string; candidate?: { full_name: string } | { full_name: string }[] | null }[];
   } | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [funnel, setFunnel] = useState<FunnelData[]>([]);
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
@@ -40,6 +40,24 @@ export default function CompanyDashboard() {
     loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
+
+  useEffect(() => {
+    if (!data?.company) return;
+    let cancelled = false;
+    setMetricsLoading(true);
+    Promise.all([
+      fetch('/api/company/analytics/metrics').then((r) => r.ok ? r.json() : null),
+      fetch('/api/company/analytics/funnel?period=30d').then((r) => r.ok ? r.json() : null),
+    ]).then(([metricsRes, funnelRes]) => {
+      if (cancelled) return;
+      setMetrics(metricsRes ?? null);
+      setFunnel(funnelRes?.funnel ?? []);
+      setMetricsLoading(false);
+    }).catch(() => {
+      if (!cancelled) setMetricsLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [data?.company]);
 
   async function loadDashboard() {
     const {
@@ -60,8 +78,6 @@ export default function CompanyDashboard() {
       setData({
         profile: profile ?? null,
         company: null,
-        analytics: null,
-        activeJobs: 0,
         team: [],
         teamPerf: {},
         recentJobs: [],
@@ -76,8 +92,6 @@ export default function CompanyDashboard() {
 
     const [
       companyRes,
-      analyticsRes,
-      jobsCountRes,
       teamRes,
       recentJobsRes,
       successFeesRes,
@@ -85,12 +99,6 @@ export default function CompanyDashboard() {
       perfRes,
     ] = await Promise.all([
       supabase.from('companies').select('*').eq('id', companyId).single(),
-      supabase.from('company_analytics').select('*').eq('company_id', companyId).single(),
-      supabase
-        .from('jobs')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
-        .eq('is_active', true),
       supabase
         .from('profile_roles')
         .select('id, name, email, effective_role')
@@ -141,8 +149,6 @@ export default function CompanyDashboard() {
     setData({
       profile,
       company: companyRes.data ?? null,
-      analytics: analyticsRes.data ?? null,
-      activeJobs: jobsCountRes.count ?? 0,
       team,
       teamPerf,
       recentJobs: (recentJobsRes.data || []) as {
@@ -181,12 +187,12 @@ export default function CompanyDashboard() {
       </div>
     );
 
-  const { company, analytics, activeJobs, team, teamPerf, recentJobs, successFeesPendingCents, activity } = data;
+  const { company, team, teamPerf, recentJobs, successFeesPendingCents, activity } = data;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {company?.logo_url ? (
             <Image
@@ -209,6 +215,13 @@ export default function CompanyDashboard() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/dashboard/company/analytics"
+            className="flex items-center gap-2 px-4 py-2 bg-surface-700 hover:bg-surface-600 text-white rounded-lg font-medium transition-colors"
+          >
+            <BarChart2 className="w-4 h-4" />
+            Analytics
+          </Link>
+          <Link
             href="/dashboard/company/team/invite"
             className="flex items-center gap-2 px-4 py-2 bg-surface-700 hover:bg-surface-600 text-white rounded-lg font-medium transition-colors"
           >
@@ -225,37 +238,8 @@ export default function CompanyDashboard() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <KPICard
-          label="Active Jobs"
-          value={activeJobs}
-          icon={<Briefcase className="w-5 h-5" />}
-          color="from-brand-400 to-brand-600"
-          href="/dashboard/company/jobs"
-        />
-        <KPICard
-          label="Total Applications"
-          value={analytics?.total_applications ?? 0}
-          icon={<Users className="w-5 h-5" />}
-          color="from-brand-500 to-brand-700"
-          href="/dashboard/company/candidates"
-        />
-        <KPICard
-          label="Interviews"
-          value={analytics?.total_interviews ?? 0}
-          icon={<TrendingUp className="w-5 h-5" />}
-          color="from-emerald-500 to-teal-600"
-          href="/dashboard/company/pipeline"
-        />
-        <KPICard
-          label="Hires"
-          value={analytics?.total_hires ?? 0}
-          icon={<Target className="w-5 h-5" />}
-          color="from-amber-500 to-orange-600"
-          href="/dashboard/company/pipeline"
-        />
-      </div>
+      {/* Dashboard metrics grid */}
+      <DashboardMetricsGrid metrics={metrics} loading={metricsLoading} />
 
       {/* Success fee tracking */}
       {successFeesPendingCents > 0 && (
@@ -278,49 +262,11 @@ export default function CompanyDashboard() {
         </div>
       )}
 
-      {/* Funnel */}
-      {analytics && analytics.total_applications > 0 && (
-        <div className="rounded-2xl bg-surface-800 border border-surface-700/60 p-6">
-          <h2 className="font-bold text-[#0a0a0a] mb-4 flex items-center gap-2">
-            <BarChart2 className="w-4 h-4 text-brand-400" />
-            Hiring Funnel
-          </h2>
-          <div className="flex items-center gap-2 flex-wrap">
-            {[
-              { label: 'Applied', value: analytics.total_applications, color: 'bg-blue-500' },
-              { label: 'Interviews', value: analytics.total_interviews, color: 'bg-brand-400' },
-              { label: 'Offers', value: analytics.total_offers ?? 0, color: 'bg-amber-500' },
-              { label: 'Hires', value: analytics.total_hires, color: 'bg-emerald-500' },
-            ].map((stage, i, arr) => (
-              <div key={stage.label} className="flex items-center gap-2">
-                <div className="text-center">
-                  <div
-                    className={cn(
-                      'rounded-lg px-4 py-2 text-white font-semibold text-sm',
-                      stage.color
-                    )}
-                  >
-                    {stage.value}
-                  </div>
-                  <div className="text-xs text-surface-500 mt-1">{stage.label}</div>
-                </div>
-                {i < arr.length - 1 && (
-                  <ChevronRight className="w-4 h-4 text-surface-600 mt-[-20px]" />
-                )}
-              </div>
-            ))}
-            {analytics.avg_time_to_hire_days != null && (
-              <div className="ml-auto flex items-center gap-2 text-surface-400 text-sm">
-                <Clock className="w-4 h-4" />
-                Avg time to hire:{' '}
-                <span className="text-white font-medium">
-                  {Math.round(Number(analytics.avg_time_to_hire_days))} days
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Hiring funnel */}
+      <HiringFunnelChart
+        data={funnel}
+        loading={metricsLoading}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Recent Jobs */}
@@ -490,40 +436,5 @@ export default function CompanyDashboard() {
           </div>
         )}
     </div>
-  );
-}
-
-function KPICard({
-  label,
-  value,
-  icon,
-  color,
-  href,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  href: string;
-}) {
-  return (
-    <Link href={href} className="group">
-      <div
-        className={cn(
-          'bg-gradient-to-br p-[1px] rounded-xl transition-all hover:scale-[1.02]',
-          color
-        )}
-      >
-        <div className="bg-surface-900 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className={cn('bg-gradient-to-br bg-opacity-10 p-2 rounded-lg text-white', color)}>
-              {icon}
-            </div>
-          </div>
-          <div className="text-3xl font-bold text-white">{value}</div>
-          <div className="text-sm font-medium text-surface-300 mt-1">{label}</div>
-        </div>
-      </div>
-    </Link>
   );
 }

@@ -29,7 +29,7 @@ function getLocalDayStart(tzOffsetMinutes: number): Date {
 /** GET /api/applications — List applications. Query: candidate_id, job_id, status, limit, offset. */
 export async function GET(req: NextRequest) {
   try {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 
@@ -271,7 +271,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 

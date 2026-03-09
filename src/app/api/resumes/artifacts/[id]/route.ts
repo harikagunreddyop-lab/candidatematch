@@ -11,7 +11,7 @@ export async function GET(
     req: NextRequest,
     { params }: { params: { id: string } },
 ) {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const supabase = createServiceClient();

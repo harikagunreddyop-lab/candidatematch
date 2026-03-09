@@ -28,12 +28,21 @@ export default function RecruiterJobCandidatesPage() {
       setLoading(false);
       return;
     }
+    const { data: roleCtx } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', session.user.id)
+      .single();
+    if (!roleCtx?.company_id) {
+      setLoading(false);
+      return;
+    }
 
     const { data: jobData } = await supabase
       .from('jobs')
       .select('id, title, company, company_id, applications_count')
       .eq('id', jobId)
-      .eq('posted_by', session.user.id)
+      .eq('company_id', roleCtx.company_id)
       .single();
 
     if (!jobData) {
@@ -79,8 +88,8 @@ export default function RecruiterJobCandidatesPage() {
   if (!job) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <p className="text-surface-400">Job not found or access denied. You can only view candidates for jobs you posted.</p>
-        <Link href="/dashboard/recruiter/jobs" className="text-brand-400 hover:underline mt-2 inline-block">Back to my jobs</Link>
+        <p className="text-surface-400">Job not found or access denied for your company scope.</p>
+        <Link href="/dashboard/recruiter/jobs" className="text-brand-400 hover:underline mt-2 inline-block">Back to jobs</Link>
       </div>
     );
   }

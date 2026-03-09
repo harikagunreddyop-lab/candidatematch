@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Spinner } from '@/components/ui';
+import { AIJobDescriptionGenerator, InclusiveLanguageChecker } from '@/components/company/jobs';
 
 export default function CompanyJobEditPage() {
   const params = useParams();
@@ -87,6 +88,16 @@ export default function CompanyJobEditPage() {
           <label className="block text-sm font-medium text-surface-300 mb-1">Description</label>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={6} className="w-full px-4 py-2 rounded-xl bg-surface-700 border border-surface-600 text-white" />
         </div>
+        <AIJobDescriptionGenerator
+          initialInput={{
+            job_title: title,
+            department: (job as { department?: string })?.department ?? '',
+            seniority_level: 'mid',
+            work_location: 'hybrid',
+          }}
+          onGenerated={(fullText) => setDescription(fullText)}
+        />
+        <InclusiveLanguageChecker jobId={jobId} />
         <button type="submit" disabled={saving} className="px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] disabled:opacity-50 text-white rounded-xl font-semibold">
           {saving ? <Spinner size={18} className="inline mr-2" /> : null} Save changes
         </button>

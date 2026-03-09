@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { rateLimitResponse } from '@/lib/rate-limit';
 import { inviteSchema } from '@/lib/validation/schemas';
 import { parseBody } from '@/lib/validation/parse';
+import { getAppUrl } from '@/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,11 +51,11 @@ export async function POST(req: NextRequest) {
 
   const displayName = name || email.split('@')[0];
 
-  // Base URL for invite links: prefer env, then derive from request (e.g. Host header in deployment)
+  // Base URL for invite links: prefer config (NEXT_PUBLIC_APP_URL / SITE_URL / VERCEL_URL), then derive from request
   const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
   const proto = req.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
   const fromRequest = host ? `${proto}://${host}` : '';
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || fromRequest).replace(/\/$/, '');
+  const baseUrl = (getAppUrl() || fromRequest).replace(/\/$/, '');
   if (!baseUrl) {
     return NextResponse.json({
       error: 'Set NEXT_PUBLIC_APP_URL in .env or deployment (e.g. https://your-app.com) so invite links work.',

@@ -23,7 +23,7 @@ function getWeekStartUtc(now: Date): string {
 }
 
 export async function GET(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['candidate', 'admin', 'recruiter'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate', 'platform_admin', 'company_admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
 
   const supabase = createServiceClient();

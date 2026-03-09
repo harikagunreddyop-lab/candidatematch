@@ -11,7 +11,7 @@ import { rateLimitResponse } from '@/lib/rate-limit';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const rl = await rateLimitResponse(req, 'api', authResult.user.id);
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const supabase = createServiceClient();

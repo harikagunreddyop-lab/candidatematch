@@ -6,9 +6,10 @@ import { motion } from 'framer-motion';
 import { Mail, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 import { FloatingInput } from '@/components/auth';
+import { getAppUrl } from '@/config';
 
-function getAppUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
+function getAppUrlWithFallback(): string {
+  return (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
 }
 
 export default function ForgotPasswordPage() {
@@ -28,7 +29,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${getAppUrl()}/auth/reset-password`,
+      redirectTo: `${getAppUrlWithFallback()}/auth/reset-password`,
     });
 
     setLoading(false);

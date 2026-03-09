@@ -5,15 +5,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAppUrl } from '@/config';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY;
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const APP_URL = getAppUrl();
     const STRIPE_PRO_PRICE_ID = process.env.STRIPE_PRO_PRICE_ID;
     const STRIPE_PRO_ANNUAL_PRICE_ID = process.env.STRIPE_PRO_ANNUAL_PRICE_ID;
 

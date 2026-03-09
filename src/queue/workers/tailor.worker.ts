@@ -8,6 +8,7 @@ import { Worker } from 'bullmq';
 import { getQueueConnection } from '../redis';
 import { type TailorJobData } from '../queues';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAppUrl } from '@/config';
 
 function createTailorWorker() {
     const queueConn = getQueueConnection();
@@ -51,7 +52,7 @@ function createTailorWorker() {
 
                         // Trigger tailored resume via internal API
                         const response = await fetch(
-                            `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/resumes`,
+                            `${getAppUrl() || 'http://localhost:3000'}/api/resumes`,
                             {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },

@@ -2,6 +2,7 @@
 // Verifies admin via service role; then uses anon client to trigger Supabase recovery email.
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAppUrl } from '@/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Only admins can send password reset' }, { status: 403 });
   }
 
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+  const baseUrl = getAppUrl();
   if (!baseUrl) {
     return NextResponse.json({ error: 'Server misconfiguration: NEXT_PUBLIC_APP_URL is not set' }, { status: 500 });
   }

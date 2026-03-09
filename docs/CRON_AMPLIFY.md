@@ -11,8 +11,9 @@ The three cron endpoints are:
 | `GET /api/cron/discovery` | Daily (optional) | Auto-discover job boards from companies table |
 | `GET /api/cron/match` | Every 6 hours | Run incremental job matching |
 | `GET /api/cron/cleanup` | Daily at 03:00 UTC | Delete stale applications |
+| `GET /api/cron/saved-search-alerts` | Every 5–15 min (instant) or daily/weekly | Send saved search email alerts to candidates (instant / daily / weekly) |
 
-All three require: `Authorization: Bearer <CRON_SECRET>`
+All require: `Authorization: Bearer <CRON_SECRET>`
 
 ---
 

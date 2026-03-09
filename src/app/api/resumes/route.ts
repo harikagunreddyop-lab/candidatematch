@@ -12,7 +12,7 @@ const RESUME_GENERATION_MIN_SCORE = 61;
 const RESUME_GENERATION_MAX_SCORE = 79; // Tailor only for scores 61-79
 
 async function assertCanAccessCandidate(req: NextRequest, candidateId: string): Promise<NextResponse | null> {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const supabase = createServiceClient();
   if (authResult.profile.role === 'admin') return null;
@@ -28,7 +28,7 @@ async function assertCanAccessCandidate(req: NextRequest, candidateId: string): 
 
 /** Recruiters need admin-granted access to resume generation (profile or user_feature_flags). */
 async function assertResumeGenerationAllowed(req: NextRequest): Promise<NextResponse | null> {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
   if (authResult.profile.role === 'admin') return null;
   const supabase = createServiceClient();
@@ -314,7 +314,7 @@ export async function POST(req: NextRequest) {
 
 // ── DELETE — remove a candidate_resume ───────────────────────────────────────
 export async function DELETE(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const supabase = createServiceClient();

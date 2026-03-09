@@ -107,6 +107,21 @@ export async function POST(req: NextRequest) {
   const jdClean = jdRaw.startsWith('<') ? jdRaw.replace(/<[^>]*>/g, ' ').trim() : jdRaw;
   const locationStr = sanitizeString(body.location, 500);
   const urlStr = sanitizeString(body.url, 2048);
+  const departmentStr = sanitizeString(body.department, 200);
+  const rawSalaryMin = body.salary_min;
+  const rawSalaryMax = body.salary_max;
+  const salaryMin =
+    typeof rawSalaryMin === 'number' && rawSalaryMin >= 0
+      ? rawSalaryMin < 10000
+        ? rawSalaryMin * 1000
+        : rawSalaryMin
+      : null;
+  const salaryMax =
+    typeof rawSalaryMax === 'number' && rawSalaryMax >= 0
+      ? rawSalaryMax < 10000
+        ? rawSalaryMax * 1000
+        : rawSalaryMax
+      : null;
   const dedupeHash = crypto
     .createHash('sha256')
     .update([title, companyName, locationStr, jdClean.slice(0, 500)].map(s => (s || '').toLowerCase().trim()).join('|'))
@@ -127,6 +142,9 @@ export async function POST(req: NextRequest) {
       company_id: companyId,
       posted_by: auth.profile.id,
       scraped_at: new Date().toISOString(),
+      ...(departmentStr && { department: departmentStr }),
+      ...(salaryMin != null && { salary_min: salaryMin }),
+      ...(salaryMax != null && { salary_max: salaryMax }),
     })
     .select('id, title, company, is_active')
     .single();

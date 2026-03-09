@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ChevronLeft, AlertCircle } from 'lucide-react';
 import { Spinner } from '@/components/ui';
+import { CollaborativeNotes } from '@/components/company/team';
 
 export default function CompanyCandidateDetailPage() {
   const params = useParams();
@@ -61,7 +62,6 @@ export default function CompanyCandidateDetailPage() {
       candidate_id: candidateId,
     });
     if (error) {
-      console.error(error);
       setSigningAgreement(false);
       return;
     }
@@ -145,6 +145,11 @@ export default function CompanyCandidateDetailPage() {
           </ul>
         )}
       </div>
+
+      <CollaborativeNotes
+        candidateId={candidateId}
+        candidateName={candidate.full_name}
+      />
     </div>
   );
 }

@@ -22,3 +22,18 @@ export function parseBody<T>(body: unknown, schema: z.ZodType<T>): { data: T } |
   if (result.success) return { data: result.data };
   return { error: validationErrorResponse(result.error) };
 }
+
+export function parseQuery<T>(query: Record<string, string | null | undefined>, schema: z.ZodType<T>): { data: T } | { error: NextResponse } {
+  const normalized = Object.fromEntries(
+    Object.entries(query).filter(([, value]) => value !== null && value !== undefined && value !== '')
+  );
+  const result = schema.safeParse(normalized);
+  if (result.success) return { data: result.data };
+  return { error: validationErrorResponse(result.error) };
+}
+
+export function parseParams<T>(params: unknown, schema: z.ZodType<T>): { data: T } | { error: NextResponse } {
+  const result = schema.safeParse(params);
+  if (result.success) return { data: result.data };
+  return { error: validationErrorResponse(result.error) };
+}

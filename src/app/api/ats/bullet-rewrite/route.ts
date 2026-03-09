@@ -17,7 +17,7 @@ const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (auth instanceof Response) return auth;
 
   if (!ANTHROPIC_API_KEY) {

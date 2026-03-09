@@ -1,23 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase-browser';
-import { EmptyState } from '@/components/ui';
-import { Calendar, MapPin, ExternalLink, Briefcase } from 'lucide-react';
+import { Calendar, List, Plus, ChevronLeft, ChevronRight, Briefcase } from 'lucide-react';
+import { EmptyState, Modal } from '@/components/ui';
+import {
+  InterviewCalendar,
+  InterviewCard,
+} from '@/components/interviews';
+import type { Interview } from '@/types/interviews';
 import { cn } from '@/utils/helpers';
 
-type Tab = 'upcoming' | 'past' | 'analytics';
+function getJob(inv: Interview) {
+  const j = inv.job;
+  if (!j) return null;
+  return Array.isArray(j) ? j[0] ?? null : j;
+}
+
+type ApplicationRow = { id: string; job_id: string; job: { id: string; title: string; company: string } | { id: string; title: string; company: string }[] | null };
 
 export default function CandidateInterviewsPage() {
   const supabase = createClient();
-  const [tab, setTab] = useState<Tab>('upcoming');
-  const [_candidate, setCandidate] = useState<any>(null);
-  const [applications, setApplications] = useState<any[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [applications, setApplications] = useState<Array<{ id: string; job_id: string; job: { id: string; title: string; company: string } | null }>>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [listTab, setListTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [addModalOpen, setAddModalOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<Interview | null>(null);
   const [notLinked, setNotLinked] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -25,51 +42,142 @@ export default function CandidateInterviewsPage() {
       setLoading(false);
       return;
     }
-    const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', session.user.id).single();
+    const { data: cand } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .single();
     if (!cand) {
       setNotLinked(true);
       setLoading(false);
       return;
     }
-    setCandidate(cand);
-    const { data: apps } = await supabase
-      .from('applications')
-      .select('*, job:jobs(title, company, location, url)')
-      .eq('candidate_id', cand.id)
-      .in('status', ['interview', 'offer', 'screening'])
-      .order('updated_at', { ascending: false });
-    setApplications(apps || []);
+
+    const [intRes, appRes] = await Promise.all([
+      fetch('/api/candidate/interviews', { credentials: 'include' }),
+      supabase
+        .from('applications')
+        .select('id, job_id, job:jobs(id, title, company)')
+        .eq('candidate_id', cand.id)
+        .in('status', ['interview', 'screening', 'offer', 'applied']),
+    ]);
+    const intData = await intRes.json().catch(() => ({}));
+    setInterviews(intData.interviews ?? []);
+    const rawApps = (appRes.data ?? []) as ApplicationRow[];
+    setApplications(rawApps.map((row) => ({
+      id: row.id,
+      job_id: row.job_id,
+      job: Array.isArray(row.job) ? row.job[0] ?? null : row.job ?? null,
+    })));
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
-  }, []);
+  }, [load]);
 
-  const updateApplicationInterview = async (applicationId: string, interview_date: string | null, interview_notes: string) => {
-    await supabase
-      .from('applications')
-      .update({
-        interview_date: interview_date || null,
-        interview_notes: interview_notes || null,
-      })
-      .eq('id', applicationId);
-    setApplications((prev) =>
-      prev.map((a) => (a.id === applicationId ? { ...a, interview_date: interview_date || null, interview_notes: interview_notes || null } : a))
-    );
+  const now = new Date().toISOString();
+  const upcoming = interviews.filter((i) => i.scheduled_at >= now);
+  const past = interviews.filter((i) => i.scheduled_at < now);
+
+  const performance = {
+    total: interviews.length,
+    byType: interviews.reduce<Record<string, number>>((acc, i) => {
+      const t = i.interview_type || 'other';
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {}),
+    avgSelfAssessment:
+      past.filter((i) => i.self_assessment_score != null).length > 0
+        ? Math.round(
+            past
+              .filter((i) => i.self_assessment_score != null)
+              .reduce((s, i) => s + (i.self_assessment_score ?? 0), 0) /
+              past.filter((i) => i.self_assessment_score != null).length
+          )
+        : 0,
+    successRate:
+      past.length > 0
+        ? Math.round(
+            (past.filter((i) => i.outcome === 'passed').length / past.length) * 100
+          )
+        : 0,
   };
 
-  const now = new Date().toISOString().slice(0, 10);
-  const upcoming = applications.filter((a: any) => a.status === 'interview' && (!a.interview_date || a.interview_date >= now));
-  const past = applications.filter((a: any) => a.status === 'offer' || (a.status === 'interview' && a.interview_date && a.interview_date < now));
-  const analyticsList = applications.filter((a: any) => ['interview', 'offer'].includes(a.status));
+  const handleAddInterview = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setFormError(null);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const job_id = fd.get('job_id') as string;
+    const application_id = (fd.get('application_id') as string) || undefined;
+    const scheduled_at = fd.get('scheduled_at') as string;
+    const interview_type = (fd.get('interview_type') as string) || undefined;
+    const duration_minutes = parseInt(String(fd.get('duration_minutes')), 10) || 60;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const virtual_meeting_link = (fd.get('virtual_meeting_link') as string) || undefined;
+    const location = (fd.get('location') as string) || undefined;
+    const interviewer_name = (fd.get('interviewer_name') as string) || undefined;
+    const interviewer_title = (fd.get('interviewer_title') as string) || undefined;
+    const interviewer_email = (fd.get('interviewer_email') as string) || undefined;
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'upcoming', label: 'Upcoming', icon: <Calendar size={16} /> },
-    { id: 'past', label: 'Past', icon: <Briefcase size={16} /> },
-    { id: 'analytics', label: 'Analytics', icon: <Briefcase size={16} /> },
-  ];
+    if (!job_id || !scheduled_at) {
+      setFormError('Job and date/time are required.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/candidate/interviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          job_id,
+          application_id: application_id || null,
+          scheduled_at: new Date(scheduled_at).toISOString(),
+          interview_type: interview_type || null,
+          duration_minutes,
+          timezone,
+          virtual_meeting_link: virtual_meeting_link || null,
+          location: location || null,
+          interviewer_name: interviewer_name || null,
+          interviewer_title: interviewer_title || null,
+          interviewer_email: interviewer_email || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create');
+      setInterviews((prev) => [...prev, data]);
+      setAddModalOpen(false);
+      form.reset();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddToCalendar = (interview: Interview) => {
+    const job = getJob(interview);
+    const title = `Interview - ${job?.title ?? 'Interview'} at ${job?.company ?? ''}`;
+    const start = new Date(interview.scheduled_at);
+    const end = new Date(start.getTime() + (interview.duration_minutes || 60) * 60 * 1000);
+    const format = (d: Date) => d.toISOString().replace(/-|:|\.\d+/g, '');
+    const url = new URL('https://calendar.google.com/calendar/render');
+    url.searchParams.set('action', 'TEMPLATE');
+    url.searchParams.set('text', title);
+    url.searchParams.set('dates', `${format(start)}/${format(end)}`);
+    if (interview.virtual_meeting_link) url.searchParams.set('details', interview.virtual_meeting_link);
+    window.open(url.toString(), '_blank');
+  };
+
+  const changeMonth = (delta: number) => {
+    setCalendarMonth((m) => {
+      const next = new Date(m);
+      next.setMonth(next.getMonth() + delta);
+      return next;
+    });
+  };
 
   if (loading) {
     return (
@@ -81,160 +189,350 @@ export default function CandidateInterviewsPage() {
   if (notLinked) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-6 text-center px-4">
-        <p className="text-sm text-surface-500 dark:text-surface-300">Your account isn&apos;t linked to a candidate profile yet. Contact your recruiter.</p>
+        <p className="text-sm text-surface-500 dark:text-surface-300">
+          Your account isn&apos;t linked to a candidate profile yet. Contact your recruiter.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">Interviews</h1>
-      <p className="text-surface-500 dark:text-surface-400">Track upcoming interviews, past outcomes, and performance.</p>
-
-      <div className="flex gap-1 p-1 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 w-fit">
-        {tabs.map((t) => (
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">
+            Interviews
+          </h1>
+          <p className="text-surface-500 dark:text-surface-400 mt-0.5">
+            Schedule, prepare, and track your interviews.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 w-fit">
+            <button
+              type="button"
+              onClick={() => setViewMode('calendar')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                viewMode === 'calendar'
+                  ? 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
+                  : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              )}
+              aria-pressed={viewMode === 'calendar'}
+            >
+              <Calendar size={16} />
+              Calendar
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+                viewMode === 'list'
+                  ? 'bg-surface-200 dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
+                  : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
+              )}
+              aria-pressed={viewMode === 'list'}
+            >
+              <List size={16} />
+              List
+            </button>
+          </div>
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-              tab === t.id ? 'bg-surface-200 text-surface-900 dark:text-white shadow-sm' : 'text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white'
-            )}
+            type="button"
+            onClick={() => setAddModalOpen(true)}
+            className="btn-primary flex items-center gap-2 py-2 px-4"
           >
-            {t.icon}
-            {t.label}
+            <Plus size={16} />
+            Add interview
           </button>
-        ))}
+        </div>
       </div>
 
-      {tab === 'upcoming' && (
+      {viewMode === 'calendar' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => changeMonth(-1)}
+              className="btn-ghost p-2 rounded-lg"
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-lg font-semibold text-surface-900 dark:text-surface-100">
+              {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button
+              type="button"
+              onClick={() => changeMonth(1)}
+              className="btn-ghost p-2 rounded-lg"
+              aria-label="Next month"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+          <InterviewCalendar
+            interviews={interviews}
+            month={calendarMonth}
+            onSelectInterview={setSelectedInterview}
+          />
+        </div>
+      )}
+
+      {viewMode === 'list' && (
         <>
-          {upcoming.length === 0 ? (
-            <EmptyState
-              icon={<Calendar size={24} />}
-              title="No interviews scheduled"
-              description="When an application moves to the interview stage, it will appear here so you can track dates and prep notes."
-              action={
-                <Link href="/dashboard/candidate/applications" className="btn-primary text-sm py-2 px-4">
-                  View applications
-                </Link>
-              }
-            />
-          ) : (
-            <>
-              <p className="text-sm text-surface-500 dark:text-surface-400">
-                {upcoming.length} interview{upcoming.length !== 1 ? 's' : ''} to prepare for
-              </p>
+          <div className="flex gap-1 p-1 rounded-xl bg-surface-100 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 w-fit">
+            <button
+              type="button"
+              onClick={() => setListTab('upcoming')}
+              className={cn(
+                'px-4 py-2 rounded-lg text-sm font-medium',
+                listTab === 'upcoming' ? 'bg-surface-200 dark:bg-surface-700' : 'text-surface-600 dark:text-surface-400'
+              )}
+            >
+              Upcoming ({upcoming.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setListTab('past')}
+              className={cn(
+                'px-4 py-2 rounded-lg text-sm font-medium',
+                listTab === 'past' ? 'bg-surface-200 dark:bg-surface-700' : 'text-surface-600 dark:text-surface-400'
+              )}
+            >
+              Past ({past.length})
+            </button>
+          </div>
+          {listTab === 'upcoming' && (
+            upcoming.length === 0 ? (
+              <EmptyState
+                icon={<Calendar size={24} />}
+                title="No upcoming interviews"
+                description="Add an interview from an application or use Add interview to schedule one."
+                action={
+                  <button type="button" onClick={() => setAddModalOpen(true)} className="btn-primary text-sm py-2 px-4">
+                    Add interview
+                  </button>
+                }
+              />
+            ) : (
               <div className="space-y-4">
-                {upcoming.map((a: any) => (
-                  <div key={a.id} className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-5 space-y-4 shadow-sm">
-                    <div className="flex items-start justify-between gap-4 flex-wrap">
-                      <div>
-                        <p className="font-semibold text-surface-900 dark:text-surface-100 text-lg">{a.job?.title}</p>
-                        <p className="text-sm text-surface-500 dark:text-surface-400">{a.job?.company}</p>
-                        {a.job?.location && (
-                          <p className="text-xs text-surface-400 dark:text-surface-500 flex items-center gap-1 mt-0.5">
-                            <MapPin size={10} />
-                            {a.job.location}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {a.job?.url && (
-                          <a href={a.job.url} target="_blank" rel="noreferrer" className="btn-ghost p-2 rounded-xl" title="Job posting">
-                            <ExternalLink size={14} />
-                          </a>
-                        )}
-                        <Link href="/dashboard/candidate/applications" className="btn-secondary text-xs py-2 px-4">
-                          View application
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-surface-100 dark:border-surface-700">
-                      <div>
-                        <label className="label text-xs dark:text-surface-200">Interview date</label>
-                        <input
-                          type="date"
-                          value={a.interview_date ? String(a.interview_date).slice(0, 10) : ''}
-                          onChange={(e) => updateApplicationInterview(a.id, e.target.value || null, a.interview_notes || '')}
-                          className="input text-sm dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 w-full"
-                        />
-                      </div>
-                      <div className="sm:col-span-2">
-                        <label className="label text-xs dark:text-surface-200">Prep notes</label>
-                        <textarea
-                          value={a.interview_notes || ''}
-                          onChange={(e) => updateApplicationInterview(a.id, a.interview_date || null, e.target.value)}
-                          className="input text-sm min-h-[80px] w-full dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100"
-                          placeholder="Questions to ask, talking points, follow-up..."
-                        />
-                      </div>
-                    </div>
-                  </div>
+                {upcoming.map((inv) => (
+                  <InterviewCard
+                    key={inv.id}
+                    interview={inv}
+                    showCountdown
+                    onAddToCalendar={handleAddToCalendar}
+                  />
                 ))}
               </div>
-            </>
+            )
+          )}
+          {listTab === 'past' && (
+            past.length === 0 ? (
+              <EmptyState
+                icon={<Briefcase size={24} />}
+                title="No past interviews"
+                description="Completed interviews will appear here for notes and thank-you follow-up."
+              />
+            ) : (
+              <div className="space-y-4">
+                {past.map((inv) => (
+                  <InterviewCard
+                    key={inv.id}
+                    interview={inv}
+                    showCountdown={false}
+                    onMarkThankYou={() => window.location.href = `/dashboard/candidate/interview-prep?interviewId=${inv.id}&tab=thankyou`}
+                  />
+                ))}
+              </div>
+            )
           )}
         </>
       )}
 
-      {tab === 'past' && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Past interviews & outcomes</h2>
-          {past.length === 0 ? (
-            <p className="text-surface-500 dark:text-surface-400">No past interviews yet.</p>
-          ) : (
-            <ul className="space-y-4">
-              {past.map((a: any) => (
-                <li key={a.id} className="flex items-center gap-4 p-4 rounded-lg bg-surface-100 dark:bg-surface-900">
-                  <Briefcase className="w-5 h-5 text-brand-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-surface-900 dark:text-white">{a.job?.title}</p>
-                    <p className="text-sm text-surface-500 dark:text-surface-400">{a.job?.company}</p>
-                    {a.interview_date && (
-                      <p className="text-xs text-surface-500 flex items-center gap-1 mt-1">
-                        <Calendar size={12} /> {new Date(a.interview_date).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-400/10 text-brand-400 capitalize shrink-0">
-                    {a.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+      {interviews.length > 0 && (
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800/50 p-5">
+          <h3 className="text-lg font-semibold text-surface-900 dark:text-surface-100 mb-4">
+            Performance at a glance
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Total interviews</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.total}</p>
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Avg self-assessment</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.avgSelfAssessment}/10</p>
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Pass rate</p>
+              <p className="text-2xl font-bold text-surface-900 dark:text-surface-100">{performance.successRate}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-surface-500 dark:text-surface-400">By type</p>
+              <p className="text-sm text-surface-700 dark:text-surface-300">
+                {Object.entries(performance.byType)
+                  .map(([t, n]) => `${t}: ${n}`)
+                  .join(', ') || '—'}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      {tab === 'analytics' && (
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6">
-          <h2 className="text-lg font-semibold text-surface-900 dark:text-white mb-4">Recent interviews</h2>
-          {analyticsList.length === 0 ? (
-            <p className="text-surface-500 dark:text-surface-400">No interview-stage applications yet.</p>
-          ) : (
-            <ul className="space-y-4">
-              {analyticsList.map((a: any) => (
-                <li key={a.id} className="flex items-center gap-4 p-4 rounded-lg bg-surface-100 dark:bg-surface-900">
-                  <Briefcase className="w-5 h-5 text-brand-400 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-surface-900 dark:text-white">{a.job?.title}</p>
-                    <p className="text-sm text-surface-500 dark:text-surface-400">{a.job?.company}</p>
-                    {a.interview_date && (
-                      <p className="text-xs text-surface-500 flex items-center gap-1 mt-1">
-                        <Calendar size={12} /> {new Date(a.interview_date).toLocaleDateString()}
-                      </p>
-                    )}
-                  </div>
-                  <span className="text-xs font-medium px-2 py-1 rounded-full bg-brand-400/10 text-brand-400 capitalize shrink-0">
-                    {a.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
+      <Modal open={!!selectedInterview} onClose={() => setSelectedInterview(null)} title="Interview" size="lg">
+        {selectedInterview && (
+          <div className="mt-2">
+            <InterviewCard
+              interview={selectedInterview}
+              showCountdown
+              onAddToCalendar={handleAddToCalendar}
+            />
+            <Link
+              href={`/dashboard/candidate/interview-prep?interviewId=${selectedInterview.id}`}
+              className="btn-primary mt-4 inline-block"
+            >
+              Open interview prep
+            </Link>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add interview" size="lg">
+        <form onSubmit={handleAddInterview} className="space-y-4">
+          {formError && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-400 text-sm">
+              {formError}
+            </div>
           )}
-        </div>
-      )}
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Job *</label>
+            <select
+              name="job_id"
+              required
+              className="input w-full dark:bg-surface-700 dark:border-surface-600"
+            >
+              <option value="">Select a job</option>
+              {applications.map((app) => {
+                const job = Array.isArray(app.job) ? app.job[0] : app.job;
+                if (!job) return null;
+                return (
+                  <option key={app.id} value={job.id}>
+                    {job.title} — {job.company}
+                  </option>
+                );
+              })}
+            </select>
+            {applications.length === 0 && (
+              <p className="text-xs text-surface-500 mt-1">
+                <Link href="/dashboard/candidate/applications" className="underline">Add an application</Link> first to link an interview to a job.
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Link to application (optional)</label>
+            <select name="application_id" className="input w-full dark:bg-surface-700 dark:border-surface-600">
+              <option value="">None</option>
+              {applications.map((app) => (
+                <option key={app.id} value={app.id}>
+                  {(() => {
+                    const job = Array.isArray(app.job) ? app.job[0] : app.job;
+                    return job ? `${job.title} — ${job.company}` : app.id;
+                  })()}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label text-surface-700 dark:text-surface-200">Date & time *</label>
+              <input
+                type="datetime-local"
+                name="scheduled_at"
+                required
+                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+              />
+            </div>
+            <div>
+              <label className="label text-surface-700 dark:text-surface-200">Duration (minutes)</label>
+              <input
+                type="number"
+                name="duration_minutes"
+                defaultValue={60}
+                min={15}
+                step={15}
+                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Type</label>
+            <select name="interview_type" className="input w-full dark:bg-surface-700 dark:border-surface-600">
+              <option value="">Select</option>
+              <option value="phone">Phone</option>
+              <option value="video">Video</option>
+              <option value="onsite">On-site</option>
+              <option value="technical">Technical</option>
+              <option value="behavioral">Behavioral</option>
+              <option value="case_study">Case study</option>
+            </select>
+          </div>
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Meeting link</label>
+            <input
+              type="url"
+              name="virtual_meeting_link"
+              placeholder="https://..."
+              className="input w-full dark:bg-surface-700 dark:border-surface-600"
+            />
+          </div>
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Location (for on-site)</label>
+            <input
+              type="text"
+              name="location"
+              placeholder="Address or building"
+              className="input w-full dark:bg-surface-700 dark:border-surface-600"
+            />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label text-surface-700 dark:text-surface-200">Interviewer name</label>
+              <input
+                type="text"
+                name="interviewer_name"
+                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+              />
+            </div>
+            <div>
+              <label className="label text-surface-700 dark:text-surface-200">Title</label>
+              <input
+                type="text"
+                name="interviewer_title"
+                className="input w-full dark:bg-surface-700 dark:border-surface-600"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="label text-surface-700 dark:text-surface-200">Interviewer email</label>
+            <input
+              type="email"
+              name="interviewer_email"
+              className="input w-full dark:bg-surface-700 dark:border-surface-600"
+            />
+          </div>
+          <div className="flex gap-3 justify-end pt-2">
+            <button type="button" onClick={() => setAddModalOpen(false)} className="btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="btn-primary">
+              {saving ? 'Saving…' : 'Add interview'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

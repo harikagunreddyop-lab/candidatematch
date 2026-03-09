@@ -114,8 +114,8 @@ export default function AdminMessagesPage() {
       .neq('id', profile.id)
       .order('role')
       .order('name');
-    if (error) console.error('[loadAllUsers] error:', error);
-    setAllUsers(data || []);
+    if (error) setAllUsers([]);
+    else setAllUsers(data || []);
   };
 
   const createConversation = async () => {
@@ -131,7 +131,6 @@ export default function AdminMessagesPage() {
       .single();
 
     if (convErr) {
-      console.error('[createConversation] step1 error:', convErr);
       setCreateError(`Failed to create conversation: ${convErr.message}`);
       setCreating(false);
       return;
@@ -147,7 +146,6 @@ export default function AdminMessagesPage() {
       );
 
     if (partErr) {
-      console.error('[createConversation] step2 error:', partErr);
       // Conversation exists — still navigate to it, just show warning
       setCreateError(`Participants partially added: ${partErr.message}`);
     }

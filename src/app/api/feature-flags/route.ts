@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET — returns feature flags for the current user's role merged with per-user overrides. */
 export async function GET(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const role = authResult.profile.role;
 

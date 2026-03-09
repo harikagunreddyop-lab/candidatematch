@@ -40,11 +40,11 @@ export default function RecruiterCandidatesPage() {
     }
     setNoCompany(false);
 
-    // B2B: only MY jobs (posted_by = me)
+    // B2B: company-scoped jobs
     const { data: myJobs } = await supabase
       .from('jobs')
       .select('id')
-      .eq('posted_by', user.id)
+      .eq('company_id', profile.company_id)
       .eq('is_active', true);
 
     const jobIds = (myJobs || []).map((j: any) => j.id);
@@ -114,7 +114,7 @@ export default function RecruiterCandidatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Candidates for your jobs</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Candidates for company jobs</h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
           Candidates matched to or applied to your company&apos;s open roles
         </p>
@@ -134,7 +134,7 @@ export default function RecruiterCandidatesPage() {
         <EmptyState
           icon={<Users size={24} />}
           title="No candidates yet"
-          description="Post jobs and run matching. Candidates matched to your jobs or who apply will appear here."
+          description="Post jobs and run matching. Candidates matched to your company jobs or who apply will appear here."
         />
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Users size={24} />} title="No matches" description="Try a different search or filter" />

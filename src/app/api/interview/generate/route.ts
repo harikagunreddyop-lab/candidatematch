@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiAuth(req, { roles: ['candidate', 'admin', 'recruiter'] });
+  const auth = await requireApiAuth(req, { effectiveRoles: ['candidate', 'platform_admin', 'company_admin', 'recruiter'] });
   if (auth instanceof Response) return auth;
 
   let body: { jobId?: string };

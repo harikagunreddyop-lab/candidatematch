@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import type { Role, EffectiveRole } from '@/types';
 import type { AuthContext } from '@/lib/auth-context';
 import { isPlatformAdmin } from '@/lib/auth-context';
+import { createServiceClient } from '@/lib/supabase-server';
+import { config } from '@/config';
 
 export interface ApiAuthResult {
   user: { id: string; email?: string };
@@ -10,10 +12,62 @@ export interface ApiAuthResult {
   supabase: ReturnType<typeof createServerClient>;
 }
 
+function toNormalizedLegacyRole(effectiveRole: EffectiveRole, legacyRole: Role): Role {
+  if (effectiveRole === 'platform_admin' || effectiveRole === 'company_admin') return 'admin';
+  if (effectiveRole === 'recruiter') return 'recruiter';
+  if (effectiveRole === 'candidate') return 'candidate';
+  return legacyRole;
+}
+
+async function resolveCompanyContext(params: {
+  userId: string;
+  companyId: string | null;
+  effectiveRole: EffectiveRole;
+}): Promise<string | null> {
+  const { userId, companyId, effectiveRole } = params;
+  if (companyId) return companyId;
+  // Platform admins may not belong to a company; only recover missing context for company staff.
+  if (!['company_admin', 'recruiter'].includes(effectiveRole)) return null;
+
+  try {
+    const service = createServiceClient();
+
+    const { data: perf } = await service
+      .from('recruiter_performance')
+      .select('company_id')
+      .eq('recruiter_id', userId)
+      .limit(1)
+      .maybeSingle();
+    const fromPerformance = perf?.company_id ?? null;
+    if (fromPerformance) {
+      await service.from('profiles').update({ company_id: fromPerformance }).eq('id', userId);
+      return fromPerformance;
+    }
+
+    const { data: job } = await service
+      .from('jobs')
+      .select('company_id')
+      .eq('posted_by', userId)
+      .not('company_id', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const fromJobs = job?.company_id ?? null;
+    if (fromJobs) {
+      await service.from('profiles').update({ company_id: fromJobs }).eq('id', userId);
+      return fromJobs;
+    }
+  } catch {
+    // Non-fatal: if recovery fails, downstream routes may still return "No company context".
+  }
+
+  return null;
+}
+
 export function createServerSupabaseFromRequest(req: NextRequest) {
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    config.NEXT_PUBLIC_SUPABASE_URL,
+    config.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         get: (name: string) => req.cookies.get(name)?.value,
@@ -47,6 +101,12 @@ export async function requireApiAuth(
 
   const legacyRole = profileRow.legacy_role as Role;
   const effectiveRole = profileRow.effective_role as EffectiveRole;
+  const normalizedRole = toNormalizedLegacyRole(effectiveRole, legacyRole);
+  const resolvedCompanyId = await resolveCompanyContext({
+    userId: user.id,
+    companyId: profileRow.company_id ?? null,
+    effectiveRole,
+  });
 
   // Check effectiveRoles (new system)
   if (options?.effectiveRoles?.length) {
@@ -69,9 +129,9 @@ export async function requireApiAuth(
     user,
     profile: {
       id: profileRow.id,
-      role: legacyRole,
+      role: normalizedRole,
       effective_role: effectiveRole,
-      company_id: profileRow.company_id ?? null,
+      company_id: resolvedCompanyId,
     },
     supabase,
   };
@@ -109,12 +169,13 @@ export async function canAccessCandidate(
     return !!c;
   }
   if (role === 'recruiter') {
-    // B2B: recruiter can access candidate if candidate has match or application for a job they posted
-    const { data: myJobs } = await serviceSupabase
+    // B2B: recruiter can access candidate if candidate has match or application for company jobs.
+    if (!auth.profile.company_id) return false;
+    const { data: companyJobs } = await serviceSupabase
       .from('jobs')
       .select('id')
-      .eq('posted_by', auth.profile.id);
-    const jobIds = (myJobs || []).map((j: { id: string }) => j.id);
+      .eq('company_id', auth.profile.company_id);
+    const jobIds = (companyJobs || []).map((j: { id: string }) => j.id);
     if (jobIds.length === 0) return false;
     const { data: match } = await serviceSupabase
       .from('candidate_job_matches')

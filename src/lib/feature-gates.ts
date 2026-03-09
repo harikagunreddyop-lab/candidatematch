@@ -8,6 +8,7 @@
 import { createServiceClient } from '@/lib/supabase-server';
 import { getCompanyPlanLimits } from '@/lib/plan-limits';
 import { getCounter, incrementCounter } from '@/lib/redis-upstash';
+import { getAppUrl } from '@/config';
 
 export type CompanyFeature = 'view_candidate' | 'post_job' | 'ai_call';
 
@@ -22,7 +23,7 @@ export interface FeatureAccessResult {
 const UPGRADE_PATH = '/dashboard/company/settings/billing';
 
 function upgradeUrl(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const base = getAppUrl();
   return `${base}${UPGRADE_PATH}`;
 }
 

@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { Sparkles, Mail, Lock } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 import { FloatingInput } from '@/components/auth';
+import { getAppUrl } from '@/config';
 
 function GoogleIcon() {
   return (
@@ -73,7 +74,7 @@ export default function LoginPage() {
 
   const handleGoogle = async () => {
     setError(null);
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+    const appUrl = (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${appUrl}/auth/callback` },
@@ -83,7 +84,7 @@ export default function LoginPage() {
 
   const handleLinkedIn = async () => {
     setError(null);
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, '');
+    const appUrl = (getAppUrl() || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, '');
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'linkedin_oidc',
       options: { redirectTo: `${appUrl}/auth/callback` },

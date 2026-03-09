@@ -8,6 +8,7 @@ import { Worker } from 'bullmq';
 import { getQueueConnection } from '../redis';
 import { tailorQueue, type ScoreJobData, type TailorJobData } from '../queues';
 import { createServiceClient } from '@/lib/supabase-server';
+import { getAppUrl } from '@/config';
 
 const SCORE_THRESHOLD = 65; // Minimum ATS score to proceed to tailoring
 
@@ -65,7 +66,7 @@ function createScoreWorker() {
 
                             // Call internal ATS check
                             const response = await fetch(
-                                `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/ats/check`,
+                                `${getAppUrl() || 'http://localhost:3000'}/api/ats/check`,
                                 {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },

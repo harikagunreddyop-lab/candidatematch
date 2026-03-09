@@ -5,7 +5,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
-import { exchangeCodeForTokens } from '@/lib/gmail-oauth';
+import { exchangeCodeForTokens, getGmailProfile } from '@/lib/gmail-oauth';
+import { getAppUrl } from '@/config';
+import { apiLogger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +15,7 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get('code');
   const state = req.nextUrl.searchParams.get('state');
   const error = req.nextUrl.searchParams.get('error');
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+  const baseUrl = getAppUrl() || req.nextUrl.origin;
 
   let userId: string;
   let forCandidate = false;
@@ -55,7 +57,7 @@ export async function GET(req: NextRequest) {
   try {
     tokens = await exchangeCodeForTokens(code, redirectUri);
   } catch (e) {
-    console.error('[gmail/callback] Token exchange failed', e);
+    apiLogger.error({ err: e }, '[gmail/callback] token exchange failed');
     return NextResponse.redirect(failRedirect);
   }
 
@@ -63,11 +65,20 @@ export async function GET(req: NextRequest) {
     ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
     : null;
 
+  let emailAddress = user.email || 'unknown';
+  try {
+    const profile = await getGmailProfile(tokens.access_token);
+    emailAddress = profile.emailAddress;
+  } catch {
+    // keep user.email fallback
+  }
+
   const service = createServiceClient();
-  const { error: upsertErr } = await service.from('gmail_connections').upsert(
+
+  await service.from('gmail_connections').upsert(
     {
       user_id: user.id,
-      email: user.email || 'unknown',
+      email: emailAddress,
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token || null,
       token_expires_at: expiresAt,
@@ -77,9 +88,22 @@ export async function GET(req: NextRequest) {
     { onConflict: 'user_id' }
   );
 
-  if (upsertErr) {
-    console.error('[gmail/callback] Upsert failed', upsertErr);
-    return NextResponse.redirect(failRedirect);
+  const { error: emailAccErr } = await service.from('email_accounts').upsert(
+    {
+      user_id: user.id,
+      email_address: emailAddress,
+      provider: 'gmail',
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token || null,
+      token_expires_at: expiresAt,
+      is_primary: true,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,email_address' }
+  );
+  if (emailAccErr) {
+    // email_accounts table may not exist yet (migration 064); continue
   }
 
   return NextResponse.redirect(successRedirect);

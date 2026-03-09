@@ -2,6 +2,10 @@
 -- so they run with the querying user's permissions (RLS applies correctly).
 -- See: https://supabase.com/docs/guides/database/database-linter?lint=0010_security_definer_view
 
+-- Ensure profiles has company_id before view that selects it
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE SET NULL;
+
 -- 1. profile_roles (from 039)
 DROP VIEW IF EXISTS public.profile_roles;
 CREATE VIEW public.profile_roles WITH (security_invoker = on) AS

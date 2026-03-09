@@ -21,12 +21,18 @@ export default function RecruiterJobDetailPage() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setLoading(false); return; }
+      const { data: roleCtx } = await supabase
+        .from('profile_roles')
+        .select('company_id')
+        .eq('id', session.user.id)
+        .single();
+      if (!roleCtx?.company_id) { setLoading(false); return; }
 
       const { data: jobData } = await supabase
         .from('jobs')
         .select('*')
         .eq('id', jobId)
-        .eq('posted_by', session.user.id)
+        .eq('company_id', roleCtx.company_id)
         .single();
       if (!jobData) { setLoading(false); return; }
 
@@ -43,15 +49,15 @@ export default function RecruiterJobDetailPage() {
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (!job) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">
-      Job not found or you don’t have access. You can only view jobs you posted.
-      <Link href="/dashboard/recruiter/jobs" className="block mt-2 text-brand-400 hover:underline">Back to my jobs</Link>
+      Job not found or you don’t have access for your company.
+      <Link href="/dashboard/recruiter/jobs" className="block mt-2 text-brand-400 hover:underline">Back to jobs</Link>
     </div>
   );
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       <Link href="/dashboard/recruiter/jobs" className="text-surface-400 hover:text-white flex items-center gap-1 text-sm">
-        <ChevronLeft size={18} /> My jobs
+        <ChevronLeft size={18} /> Jobs
       </Link>
 
       <div className="rounded-2xl border border-surface-700 bg-surface-100 p-6">

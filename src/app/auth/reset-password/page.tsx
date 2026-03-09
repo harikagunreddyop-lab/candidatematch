@@ -76,12 +76,10 @@ function ResetPasswordContent() {
           }
 
           // Exchange failed (expired link, already used, etc.)
-          console.warn('Code exchange failed:', exchangeError?.message);
           setSessionReady(false);
           return;
-        } catch (err) {
+        } catch {
           if (cancelled) return;
-          console.warn('Code exchange threw:', err);
           setSessionReady(false);
           return;
         }

@@ -1,6 +1,7 @@
 const path = require('path');
 // Load .env from project root (parent of worker/)
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+const { z } = require('zod');
 
 const fastify = require('fastify')({ logger: true, bodyLimit: 1_048_576 /* 1 MB */ });
 const { createClient } = require('@supabase/supabase-js');
@@ -9,14 +10,41 @@ const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const { defaultGenerator } = require('./lib/fast-generator');
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const WORKER_SECRET = process.env.WORKER_SECRET;
-const PORT = process.env.PORT || process.env.WORKER_PORT || 3001;
+const workerEnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  WORKER_SECRET: z.string().optional(),
+  PORT: z.coerce.number().int().positive().optional(),
+  WORKER_PORT: z.coerce.number().int().positive().optional(),
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().optional(),
+  REDIS_PORT: z.string().optional(),
+});
+
+const parsedWorkerEnv = workerEnvSchema.safeParse(process.env);
+if (!parsedWorkerEnv.success) {
+  const issues = parsedWorkerEnv.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('\n');
+  throw new Error(`Invalid worker environment configuration:\n${issues}`);
+}
+
+const workerEnv = parsedWorkerEnv.data;
+if (workerEnv.NODE_ENV === 'production' && !workerEnv.WORKER_SECRET) {
+  throw new Error('Invalid worker environment configuration:\nWORKER_SECRET: required in production');
+}
+
+const SUPABASE_URL = workerEnv.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_KEY = workerEnv.SUPABASE_SERVICE_ROLE_KEY;
+const ANTHROPIC_KEY = workerEnv.ANTHROPIC_API_KEY;
+const WORKER_SECRET = workerEnv.WORKER_SECRET;
+const PORT = workerEnv.PORT || workerEnv.WORKER_PORT || 3001;
 const TEMP_DIR = path.join(__dirname, 'tmp');
-const REDIS_URL = process.env.REDIS_URL || (process.env.REDIS_HOST && process.env.REDIS_PORT
-  ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}` : null);
+const REDIS_URL =
+  workerEnv.REDIS_URL ||
+  (workerEnv.REDIS_HOST && workerEnv.REDIS_PORT
+    ? `redis://${workerEnv.REDIS_HOST}:${workerEnv.REDIS_PORT}`
+    : null);
 
 let resumeQueue = null;
 let resumeWorker = null;
@@ -38,13 +66,8 @@ if (REDIS_URL) {
   }
 }
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('Missing env: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env (project root)');
-  process.exit(1);
-}
-
 if (!WORKER_SECRET) {
-  console.warn('WARNING: WORKER_SECRET not set — worker is unauthenticated (dev only)');
+  fastify.log.warn('WORKER_SECRET not set — worker is unauthenticated (dev only)');
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);

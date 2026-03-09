@@ -1,12 +1,23 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { Briefcase, Sparkles, ClipboardList, TrendingUp, Calendar } from 'lucide-react';
 import { useCandidate, useMatches, useApplications } from '@/hooks';
-import { DashboardStats } from '@/components/candidate/DashboardStats';
+import { createClient } from '@/lib/supabase-browser';
+import { posthogAnalytics } from '@/lib/analytics-posthog';
 import { DashboardErrorBoundary } from '@/components/layout/DashboardErrorBoundary';
 import { Skeleton } from '@/components/ui';
-import Link from 'next/link';
-import { Briefcase, Sparkles } from 'lucide-react';
+import {
+  DashboardMetricCard,
+  GoalsProgressWidget,
+  QuickActionsPanel,
+  JobRecommendationCarousel,
+  UpcomingEventsWidget,
+} from '@/components/candidate';
+import type { JobRecommendationItem } from '@/components/candidate/JobRecommendationCarousel';
+import type { UpcomingEventItem } from '@/components/candidate/UpcomingEventsWidget';
 
 const MatchesList = dynamic(
   () => import('@/components/candidate/MatchesList').then((m) => ({ default: m.MatchesList })),
@@ -18,16 +29,144 @@ const ApplicationsList = dynamic(
   { loading: () => <Skeleton className="h-48 w-full rounded-xl" /> }
 );
 
+const WEEKLY_GOAL_DEFAULT = 5;
+
+function trackDashboardCta(cta: string, props?: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  posthogAnalytics.track('dashboard_cta_clicked', { cta, ...props });
+}
+
 export default function CandidateDashboard() {
   const { candidate, loading: candidateLoading } = useCandidate();
-  const { matches, loading: matchesLoading } = useMatches(candidate?.id ?? null);
-  const { applications, loading: appsLoading } = useApplications(candidate?.id ?? null);
+  const { matches, loading: matchesLoading, refresh: refreshMatches } = useMatches(candidate?.id ?? null);
+  const { applications, loading: appsLoading, refresh: refreshApplications } = useApplications(candidate?.id ?? null);
+
+  const [stats, setStats] = useState<{
+    applicationsTotal: number;
+    applicationsByStatus: Record<string, number>;
+    activeMatches: number;
+    interviewsUpcoming: number;
+    interviewsPast: number;
+    profileCompletionPercent: number;
+    daysSinceLastApplication: number | null;
+    averageMatchScore: number;
+    applicationsThisWeek: number;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [_statsError, setStatsError] = useState<string | null>(null);
+
+  const [recommendations, setRecommendations] = useState<JobRecommendationItem[]>([]);
+  const [recsLoading, setRecsLoading] = useState(true);
+  const [recsError, setRecsError] = useState<string | null>(null);
+
+  const [upcoming, setUpcoming] = useState<UpcomingEventItem[]>([]);
+  const [upcomingLoading, setUpcomingLoading] = useState(true);
+  const [upcomingError, setUpcomingError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      setStatsError(null);
+      const res = await fetch('/api/candidate/dashboard/stats', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load stats');
+      const data = await res.json();
+      setStats(data);
+    } catch (e) {
+      setStatsError(e instanceof Error ? e.message : 'Failed to load stats');
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  const fetchRecommendations = useCallback(async () => {
+    try {
+      setRecsError(null);
+      const res = await fetch('/api/candidate/dashboard/recommendations', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load recommendations');
+      const data = await res.json();
+      setRecommendations(data.recommendations ?? []);
+    } catch (e) {
+      setRecsError(e instanceof Error ? e.message : 'Failed to load recommendations');
+    } finally {
+      setRecsLoading(false);
+    }
+  }, []);
+
+  const fetchUpcoming = useCallback(async () => {
+    try {
+      setUpcomingError(null);
+      const res = await fetch('/api/candidate/dashboard/upcoming', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to load upcoming');
+      const data = await res.json();
+      setUpcoming(data.upcoming ?? []);
+    } catch (e) {
+      setUpcomingError(e instanceof Error ? e.message : 'Failed to load upcoming');
+    } finally {
+      setUpcomingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!candidate?.id) return;
+    fetchStats();
+    fetchRecommendations();
+    fetchUpcoming();
+  }, [candidate?.id, fetchStats, fetchRecommendations, fetchUpcoming]);
+
+  // Real-time: refetch when applications or matches change
+  useEffect(() => {
+    if (!candidate?.id) return;
+    const supabase = createClient();
+    const applicationsChannel = supabase
+      .channel('dashboard-applications')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'applications',
+          filter: `candidate_id=eq.${candidate.id}`,
+        },
+        () => {
+          refreshApplications();
+          fetchStats();
+          fetchUpcoming();
+        }
+      )
+      .subscribe();
+
+    const matchesChannel = supabase
+      .channel('dashboard-matches')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'candidate_job_matches',
+          filter: `candidate_id=eq.${candidate.id}`,
+        },
+        () => {
+          refreshMatches();
+          fetchStats();
+          fetchRecommendations();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(applicationsChannel);
+      supabase.removeChannel(matchesChannel);
+    };
+  }, [candidate?.id, refreshApplications, refreshMatches, fetchStats, fetchRecommendations, fetchUpcoming]);
 
   if (candidateLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-32 w-full rounded-xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-xl" />
+          ))}
+        </div>
         <Skeleton className="h-48 w-full rounded-xl" />
       </div>
     );
@@ -45,78 +184,162 @@ export default function CandidateDashboard() {
     );
   }
 
-  const scoreOf = (m: { ats_score?: number | null; fit_score?: number }) =>
-    typeof m?.ats_score === 'number' ? m.ats_score : typeof m?.fit_score === 'number' ? m.fit_score : 0;
-  const stats = {
-    matches: matches.length,
-    applications: applications.length,
-    interviews: applications.filter((a) => a.status === 'interview' || a.status === 'screening').length,
-    averageScore:
-      matches.length > 0 ? Math.round(matches.reduce((sum, m) => sum + scoreOf(m), 0) / matches.length) : 0,
-  };
-
   return (
     <DashboardErrorBoundary sectionName="Dashboard">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-white">
-            Welcome back, {candidate.full_name || 'there'}
-          </h1>
-          <p className="text-surface-400 mt-1">Here&apos;s your job search progress</p>
-        </div>
-        <Link
-          href="/dashboard/candidate/jobs"
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors shrink-0"
-        >
-          <Briefcase className="w-4 h-4" />
-          Browse Jobs
-        </Link>
-      </div>
-
-      {/* Stats */}
-      <DashboardStats stats={stats} />
-
-      {/* Matches */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-brand-400" />
-            <h2 className="text-xl font-semibold text-white">Top Matches</h2>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-white">
+              Welcome back, {candidate.full_name || 'there'}
+            </h1>
+            <p className="text-surface-400 mt-1">Here&apos;s your job search at a glance</p>
           </div>
           <Link
-            href="/dashboard/candidate/matches"
-            className="text-sm text-brand-400 hover:text-brand-300"
+            href="/dashboard/candidate/jobs"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-400 hover:bg-brand-300 text-[#0a0f00] rounded-lg font-semibold transition-colors shrink-0"
+            aria-label="Browse jobs"
+            onClick={() => trackDashboardCta('browse_jobs')}
           >
-            View all →
+            <Briefcase className="w-4 h-4" />
+            Browse Jobs
           </Link>
         </div>
-        {matchesLoading ? (
-          <Skeleton className="h-40 w-full rounded-xl" />
-        ) : (
-          <MatchesList matches={matches.slice(0, 3)} />
-        )}
-      </div>
 
-      {/* Applications */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-white">Recent Applications</h2>
-          <Link
+        {/* Metric cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <DashboardMetricCard
+            label="Applications"
+            value={statsLoading ? '—' : (stats?.applicationsTotal ?? 0)}
+            icon={<ClipboardList className="w-5 h-5" />}
+            iconClassName="bg-blue-500/10 text-blue-400"
             href="/dashboard/candidate/applications"
-            className="text-sm text-brand-400 hover:text-brand-300"
-          >
-            View all →
-          </Link>
+            loading={statsLoading}
+            aria-label={`Applications: ${stats?.applicationsTotal ?? 0}`}
+            onCtaClick={() => trackDashboardCta('metric_applications')}
+          />
+          <DashboardMetricCard
+            label="AI Matches"
+            value={statsLoading ? '—' : (stats?.activeMatches ?? 0)}
+            icon={<Sparkles className="w-5 h-5" />}
+            iconClassName="bg-brand-400/10 text-brand-400"
+            href="/dashboard/candidate/matches"
+            loading={statsLoading}
+            aria-label={`AI matches: ${stats?.activeMatches ?? 0}`}
+            onCtaClick={() => trackDashboardCta('metric_matches')}
+          />
+          <DashboardMetricCard
+            label="Interviews"
+            value={statsLoading ? '—' : (stats?.interviewsUpcoming ?? 0) + (stats?.interviewsPast ?? 0)}
+            subtext={stats && stats.interviewsUpcoming > 0 ? `${stats.interviewsUpcoming} upcoming` : undefined}
+            icon={<Calendar className="w-5 h-5" />}
+            iconClassName="bg-emerald-500/10 text-emerald-400"
+            href="/dashboard/candidate/applications"
+            loading={statsLoading}
+            aria-label={`Interviews: ${(stats?.interviewsUpcoming ?? 0) + (stats?.interviewsPast ?? 0)}`}
+            onCtaClick={() => trackDashboardCta('metric_interviews')}
+          />
+          <DashboardMetricCard
+            label="Avg Match Score"
+            value={statsLoading ? '—' : `${stats?.averageMatchScore ?? 0}%`}
+            icon={<TrendingUp className="w-5 h-5" />}
+            iconClassName="bg-amber-500/10 text-amber-400"
+            loading={statsLoading}
+            aria-label={`Average match score: ${stats?.averageMatchScore ?? 0}%`}
+          />
         </div>
-        {appsLoading ? (
-          <Skeleton className="h-48 w-full rounded-xl" />
-        ) : (
-          <ApplicationsList applications={applications.slice(0, 5)} />
-        )}
+
+        {/* Quick actions */}
+        <QuickActionsPanel
+          loading={false}
+          onActionClick={(label) => trackDashboardCta('quick_action', { action: label })}
+        />
+
+        {/* Main content grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <section aria-labelledby="recommendations-heading">
+              <div className="flex items-center justify-between mb-4">
+                <h2 id="recommendations-heading" className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-brand-400" />
+                  Recommended for you
+                </h2>
+                <Link
+                  href="/dashboard/candidate/matches"
+                  className="text-sm text-brand-400 hover:text-brand-300"
+                  onClick={() => trackDashboardCta('view_all_matches')}
+                >
+                  View all matches →
+                </Link>
+              </div>
+              <JobRecommendationCarousel
+                recommendations={recommendations}
+                loading={recsLoading}
+                error={recsError}
+                onRetry={fetchRecommendations}
+                onCtaClick={(jobId) => trackDashboardCta('recommendation_card', { job_id: jobId })}
+              />
+            </section>
+
+            <section aria-labelledby="recent-activity-heading">
+              <div className="flex items-center justify-between mb-4">
+                <h2 id="recent-activity-heading" className="text-lg font-semibold text-white">
+                  Recent Applications
+                </h2>
+                <Link
+                  href="/dashboard/candidate/applications"
+                  className="text-sm text-brand-400 hover:text-brand-300"
+                  onClick={() => trackDashboardCta('view_all_applications')}
+                >
+                  View all →
+                </Link>
+              </div>
+              {appsLoading ? (
+                <Skeleton className="h-48 w-full rounded-xl" />
+              ) : (
+                <ApplicationsList applications={applications.slice(0, 5)} />
+              )}
+            </section>
+          </div>
+
+          <div className="space-y-6">
+            <UpcomingEventsWidget
+              upcoming={upcoming}
+              loading={upcomingLoading}
+              error={upcomingError}
+              onRetry={fetchUpcoming}
+            />
+            <GoalsProgressWidget
+              profileCompletionPercent={stats?.profileCompletionPercent ?? 0}
+              weeklyApplicationGoal={WEEKLY_GOAL_DEFAULT}
+              applicationsThisWeek={stats?.applicationsThisWeek ?? 0}
+              loading={statsLoading}
+            />
+          </div>
+        </div>
+
+        {/* Top matches */}
+        <section aria-labelledby="top-matches-heading">
+          <div className="flex items-center justify-between mb-4">
+            <h2 id="top-matches-heading" className="text-lg font-semibold text-white flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-brand-400" />
+              Top Matches
+            </h2>
+            <Link
+              href="/dashboard/candidate/matches"
+              className="text-sm text-brand-400 hover:text-brand-300"
+              onClick={() => trackDashboardCta('view_all_top_matches')}
+            >
+              View all →
+            </Link>
+          </div>
+          {matchesLoading ? (
+            <Skeleton className="h-40 w-full rounded-xl" />
+          ) : (
+            <MatchesList matches={matches.slice(0, 3)} />
+          )}
+        </section>
       </div>
-    </div>
     </DashboardErrorBoundary>
   );
 }

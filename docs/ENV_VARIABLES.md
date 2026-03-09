@@ -4,7 +4,35 @@ All environment variables used by CandidateMatch. **For a step-by-step setup, se
 
 ---
 
-## Required (app won’t start without these)
+## Security Considerations
+
+| Practice | Details |
+|----------|---------|
+| **Never commit secrets** | `.env` is gitignored. Never add API keys, tokens, or passwords to source control. |
+| **Use `.env.example`** | Copy to `.env` and fill with real values locally. `.env.example` contains placeholders only. |
+| **Server-only vars** | `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, `CRON_SECRET`, `WORKER_SECRET` must never be exposed to the client. Only `NEXT_PUBLIC_*` vars are bundled into client code. |
+| **Production secrets** | Use strong, unique values. Generate with `openssl rand -hex 32` for CRON_SECRET and WORKER_SECRET. |
+| **Rotate on compromise** | If a key may be exposed, rotate it immediately in the provider dashboard and update your deployment. |
+| **Least privilege** | Grant only the permissions each key needs (e.g. Supabase service role for server, anon for client). |
+
+---
+
+## Where to Get Values
+
+| Variable | Source |
+|----------|--------|
+| Supabase | [Supabase Dashboard](https://supabase.com/dashboard) → Project → Settings → API |
+| Anthropic | [Anthropic Console](https://console.anthropic.com/) → API Keys |
+| Stripe | [Stripe Dashboard](https://dashboard.stripe.com/) → Developers → API Keys / Webhooks |
+| Resend | [Resend Dashboard](https://resend.com/) → API Keys |
+| Upstash Redis | [Upstash Console](https://console.upstash.com/) → Database → REST API |
+| Google OAuth | [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials |
+| Sentry | [Sentry](https://sentry.io/) → Project Settings → Client Keys (DSN) |
+| PostHog | [PostHog](https://posthog.com/) → Project Settings → Project API Key |
+
+---
+
+## Required (app won't start without these)
 
 | Variable | Description | Example |
 |----------|-------------|---------|
@@ -121,9 +149,12 @@ All environment variables used by CandidateMatch. **For a step-by-step setup, se
 |----------|----------|-------------|---------|
 | `GOOGLE_CLIENT_ID` | For Gmail OAuth | Google OAuth client ID | From Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | For Gmail OAuth | Google OAuth client secret | From Google Cloud Console |
+| `LINKEDIN_CLIENT_ID` | For LinkedIn profile import | LinkedIn app client ID | From [LinkedIn Developer Portal](https://www.linkedin.com/developers/apps) (Sign In with LinkedIn) |
+| `LINKEDIN_CLIENT_SECRET` | For LinkedIn profile import | LinkedIn app client secret | From app → Auth → Client Secret |
 | `APIFY_API_TOKEN` | For Apify scrapers | Apify API token | From Apify dashboard |
-| `ADZUNA_APP_ID` | For Adzuna connector | Adzuna app ID | From Adzuna |
-| `ADZUNA_APP_KEY` | For Adzuna connector | Adzuna app key | From Adzuna |
+| `ADZUNA_APP_ID` | For Adzuna connector & salary insights | Adzuna app ID | From [Adzuna](https://developer.adzuna.com/) |
+| `ADZUNA_APP_KEY` | For Adzuna connector & salary insights | Adzuna app key | From Adzuna |
+| `ADZUNA_COUNTRY` | No | Country code for Adzuna salary API (default `gb`) | `gb`, `us` |
 | `OPENAI_API_KEY` | For semantic similarity | OpenAI API key | `sk-...` |
 | `INGEST_USE_V3` | No | Use v3 ingest pipeline | `true` |
 | `INGEST_ITEM_CONCURRENCY` | No | Ingest concurrency | `50` |

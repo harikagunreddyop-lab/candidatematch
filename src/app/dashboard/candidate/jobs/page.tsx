@@ -1,7 +1,7 @@
 'use client';
 
-import { JobSearchView } from '@/components/jobs/JobSearchView';
+import { CandidateJobSearch } from '@/components/jobs/CandidateJobSearch';
 
 export default function CandidateJobsPage() {
-  return <JobSearchView role="candidate" />;
+  return <CandidateJobSearch />;
 }

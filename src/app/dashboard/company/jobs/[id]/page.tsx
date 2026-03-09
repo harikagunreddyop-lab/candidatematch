@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ChevronLeft, Users } from 'lucide-react';
+import { ChevronLeft, Users, Copy } from 'lucide-react';
 import { formatRelative } from '@/utils/helpers';
 import { Spinner } from '@/components/ui';
+import { JobPerformanceDashboard, InclusiveLanguageChecker } from '@/components/company/jobs';
 
 export default function CompanyJobDetailPage() {
   const params = useParams();
@@ -16,6 +17,7 @@ export default function CompanyJobDetailPage() {
   const [_companyId, setCompanyId] = useState<string | null>(null);
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [duplicating, setDuplicating] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -36,6 +38,18 @@ export default function CompanyJobDetailPage() {
     })();
   }, [jobId, supabase]);
 
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    try {
+      const res = await fetch(`/api/company/jobs/${jobId}/duplicate`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      window.location.href = `/dashboard/company/jobs/${data.job?.id}/edit`;
+    } catch {
+      setDuplicating(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center py-20"><Spinner size={28} /></div>;
   if (!job) return (
     <div className="max-w-2xl mx-auto px-4 py-16 text-center text-surface-500">
@@ -50,14 +64,28 @@ export default function CompanyJobDetailPage() {
         <ChevronLeft size={18} /> Jobs
       </Link>
 
-      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 p-6">
-        <h1 className="text-2xl font-bold text-white">{job.title}</h1>
-        <p className="text-surface-500 mt-1">{job.company} · {formatRelative(job.scraped_at || job.created_at)}</p>
-        <div className="flex items-center gap-4 mt-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white">{job.title}</h1>
+          <p className="text-surface-500 mt-1">{job.company} · {formatRelative(job.scraped_at || job.created_at)}</p>
+        </div>
+        <div className="flex items-center gap-2">
           <span className={job.is_active ? 'text-emerald-400 text-sm font-medium' : 'text-surface-500 text-sm'}>{job.is_active ? 'Active' : 'Closed'}</span>
           <span className="text-surface-400 text-sm">{job.location || '—'}</span>
+          <Link href={`/dashboard/company/jobs/${jobId}/edit`} className="px-4 py-2 bg-surface-700 hover:bg-surface-600 text-white rounded-xl text-sm font-medium">Edit</Link>
+          <button type="button" onClick={handleDuplicate} disabled={duplicating} className="flex items-center gap-1.5 px-4 py-2 bg-surface-700 hover:bg-surface-600 disabled:opacity-50 text-white rounded-xl text-sm font-medium">
+            <Copy className="w-4 h-4" /> Duplicate
+          </button>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-surface-700 bg-surface-800/50 p-6">
         {job.jd_clean && <div className="mt-6 text-surface-300 text-sm whitespace-pre-wrap">{job.jd_clean}</div>}
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        <InclusiveLanguageChecker jobId={jobId} />
+        <JobPerformanceDashboard jobId={jobId} />
       </div>
 
       <div className="flex items-center justify-between">

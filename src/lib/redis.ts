@@ -30,7 +30,8 @@ export function getRedis(): RedisIo | null {
         _redis = new RedisIo(url, {
             maxRetriesPerRequest: 3,
             lazyConnect: true,
-            enableReadyCheck: true,
+            // Managed Redis users may not allow INFO command; keep disabled to avoid noisy NOPERM warnings.
+            enableReadyCheck: false,
             retryStrategy(times) {
                 if (times > 3) {
                     console.warn('[redis] giving up after 3 retries — falling back to in-memory');

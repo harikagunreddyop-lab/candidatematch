@@ -119,8 +119,7 @@ export default function CandidateDetailPage() {
       } else {
         setResumeError([data.error, data.hint].filter(Boolean).join(' ') || 'Resume generation failed');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
       setResumeError('Network error. Try again.');
     }
     setGenerating(null);

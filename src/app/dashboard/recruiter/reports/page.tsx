@@ -32,6 +32,7 @@ export default function RecruiterReportsPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [_profile, setProfile] = useState<any>(null);
+  const [noCompany, setNoCompany] = useState(false);
   const [pipeline, setPipeline] = useState<Record<string, number>>({});
   const [bestFitCandidates, setBestFitCandidates] = useState<any[]>([]);
   const [rolesNeedingAttention, setRolesNeedingAttention] = useState<any[]>([]);
@@ -39,19 +40,40 @@ export default function RecruiterReportsPage() {
   const [stats, setStats] = useState({ totalCandidates: 0, totalMatches: 0, avgScore: 0, strongMatchCount: 0 });
 
   const load = useCallback(async () => {
+    setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { setLoading(false); return; }
-    const rid = session.user.id;
+    const userId = session.user.id;
 
-    const { data: profileRow } = await supabase.from('profiles').select('name').eq('id', rid).single();
+    const { data: profileRow } = await supabase.from('profiles').select('name').eq('id', userId).single();
     setProfile(profileRow);
 
-    const { data: assignments } = await supabase
-      .from('recruiter_candidate_assignments')
-      .select('candidate_id')
-      .eq('recruiter_id', rid);
-    const candidateIds = (assignments || []).map((a: any) => a.candidate_id);
-    if (candidateIds.length === 0) {
+    const { data: roleCtx } = await supabase
+      .from('profile_roles')
+      .select('company_id')
+      .eq('id', userId)
+      .single();
+    const companyId = roleCtx?.company_id;
+
+    if (!companyId) {
+      setNoCompany(true);
+      setPipeline({});
+      setBestFitCandidates([]);
+      setRolesNeedingAttention([]);
+      setTopMatches([]);
+      setStats({ totalCandidates: 0, totalMatches: 0, avgScore: 0, strongMatchCount: 0 });
+      setLoading(false);
+      return;
+    }
+    setNoCompany(false);
+
+    const { data: companyJobs } = await supabase
+      .from('jobs')
+      .select('id, title, company')
+      .eq('company_id', companyId)
+      .eq('is_active', true);
+    const jobIds = (companyJobs || []).map((j: any) => j.id);
+    if (jobIds.length === 0) {
       setPipeline({});
       setBestFitCandidates([]);
       setRolesNeedingAttention([]);
@@ -61,25 +83,41 @@ export default function RecruiterReportsPage() {
       return;
     }
 
-    const [candsRes, matchesRes, appsRes, jobsRes] = await Promise.all([
-      supabase.from('candidates').select('id, full_name, primary_title').in('id', candidateIds),
+    const [matchesRes, appsRes, jobsRes] = await Promise.all([
       supabase.from('candidate_job_matches')
         .select('id, candidate_id, job_id, fit_score, ats_score, matched_at, job:jobs(id, title, company), candidate:candidates(full_name, primary_title)', { count: 'exact' })
-        .in('candidate_id', candidateIds)
+        .in('job_id', jobIds)
         .order('fit_score', { ascending: false })
         .limit(2000),
-      supabase.from('applications').select('status').in('candidate_id', candidateIds),
-      supabase.from('jobs').select('id, title, company').eq('is_active', true),
+      supabase.from('applications').select('status, candidate_id').in('job_id', jobIds),
+      Promise.resolve({ data: companyJobs || [] } as any),
     ]);
-
-    const cands = candsRes.data || [];
 
     const allMatches = matchesRes.data || [];
     const matchCount = matchesRes.count ?? allMatches.length;
     const allApps = appsRes.data || [];
     const allJobs = jobsRes.data || [];
 
-    const pipelineCount: Record<string, number> = { ready: 0, applied: 0, screening: 0, interview: 0, offer: 0, rejected: 0, withdrawn: 0 };
+    const candidateIdSet = new Set<string>([
+      ...allMatches.map((m: any) => m.candidate_id).filter(Boolean),
+      ...allApps.map((a: any) => a.candidate_id).filter(Boolean),
+    ]);
+    const candidateIds = Array.from(candidateIdSet);
+
+    const { data: candsData } = candidateIds.length > 0
+      ? await supabase.from('candidates').select('id, full_name, primary_title').in('id', candidateIds)
+      : ({ data: [] } as any);
+    const cands = candsData || [];
+
+    const pipelineCount: Record<string, number> = {
+      applied: 0,
+      screening: 0,
+      interview: 0,
+      offer: 0,
+      hired: 0,
+      rejected: 0,
+      withdrawn: 0,
+    };
     for (const a of allApps) {
       pipelineCount[a.status] = (pipelineCount[a.status] || 0) + 1;
     }
@@ -132,7 +170,7 @@ export default function RecruiterReportsPage() {
     }).filter((v): v is number => v !== null);
     const avgScore = scoresForAvg.length > 0 ? Math.round(scoresForAvg.reduce((s, v) => s + v, 0) / scoresForAvg.length) : 0;
     setStats({
-      totalCandidates: cands.length,
+      totalCandidates: candidateIds.length,
       totalMatches,
       avgScore,
       strongMatchCount: strongMatches.length,
@@ -145,10 +183,9 @@ export default function RecruiterReportsPage() {
 
   useEffect(() => {
     const channel = supabase.channel('recruiter-talent-report')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs' }, () => load())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidate_job_matches' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'applications' }, () => load());
     subscribeWithLog(channel, 'recruiter-talent-report');
     return () => { supabase.removeChannel(channel); };
   }, [load, supabase]);
@@ -162,6 +199,15 @@ export default function RecruiterReportsPage() {
     );
   }
 
+  if (noCompany) {
+    return (
+      <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-8 text-center">
+        <h2 className="text-xl font-semibold text-surface-900 dark:text-surface-100">No company linked</h2>
+        <p className="text-surface-500 dark:text-surface-400 mt-2 text-sm">Your account is not linked to a company. Ask your company admin to add you to the team.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
@@ -170,7 +216,7 @@ export default function RecruiterReportsPage() {
           Talent & fit report
         </h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mb-6">
-          Pipeline summary, best fit candidates, and roles that need attention — for your assigned candidates only.
+          Pipeline summary, best-fit candidates, and roles that need attention across your company&apos;s active jobs.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -195,7 +241,7 @@ export default function RecruiterReportsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <SectionCard title="Pipeline summary" subtitle="Your candidates' applications by stage" icon={<TrendingUp size={18} className="text-brand-600 dark:text-brand-400" />}>
             <div className="space-y-2">
-              {['ready', 'applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'].map(stage => (
+              {['applied', 'screening', 'interview', 'offer', 'hired', 'rejected', 'withdrawn'].map(stage => (
                 <div key={stage} className="flex items-center justify-between py-1.5 border-b border-surface-100 dark:border-surface-700 last:border-0">
                   <span className="text-sm font-medium text-surface-700 dark:text-surface-200 capitalize">{stage}</span>
                   <span className="text-sm font-bold text-surface-900 dark:text-surface-100 tabular-nums">{pipeline[stage] ?? 0}</span>
@@ -207,7 +253,7 @@ export default function RecruiterReportsPage() {
             </Link>
           </SectionCard>
 
-          <SectionCard title="Best fit candidates" subtitle="Assigned candidates with strongest match scores" icon={<Star size={18} className="text-emerald-600 dark:text-emerald-400" />}>
+          <SectionCard title="Best fit candidates" subtitle="Candidates with strongest match scores for your company jobs" icon={<Star size={18} className="text-emerald-600 dark:text-emerald-400" />}>
             {bestFitCandidates.length === 0 ? (
               <p className="text-sm text-surface-500 dark:text-surface-400">No candidates with 75+ matches yet. Run matching to populate.</p>
             ) : (

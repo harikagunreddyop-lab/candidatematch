@@ -2,7 +2,7 @@
  * Security utilities: timing-safe comparison, input validation, sanitization, IP blocking.
  */
 
-import { timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { upstash } from './redis-upstash';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -43,6 +43,38 @@ export function validateCronAuth(req: Request): boolean {
   if (!auth.startsWith('Bearer ')) return false;
   const token = auth.slice(7);
   return secureCompare(token, secret);
+}
+
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+function signTrackingPayload(payload: string, secret: string): string {
+  return createHmac('sha256', secret)
+    .update(payload)
+    .digest('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+}
+
+export function createTrackingSignature(parts: Array<string | null | undefined>, secret: string): string {
+  const payload = base64UrlEncode(parts.map((p) => p ?? '').join('|'));
+  return signTrackingPayload(payload, secret);
+}
+
+export function verifyTrackingSignature(
+  parts: Array<string | null | undefined>,
+  signature: string | null,
+  secret: string | undefined
+): boolean {
+  if (!secret || !signature) return false;
+  const expected = createTrackingSignature(parts, secret);
+  return secureCompare(signature, expected);
 }
 
 /** Parse and validate JSON body with size limit */

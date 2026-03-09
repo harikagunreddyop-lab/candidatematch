@@ -24,7 +24,7 @@ const MAX_EVENTS_PER_REQUEST = 20;
  * from the authenticated session — never trusted from the client payload.
  */
 export async function POST(req: NextRequest) {
-    const auth = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const auth = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (auth instanceof Response) return auth;
 
     const rl = await rateLimitResponse(req, 'api', auth.user.id);

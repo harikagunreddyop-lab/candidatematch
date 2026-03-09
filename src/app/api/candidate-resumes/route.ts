@@ -13,7 +13,7 @@ const MAX_FILE_SIZE_MB = 10;
 const BUCKET = 'resumes'; // Must match the bucket in 001_initial.sql
 
 async function assertCanAccessCandidate(req: NextRequest, candidateId: string): Promise<NextResponse | null> {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const supabase = createServiceClient();
   if (authResult.profile.role === 'admin') return null;
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
 
 // ── DELETE — remove a resume ──────────────────────────────────────────────────
 export async function DELETE(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const supabase = createServiceClient();

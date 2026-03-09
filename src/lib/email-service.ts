@@ -6,10 +6,11 @@
  */
 
 import { Resend } from 'resend';
+import { getAppUrl } from '@/config';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.FROM_EMAIL ?? 'CandidateMatch <onboarding@resend.dev>';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+const APP_URL = getAppUrl();
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
@@ -145,6 +146,35 @@ export function templateInterviewScheduled(options: {
   <p>An interview has been scheduled for <strong>${escapeHtml(options.jobTitle)}</strong>${options.companyName ? ` at ${escapeHtml(options.companyName)}` : ''}.</p>
   ${options.dateTime ? `<p><strong>When:</strong> ${escapeHtml(options.dateTime)}</p>` : ''}
   ${options.detailsUrl ? `<p><a href="${options.detailsUrl}" style="color: #2563eb;">View details</a></p>` : ''}
+`
+  );
+  return { subject, html };
+}
+
+/** Saved search alert: new jobs matching the candidate's saved search. */
+export function templateSavedSearchAlert(options: {
+  candidateName?: string;
+  searchName: string;
+  jobs: { title: string; company?: string; location?: string; url?: string }[];
+  jobsUrl: string;
+}): { subject: string; html: string } {
+  const name = options.candidateName || 'there';
+  const count = options.jobs.length;
+  const subject = `New jobs for "${options.searchName}" — ${count} match${count !== 1 ? 'es' : ''}`;
+  const listItems = options.jobs
+    .slice(0, 15)
+    .map(
+      (j) =>
+        `<li style="margin-bottom: 8px;"><a href="${j.url ? escapeHtml(j.url) : '#'}" style="color: #2563eb;">${escapeHtml(j.title)}</a>${j.company ? ` at ${escapeHtml(j.company)}` : ''}${j.location ? ` — ${escapeHtml(j.location)}` : ''}</li>`
+    )
+    .join('');
+  const html = baseHtml(
+    `New jobs for ${escapeHtml(options.searchName)}`,
+    `
+  <p>Hi ${escapeHtml(name)},</p>
+  <p>Your saved search <strong>${escapeHtml(options.searchName)}</strong> has ${count} new job${count !== 1 ? 's' : ''}.</p>
+  <ul style="list-style: none; padding-left: 0;">${listItems}</ul>
+  <p><a href="${escapeHtml(options.jobsUrl)}" style="display: inline-block; padding: 10px 20px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px;">View all jobs</a></p>
 `
   );
   return { subject, html };

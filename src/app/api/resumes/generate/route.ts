@@ -24,7 +24,7 @@ const QUEUE_WAIT_MS = 30000;
  */
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const rl = await rateLimitResponse(req, 'api', authResult.user.id);
@@ -131,7 +131,10 @@ export async function POST(req: NextRequest) {
       try {
         const IORedis = (await import('ioredis')).default;
         const { Queue, QueueEvents } = await import('bullmq');
-        const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+        const connection = new IORedis(REDIS_URL, {
+          maxRetriesPerRequest: null,
+          enableReadyCheck: false,
+        });
         const queueName = 'resume-generation';
         const queue = new Queue(queueName, { connection: connection as import('bullmq').ConnectionOptions });
         const queueEvents = new QueueEvents(queueName, { connection: connection as import('bullmq').ConnectionOptions });

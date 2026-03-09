@@ -22,7 +22,7 @@ interface JobSearchViewProps {
   role: 'candidate' | 'recruiter';
   /** When set (e.g. recruiter), only show jobs for this company. */
   companyId?: string | null;
-  /** When set (recruiter), only show jobs posted by this user (B2B: "my jobs"). Takes precedence over companyId for recruiter. */
+  /** Optional narrower filter: only jobs posted by this user. */
   postedByUserId?: string | null;
 }
 

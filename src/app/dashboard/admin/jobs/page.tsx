@@ -169,7 +169,6 @@ export default function JobsPage() {
         }
       }
     } catch (err: any) {
-      console.error('[matching] frontend error:', err);
       setMatchMsg(`❌ Matching failed: ${err.message || String(err)}`);
     }
 

@@ -14,6 +14,10 @@ function shouldEmitOperationalWarnings(): boolean {
 }
 
 export function getQueueConnection() {
+    // Avoid Redis/BullMQ initialization during Next build-time module evaluation.
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+        return null;
+    }
     const url = process.env.REDIS_URL;
     if (!url) {
         if (shouldEmitOperationalWarnings()) {
@@ -25,6 +29,7 @@ export function getQueueConnection() {
         connection: {
             url,
             maxRetriesPerRequest: null as null,
+            enableReadyCheck: false,
         },
     };
 }

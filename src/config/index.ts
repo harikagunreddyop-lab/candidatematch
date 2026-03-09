@@ -8,10 +8,6 @@
  */
 import { z } from 'zod';
 
-function shouldEmitOperationalWarnings(): boolean {
-  return process.env.NEXT_PHASE !== 'phase-production-build';
-}
-
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
@@ -28,6 +24,7 @@ const envSchema = z.object({
   // Security (CRON_SECRET required in production for cron/event endpoints)
   CRON_SECRET: z.string().optional(),
   WORKER_SECRET: z.string().optional(),
+  EMAIL_TRACKING_SECRET: z.string().optional(),
   AUTOFILL_ALLOWED_ORIGINS: z.string().optional(),
 
   // Anthropic (optional for dev; required for AI features)
@@ -38,6 +35,22 @@ const envSchema = z.object({
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_PUBLISHABLE_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_COMPANY_STARTER_PRICE_ID: z.string().optional(),
+  STRIPE_COMPANY_GROWTH_PRICE_ID: z.string().optional(),
+  STRIPE_COMPANY_SCALE_PRICE_ID: z.string().optional(),
+  STRIPE_COMPANY_ENTERPRISE_PRICE_ID: z.string().optional(),
+
+  // OAuth providers
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  LINKEDIN_CLIENT_ID: z.string().optional(),
+  LINKEDIN_CLIENT_SECRET: z.string().optional(),
+
+  // AI + market data
+  OPENAI_API_KEY: z.string().optional(),
+  ADZUNA_APP_ID: z.string().optional(),
+  ADZUNA_APP_KEY: z.string().optional(),
+  ADZUNA_COUNTRY: z.string().optional(),
 
   // Email Resend (optional)
   RESEND_API_KEY: z.string().optional(),
@@ -50,6 +63,9 @@ const envSchema = z.object({
 
   // Resume worker
   RESUME_WORKER_URL: z.string().url().optional(),
+  INGEST_CONCURRENCY: z.string().optional().transform((v) => parseInt(v || '5', 10)),
+  INGEST_BATCH_SIZE: z.string().optional().transform((v) => parseInt(v || '100', 10)),
+  INGEST_TIMEOUT_MS: z.string().optional().transform((v) => parseInt(v || '30000', 10)),
 
   // Monitoring
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
@@ -82,18 +98,34 @@ function loadConfig(): Config {
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     WORKER_SECRET: process.env.WORKER_SECRET,
+    EMAIL_TRACKING_SECRET: process.env.EMAIL_TRACKING_SECRET,
     AUTOFILL_ALLOWED_ORIGINS: process.env.AUTOFILL_ALLOWED_ORIGINS,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     ANTHROPIC_TIMEOUT_MS: process.env.ANTHROPIC_TIMEOUT_MS,
     STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
     STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_COMPANY_STARTER_PRICE_ID: process.env.STRIPE_COMPANY_STARTER_PRICE_ID,
+    STRIPE_COMPANY_GROWTH_PRICE_ID: process.env.STRIPE_COMPANY_GROWTH_PRICE_ID,
+    STRIPE_COMPANY_SCALE_PRICE_ID: process.env.STRIPE_COMPANY_SCALE_PRICE_ID,
+    STRIPE_COMPANY_ENTERPRISE_PRICE_ID: process.env.STRIPE_COMPANY_ENTERPRISE_PRICE_ID,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    LINKEDIN_CLIENT_ID: process.env.LINKEDIN_CLIENT_ID,
+    LINKEDIN_CLIENT_SECRET: process.env.LINKEDIN_CLIENT_SECRET,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    ADZUNA_APP_ID: process.env.ADZUNA_APP_ID,
+    ADZUNA_APP_KEY: process.env.ADZUNA_APP_KEY,
+    ADZUNA_COUNTRY: process.env.ADZUNA_COUNTRY,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     FROM_EMAIL: process.env.FROM_EMAIL,
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     REDIS_URL: process.env.REDIS_URL,
     RESUME_WORKER_URL: process.env.RESUME_WORKER_URL,
+    INGEST_CONCURRENCY: process.env.INGEST_CONCURRENCY,
+    INGEST_BATCH_SIZE: process.env.INGEST_BATCH_SIZE,
+    INGEST_TIMEOUT_MS: process.env.INGEST_TIMEOUT_MS,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     SENTRY_DSN: process.env.SENTRY_DSN,
     SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
@@ -114,13 +146,12 @@ function loadConfig(): Config {
 
   const data = parsed.data;
 
-  // Production: warn if CRON_SECRET missing (cron endpoints may be unprotected)
+  // Production: fail fast if auth-critical shared secrets are missing.
   if (data.NODE_ENV === 'production' && !data.CRON_SECRET) {
-    if (shouldEmitOperationalWarnings()) {
-      console.warn(
-        '[config] CRON_SECRET not set in production. Cron/event endpoints may be unprotected.'
-      );
-    }
+    throw new Error('Invalid environment configuration:\n  CRON_SECRET: required in production');
+  }
+  if (data.NODE_ENV === 'production' && !data.EMAIL_TRACKING_SECRET) {
+    throw new Error('Invalid environment configuration:\n  EMAIL_TRACKING_SECRET: required in production');
   }
 
   return data;

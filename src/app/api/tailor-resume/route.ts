@@ -13,7 +13,7 @@ const RESUME_WORKER_URL = raw && !raw.includes(':3000') ? raw : 'http://127.0.0.
 
 // GET — list tailored resumes for a candidate+job pair
 export async function GET(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const rl = await rateLimitResponse(req, 'api', authResult.user.id);
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 // POST — trigger resume tailoring for a job match
 export async function POST(req: NextRequest) {
   try {
-    const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+    const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
     if (authResult instanceof Response) return authResult;
 
     const rl = await rateLimitResponse(req, 'api', authResult.user.id);

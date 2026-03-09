@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET ?application_id= — returns status history for an application (admin/recruiter or candidate who owns it). */
 export async function GET(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
 
   const applicationId = req.nextUrl.searchParams.get('application_id');

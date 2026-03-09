@@ -19,7 +19,7 @@ function getLocalDayStart(tzOffsetMinutes: number): Date {
 
 /** GET ?candidate_id= & tz_offset= (optional). Returns used_today and limit for the auth user. */
 export async function GET(req: NextRequest) {
-  const authResult = await requireApiAuth(req, { roles: ['admin', 'recruiter', 'candidate'] });
+  const authResult = await requireApiAuth(req, { effectiveRoles: ['platform_admin', 'company_admin', 'recruiter', 'candidate'] });
   if (authResult instanceof Response) return authResult;
   const { profile } = authResult;
 

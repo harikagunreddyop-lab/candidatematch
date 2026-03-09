@@ -19,10 +19,16 @@ export default function RecruiterIntegrationsPage() {
       setError(null);
       try {
         const res = await fetch('/api/integrations/gmail/status');
-        const data = await res.json();
-        setStatus(data);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to load status');
+        setStatus(
+          typeof data?.connected === 'boolean'
+            ? data
+            : { connected: false }
+        );
       } catch (e: any) {
         setError(e.message || 'Failed to load status');
+        setStatus({ connected: false });
       } finally {
         setLoading(false);
       }
@@ -107,7 +113,7 @@ export default function RecruiterIntegrationsPage() {
           <div className="flex-1 min-w-0">
             <h3 className="text-base font-semibold text-surface-900 dark:text-surface-100">Gmail</h3>
             <p className="text-sm text-surface-500 dark:text-surface-400 mt-0.5">
-              Sync inbox emails and match them to your assigned candidates. Emails from candidate addresses are linked automatically.
+              Sync inbox emails and match them to candidates in your company pipeline. Emails from candidate addresses are linked automatically.
             </p>
             {status?.connected ? (
               <div className="mt-4 space-y-3">

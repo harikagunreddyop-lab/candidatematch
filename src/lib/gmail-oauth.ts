@@ -1,10 +1,20 @@
 /**
- * Gmail OAuth 2.0 — token exchange and refresh.
+ * Gmail OAuth 2.0 — token exchange, refresh, and profile.
  * Uses Google OAuth endpoints; no googleapis dependency.
  */
 
+import { config } from '@/config';
+
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+const GMAIL_PROFILE_URL = 'https://gmail.googleapis.com/gmail/v1/users/me/profile';
+
+export const GMAIL_SCOPES = [
+  'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.modify',
+] as const;
+
+const GMAIL_SCOPE_STRING = GMAIL_SCOPES.join(' ');
 
 export interface GmailTokens {
   access_token: string;
@@ -13,14 +23,21 @@ export interface GmailTokens {
   scope?: string;
 }
 
-export function getAuthUrl(redirectUri: string, state: string): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+export interface GmailProfile {
+  emailAddress: string;
+  messagesTotal?: number;
+  threadsTotal?: number;
+  historyId?: string;
+}
+
+export function getAuthUrl(redirectUri: string, state: string, scopes: string = GMAIL_SCOPE_STRING): string {
+  const clientId = config.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error('GOOGLE_CLIENT_ID not configured');
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: GMAIL_SCOPE,
+    scope: scopes,
     access_type: 'offline',
     prompt: 'consent',
     state,
@@ -29,8 +46,8 @@ export function getAuthUrl(redirectUri: string, state: string): string {
 }
 
 export async function exchangeCodeForTokens(code: string, redirectUri: string): Promise<GmailTokens> {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = config.GOOGLE_CLIENT_ID;
+  const clientSecret = config.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('Gmail OAuth not configured');
 
   const res = await fetch(GOOGLE_TOKEN_URL, {
@@ -52,8 +69,8 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string): 
 }
 
 export async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; expires_in?: number }> {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = config.GOOGLE_CLIENT_ID;
+  const clientSecret = config.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) throw new Error('Gmail OAuth not configured');
 
   const res = await fetch(GOOGLE_TOKEN_URL, {
@@ -69,6 +86,17 @@ export async function refreshAccessToken(refreshToken: string): Promise<{ access
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Token refresh failed: ${res.status} ${err}`);
+  }
+  return res.json();
+}
+
+export async function getGmailProfile(accessToken: string): Promise<GmailProfile> {
+  const res = await fetch(GMAIL_PROFILE_URL, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gmail profile failed: ${res.status} ${err}`);
   }
   return res.json();
 }

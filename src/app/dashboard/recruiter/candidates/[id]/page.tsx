@@ -207,11 +207,11 @@ export default function RecruiterCandidateDetail() {
       return;
     }
 
-    // B2B: only MY jobs (posted_by = me)
+    // B2B: company-scoped jobs
     const { data: myJobs } = await supabase
       .from('jobs')
       .select('id')
-      .eq('posted_by', user.id);
+      .eq('company_id', profile.company_id);
 
     const jobIds = (myJobs || []).map((j: any) => j.id);
     if (jobIds.length === 0) {
@@ -404,8 +404,7 @@ export default function RecruiterCandidateDetail() {
       } else {
         setResumeError([data.error, data.hint].filter(Boolean).join(' ') || 'Resume generation failed');
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
       setResumeError('Network error. Try again.');
     }
     setGenerating(null);

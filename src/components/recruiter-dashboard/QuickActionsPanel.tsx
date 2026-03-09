@@ -53,7 +53,7 @@ const ACTIONS: {
     key: 'unreviewed_applications',
     label: 'Source Candidates',
     icon: <Search className="w-4 h-4" />,
-    href: '/dashboard/recruiter/sourcing',
+    href: '/dashboard/recruiter/candidates?view=sourcing',
   },
   {
     key: 'unreviewed_applications',

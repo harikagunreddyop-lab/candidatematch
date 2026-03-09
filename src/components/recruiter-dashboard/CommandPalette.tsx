@@ -46,7 +46,7 @@ export function CommandPalette({
       { id: 'candidates', label: 'Go to Candidates', keywords: 'people', icon: <Users className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/candidates') },
       { id: 'jobs', label: 'Go to Jobs', keywords: 'openings', icon: <Briefcase className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/jobs') },
       { id: 'applications', label: 'Go to Applications', keywords: 'apps', icon: <FileText className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/applications') },
-      { id: 'sourcing', label: 'Go to Sourcing', keywords: 'source', icon: <Search className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/sourcing') },
+      { id: 'sourcing', label: 'Go to Sourcing', keywords: 'source', icon: <Search className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/candidates?view=sourcing') },
       { id: 'post-job', label: 'Post new job', keywords: 'create job', icon: <Plus className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/jobs/new') },
       { id: 'screen', label: 'Screen new applications', keywords: 'unreviewed', icon: <ClipboardList className="w-4 h-4" />, run: () => router.push('/dashboard/recruiter/applications?filter=unreviewed') },
       { id: 'shortcuts', label: 'Show keyboard shortcuts', keywords: 'help ?', icon: <HelpCircle className="w-4 h-4" />, run: () => { onClose(); onShowShortcuts?.(); } },

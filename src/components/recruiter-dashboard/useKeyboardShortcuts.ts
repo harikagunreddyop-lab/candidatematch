@@ -9,7 +9,7 @@ export const RECRUITER_SHORTCUTS = {
   'g c': { label: 'Go to Candidates', path: '/dashboard/recruiter/candidates' },
   'g j': { label: 'Go to Jobs', path: '/dashboard/recruiter/jobs' },
   'g a': { label: 'Go to Applications', path: '/dashboard/recruiter/applications' },
-  'g s': { label: 'Go to Sourcing', path: '/dashboard/recruiter/sourcing' },
+  'g s': { label: 'Go to Sourcing', path: '/dashboard/recruiter/candidates?view=sourcing' },
   '?': { label: 'Show keyboard shortcuts', key: 'help' },
   Escape: { label: 'Close modals', key: 'escape' },
 } as const;

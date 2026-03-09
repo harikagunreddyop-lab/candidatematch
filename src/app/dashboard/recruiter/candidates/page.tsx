@@ -1,7 +1,7 @@
 'use client';
 // B2B SaaS: candidates who are matched to or applied to OUR COMPANY'S jobs (no recruiter_candidate_assignments)
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { SearchInput, EmptyState, Spinner } from '@/components/ui';
 import { Users, MapPin, Star, ChevronRight } from 'lucide-react';
@@ -14,12 +14,14 @@ function safeArray(val: any): any[] {
 
 export default function RecruiterCandidatesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const [noCompany, setNoCompany] = useState(false);
+  const view = searchParams.get('view') === 'sourcing' ? 'sourcing' : 'default';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,7 +65,6 @@ export default function RecruiterCandidatesPage() {
       ...(matchRes.data || []).map((m: any) => m.candidate_id),
       ...(appRes.data || []).map((a: any) => a.candidate_id),
     ]);
-
     if (candidateIds.size === 0) {
       setCandidates([]);
       setLoading(false);
@@ -114,10 +115,39 @@ export default function RecruiterCandidatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">Candidates for company jobs</h1>
+        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 font-display">
+          {view === 'sourcing' ? 'Candidate sourcing' : 'Candidates for company jobs'}
+        </h1>
         <p className="text-sm text-surface-500 dark:text-surface-400 mt-1">
-          Candidates matched to or applied to your company&apos;s open roles
+          {view === 'sourcing'
+            ? 'Search and review candidates already matched to or applied to your company roles'
+            : 'Candidates matched to or applied to your company&apos;s open roles'}
         </p>
+      </div>
+
+      <div className="inline-flex rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-100 dark:bg-surface-800 p-1">
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard/recruiter/candidates')}
+          className={`px-3 py-1.5 text-xs sm:text-sm rounded-lg font-medium transition-colors ${
+            view === 'default'
+              ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200'
+              : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
+          }`}
+        >
+          Company candidates
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push('/dashboard/recruiter/candidates?view=sourcing')}
+          className={`px-3 py-1.5 text-xs sm:text-sm rounded-lg font-medium transition-colors ${
+            view === 'sourcing'
+              ? 'bg-brand-100 dark:bg-brand-500/30 text-brand-700 dark:text-brand-200'
+              : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
+          }`}
+        >
+          Sourcing view
+        </button>
       </div>
 
       <div className="flex gap-3 flex-wrap">
@@ -134,7 +164,11 @@ export default function RecruiterCandidatesPage() {
         <EmptyState
           icon={<Users size={24} />}
           title="No candidates yet"
-          description="Post jobs and run matching. Candidates matched to your company jobs or who apply will appear here."
+          description={
+            view === 'sourcing'
+              ? 'No candidates are available for sourcing yet. Post jobs and run matching to build your pool.'
+              : 'Post jobs and run matching. Candidates matched to your company jobs or who apply will appear here.'
+          }
         />
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Users size={24} />} title="No matches" description="Try a different search or filter" />

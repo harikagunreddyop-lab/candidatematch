@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import type { DashboardProfile } from '@/types';
 import {
@@ -12,7 +12,7 @@ import {
   BarChart3, Settings, FileText, Shield, Building2,
   Activity, Clock, GitBranch, CreditCard, Sparkles, FileSearch,
   Calendar, Target, ChevronDown, Mic, DollarSign, MessageSquare,
-  Search, Bell,
+  Bell,
 } from 'lucide-react';
 import { AdminNotificationBell } from '@/components/ui/AdminNotifications';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -65,7 +65,6 @@ const recruiterNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/recruiter', icon: <LayoutDashboard size={18} /> },
   { label: 'Jobs', href: '/dashboard/recruiter/jobs', icon: <Briefcase size={18} /> },
   { label: 'Candidates', href: '/dashboard/recruiter/candidates', icon: <Users size={18} /> },
-  { label: 'Sourcing', href: '/dashboard/recruiter/sourcing', icon: <Search size={18} /> },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: <ClipboardList size={18} /> },
   { label: 'Pipeline', href: '/dashboard/recruiter/pipeline', icon: <GitBranch size={18} /> },
   { label: 'Reports', href: '/dashboard/recruiter/reports', icon: <BarChart3 size={18} /> },
@@ -125,6 +124,7 @@ export default function DashboardLayout({ children, profile }: { children: React
   const [client, setClient] = useState<ReturnType<typeof createClient> | null>(null);
   const [expandedNav, setExpandedNav] = useState<string | null>(null);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setClient(createClient());
@@ -193,10 +193,19 @@ export default function DashboardLayout({ children, profile }: { children: React
   };
 
   const isActive = (href: string) => {
-    if (href === '/dashboard/admin' || href === '/dashboard/company' || href === '/dashboard/recruiter' || href === '/dashboard/candidate') {
-      return pathname === href;
+    const [path, queryString] = href.split('?');
+    if (path === '/dashboard/admin' || path === '/dashboard/company' || path === '/dashboard/recruiter' || path === '/dashboard/candidate') {
+      return pathname === path;
     }
-    return pathname.startsWith(href);
+    const pathMatches = pathname.startsWith(path);
+    if (!pathMatches) return false;
+    if (!queryString) return true;
+
+    const query = new URLSearchParams(queryString);
+    for (const [key, value] of query.entries()) {
+      if (searchParams.get(key) !== value) return false;
+    }
+    return true;
   };
 
   // Auto-expand candidate nav dropdown when on a child route

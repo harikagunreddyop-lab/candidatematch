@@ -7,7 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
 import { extractResumeText, parseResumeStructured, type ResumeFileType } from '@/lib/resume-parse';
-import { calculateGenericAtsScore } from '@/lib/resume-ats-score';
 
 export const dynamic = 'force-dynamic';
 
@@ -111,7 +110,7 @@ export async function POST(req: NextRequest) {
 
   const parsedText = await extractResumeText(arrayBuffer, fileType);
   const parsedData = parseResumeStructured(parsedText);
-  const atsResult = calculateGenericAtsScore(parsedText, parsedData);
+  // TODO: ATS scoring replaced — rewire to new engine at src/lib/ats/
 
   if (setDefault) {
     await supabase
@@ -130,8 +129,8 @@ export async function POST(req: NextRequest) {
       file_size: file.size,
       file_type: fileType,
       parsed_text: parsedText || null,
-      ats_score: atsResult.score,
-      ats_feedback: atsResult as unknown as object,
+      ats_score: null,
+      ats_feedback: null,
       is_default: setDefault,
       version_name: versionName || null,
       tags: tags.length ? tags : [],
@@ -149,11 +148,12 @@ export async function POST(req: NextRequest) {
   await supabase.from('resume_ats_checks').insert({
     resume_id: inserted.id,
     job_id: null,
-    ats_score: atsResult.score,
-    keyword_matches: atsResult.breakdown.keywords.matched,
-    keyword_misses: atsResult.breakdown.keywords.missing,
-    formatting_issues: atsResult.breakdown.formatting.issues,
-    recommendations: atsResult.recommendations,
+    // TODO: ATS scoring replaced — rewire to new engine at src/lib/ats/
+    ats_score: null,
+    keyword_matches: [],
+    keyword_misses: [],
+    formatting_issues: [],
+    recommendations: [],
   });
 
   await supabase
@@ -173,8 +173,9 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     resume_id: inserted.id,
     parsed_data: responseData,
-    ats_score: atsResult.score,
-    issues: atsResult.recommendations,
-    breakdown: atsResult.breakdown,
+    // TODO: ATS scoring replaced — rewire to new engine at src/lib/ats/
+    ats_score: null,
+    issues: [],
+    breakdown: {},
   });
 }

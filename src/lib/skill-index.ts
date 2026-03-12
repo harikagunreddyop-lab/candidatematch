@@ -1,10 +1,17 @@
 import { createServiceClient } from '@/lib/supabase-server';
-import type { JobRequirements } from '@/lib/ats-engine';
 import { canonicalizeSkill } from '@/lib/skill-canon';
 
 type CandidateSkillSource = 'bullet' | 'project' | 'list' | 'inferred';
 
-export async function upsertJobSkillIndex(jobId: string, reqs: JobRequirements) {
+export async function upsertJobSkillIndex(
+  jobId: string,
+  // TODO: ATS scoring replaced — rewire to new engine types at src/lib/ats/
+  reqs: {
+    must_have_skills?: string[];
+    nice_to_have_skills?: string[];
+    implicit_skills?: string[];
+  },
+) {
   const supabase = createServiceClient();
 
   const rows: Array<{ job_id: string; skill: string; is_must: boolean; weight: number }> = [];

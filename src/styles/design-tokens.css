@@ -1,68 +1,63 @@
 /**
- * ELITE LIME DESIGN SYSTEM — CandidateMatch v2
- * Inspired by: agency editorial dark + electric lime
- * Philosophy: one dominant accent, surgical contrast
+ * MONOCHROME DESIGN SYSTEM — CandidateMatch
+ * Philosophy: black, white, and greys only (no color hue)
  */
 
 :root {
-  /* ============================================================
-     ELITE LIME — one dominant accent, surgical contrast
-     ============================================================ */
+  /* PRIMARY ACCENT — neutral light greys */
+  --color-brand-50:  #f9f9f9;
+  --color-brand-100: #f2f2f2;
+  --color-brand-200: #e5e5e5;
+  --color-brand-300: #d4d4d4;
+  --color-brand-400: #fafafa;   /* PRIMARY: buttons, CTAs, active states */
+  --color-brand-500: #d4d4d4;   /* HOVER / pressed */
+  --color-brand-600: #a3a3a3;
+  --color-brand-700: #737373;
+  --color-brand-800: #404040;
+  --color-brand-900: #171717;
 
-  /* PRIMARY ACCENT — Electric Lime */
-  --color-brand-50:  #f7ffe0;
-  --color-brand-100: #eeffb3;
-  --color-brand-200: #d9ff70;
-  --color-brand-300: #c8f542;
-  --color-brand-400: #b8eb1a;   /* ← PRIMARY: buttons, CTAs, active states */
-  --color-brand-500: #a0d400;   /* ← HOVER / pressed */
-  --color-brand-600: #84b000;
-  --color-brand-700: #648700;
-  --color-brand-800: #486200;
-  --color-brand-900: #2e3e00;
-
-  /* SURFACE SCALE — near-black to warm off-white (reduced contrast, warmer) */
-  --surface-bg:    #080909;   /* page background */
-  --surface-50:    #0f1010;   /* sidebar, deep panels */
-  --surface-100:   #161818;   /* cards, inputs */
-  --surface-200:   #1e2020;   /* elevated cards */
-  --surface-300:   #272a2a;   /* borders, dividers */
-  --surface-400:   #6a6e6e;   /* muted text — readable on dark */
-  --surface-500:   #7a7e7e;   /* placeholder, labels — readable on dark */
-  --surface-600:   #9ca0a0;   /* secondary text — clear */
-  --surface-700:   #b8bcbc;   /* body text — easy to read */
-  --surface-800:   #d4d0c8;   /* primary text light — warmed */
-  --surface-900:   #f2efe8;   /* headings — warm off-white, reduced contrast */
-  --text-on-light: #0a0a0a;   /* thick black for text on light/white backgrounds */
+  /* SURFACE SCALE — pure monochrome */
+  --surface-bg:    #050505;   /* page background */
+  --surface-50:    #0b0b0b;   /* sidebar, deep panels */
+  --surface-100:   #151515;   /* cards, inputs */
+  --surface-200:   #202020;   /* elevated cards */
+  --surface-300:   #2b2b2b;   /* borders, dividers */
+  --surface-400:   #6b6b6b;   /* muted text — readable on dark */
+  --surface-500:   #7d7d7d;   /* placeholder, labels — readable on dark */
+  --surface-600:   #a3a3a3;   /* secondary text — clear */
+  --surface-700:   #c4c4c4;   /* body text — easy to read */
+  --surface-800:   #e0e0e0;   /* primary text light */
+  --surface-900:   #f5f5f5;   /* headings — off-white */
+  --text-on-light: #050505;   /* black for text on light backgrounds */
 
   /* READABILITY — text on dark backgrounds (WCAG AA+) */
-  --text-primary:   #e8eaec;   /* body text — clear, easy to read */
-  --text-secondary: #b4b8bc;   /* secondary text — readable */
-  --text-muted:     #8c9094;   /* labels, tertiary — clear enough */
-  --text-placeholder: #8c9094; /* placeholder — visible */
+  --text-primary:   #f5f5f5;   /* body text — clear, easy to read */
+  --text-secondary: #c4c4c4;   /* secondary text — readable */
+  --text-muted:     #9e9e9e;   /* labels, tertiary — clear enough */
+  --text-placeholder: #9e9e9e; /* placeholder — visible */
 
-  /* SEMANTIC STATUS */
-  --color-success-light: #22c55e;
-  --color-success-dark:  #4ade80;
+  /* SEMANTIC STATUS (all mapped to greyscale) */
+  --color-success-light: #e5e5e5;
+  --color-success-dark:  #f5f5f5;
   --color-success:       var(--color-success-dark);
 
-  --color-error-light:   #ef4444;
-  --color-error-dark:    #f87171;
+  --color-error-light:   #a3a3a3;
+  --color-error-dark:    #737373;
   --color-error:         var(--color-error-dark);
 
-  --color-warning-light: #f59e0b;
-  --color-warning-dark:  #fbbf24;
+  --color-warning-light: #d4d4d4;
+  --color-warning-dark:  #a3a3a3;
   --color-warning:       var(--color-warning-dark);
 
-  --color-info-light:    #3b82f6;
-  --color-info-dark:     #60a5fa;
+  --color-info-light:    #d4d4d4;
+  --color-info-dark:     #a3a3a3;
   --color-info:          var(--color-info-dark);
 
-  /* BRAND SHORTCUTS */
-  --brand-primary:       #b8eb1a;
-  --brand-primary-light: #c8f542;
-  --brand-primary-dark:  #a0d400;
-  --brand-on-primary:    #0a0f00;  /* text ON a lime button */
+  /* BRAND SHORTCUTS (monochrome) */
+  --brand-primary:       var(--color-brand-400);
+  --brand-primary-light: var(--color-brand-300);
+  --brand-primary-dark:  var(--color-brand-500);
+  --brand-on-primary:    #050505;  /* text ON a light button */
 
   /* TYPOGRAPHY */
   --font-display: 'Cabinet Grotesk', system-ui, sans-serif;
@@ -88,8 +83,8 @@
   --shadow-md:  0 4px 12px -1px rgb(0 0 0 / 0.5);
   --shadow-lg:  0 10px 30px -3px rgb(0 0 0 / 0.6);
   --shadow-xl:  0 20px 50px -5px rgb(0 0 0 / 0.7);
-  --shadow-lime: 0 0 20px -4px rgba(184, 235, 26, 0.25);
-  --shadow-lime-lg: 0 0 40px -8px rgba(184, 235, 26, 0.35);
+  --shadow-lime: 0 0 20px -4px rgba(255, 255, 255, 0.2);
+  --shadow-lime-lg: 0 0 40px -8px rgba(255, 255, 255, 0.3);
 
   /* TRANSITIONS */
   --transition-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);

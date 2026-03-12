@@ -1,19 +1,9 @@
 #!/usr/bin/env npx tsx
 /**
- * Run the JD extract BullMQ worker.
- * Requires REDIS_URL to be set.
+ * JD extract worker stub.
+ *
+ * ATS Engine v3 moved JD extraction into the API layer using `extractJobRequirements`
+ * and the `job_requirements_cache` table. The old BullMQ worker has been removed.
  */
-import { createJdExtractWorker } from '../src/queue/workers/jd-extract.worker';
 
-const worker = createJdExtractWorker();
-console.log('[jd-extract] Worker started. Press Ctrl+C to stop.');
-
-process.on('SIGINT', async () => {
-  await worker.close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  await worker.close();
-  process.exit(0);
-});
+console.log('[jd-extract] Worker removed in ATS Engine v3. JD extraction now happens via the ATS API and job_requirements_cache.');

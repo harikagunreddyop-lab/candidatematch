@@ -1,242 +1,286 @@
 /**
- * Enhanced ATS scoring with multi-factor analysis and real-time optimization.
- * Uses Claude for detailed feedback (formatting, keywords, experience, skills, education, achievements).
+ * ATS Scorer — single authoritative scorer
+ *
+ * Weight vector (research-grounded):
+ *
+ * keyword_coverage   0.35  — Primary ranking signal in Taleo, iCIMS, SmartRecruiters
+ * parse_integrity    0.20  — Parse failure = invisible resume on Taleo, iCIMS, Workday
+ * experience_match   0.18  — SmartRecruiters Fit Score, Workday field filter, iCIMS title filter
+ * section_complete   0.12  — All ATS require standard sections to populate candidate record
+ * keyword_placement  0.10  — iCIMS/Greenhouse weight experience bullets over skills list
+ * formatting_detail  0.05  — Date consistency (Taleo/iCIMS), contact format
+ *
+ * Score calibration (Jobscan 75% match = success + Taleo strictness baseline):
+ *   80-100: Passes Taleo (strictest). Will pass all modern ATS.
+ *   65-79:  Passes Greenhouse, Lever, Workday, iCIMS. May struggle with Taleo/SmartRecruiters.
+ *   50-64:  Passes only the most lenient ATS (Greenhouse human review). Needs significant work.
+ *   0-49:   Likely auto-rejected or invisible in all major systems.
  */
 
-import { callClaude, CLAUDE_MODEL } from '@/lib/ai/anthropic';
+import type { JobRequirements, ResumeCandidate, ATSScoreResult, DimensionResult } from './types';
+import { analyzeKeywords } from './keyword-analyzer';
+import { analyzeParseIntegrity } from './parse-analyzer';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-export interface ATSScores {
-  formatting: number;
-  keyword_match: number;
-  experience: number;
-  skills: number;
-  education: number;
-  achievements: number;
+function clip(v: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, v));
 }
 
-export interface ATSKeywords {
-  found: string[];
-  missing: string[];
-  density: number;
-}
-
-export interface ATSFlags {
-  has_tables: boolean;
-  has_images: boolean;
-  has_columns: boolean;
-  uses_standard_fonts: boolean;
-  parseable_dates: boolean;
-}
-
-export interface ATSScore {
-  overall_score: number;
-  ats_pass_probability: number;
-  scores: ATSScores;
-  keywords: ATSKeywords;
-  improvements: string[];
-  strengths: string[];
-  ats_flags: ATSFlags;
-}
-
-export interface OptimizeResult {
-  /** When score already >= 90, no changes */
-  resume?: string;
-  /** When optimized version was generated */
-  original?: string;
-  optimized?: string;
-  score: ATSScore;
-  changes: string[];
-}
-
-const DEFAULT_SCORE: ATSScore = {
-  overall_score: 0,
-  ats_pass_probability: 0,
-  scores: {
-    formatting: 0,
-    keyword_match: 0,
-    experience: 0,
-    skills: 0,
-    education: 0,
-    achievements: 0,
-  },
-  keywords: { found: [], missing: [], density: 0 },
-  improvements: [],
-  strengths: [],
-  ats_flags: {
-    has_tables: false,
-    has_images: false,
-    has_columns: false,
-    uses_standard_fonts: true,
-    parseable_dates: true,
-  },
-};
-
-function buildScorePrompt(resumeText: string, jobDescription: string): string {
-  const resumeSnippet = resumeText.slice(0, 12000).replace(/```/g, '`');
-  const jdSnippet = jobDescription.slice(0, 8000).replace(/```/g, '`');
-  return `Analyze this resume for ATS compatibility and job match.
-
-RESUME:
-${resumeSnippet}
-
-JOB DESCRIPTION:
-${jdSnippet}
-
-Score on these factors (0-100 each):
-1. Formatting (parseable, clean structure)
-2. Keyword Match (% of required keywords present)
-3. Experience Relevance (years and role alignment)
-4. Skills Match (technical and soft skills)
-5. Education Requirements
-6. Achievement Quantification (has metrics)
-
-Return valid JSON only, no markdown or extra text, with this exact structure:
-{
-  "overall_score": 87,
-  "ats_pass_probability": 0.92,
-  "scores": {
-    "formatting": 95,
-    "keyword_match": 85,
-    "experience": 90,
-    "skills": 80,
-    "education": 85,
-    "achievements": 75
-  },
-  "keywords": {
-    "found": ["Python", "React", "AWS", "Team Leadership"],
-    "missing": ["Kubernetes", "CI/CD"],
-    "density": 0.08
-  },
-  "improvements": [
-    "Add 'Kubernetes' keyword in skills section",
-    "Quantify achievement in current role (e.g., 'Improved performance by X%')",
-    "Include years of experience with each technology"
-  ],
-  "strengths": [
-    "Strong keyword density (8%)",
-    "Clear section headers",
-    "Quantified achievements",
-    "Relevant experience level"
-  ],
-  "ats_flags": {
-    "has_tables": false,
-    "has_images": false,
-    "has_columns": false,
-    "uses_standard_fonts": true,
-    "parseable_dates": true
-  }
-}`;
-}
-
-function parseScoreResponse(text: string): ATSScore {
-  const trimmed = text.trim();
-  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('No JSON in ATS score response');
-  const parsed = JSON.parse(jsonMatch[0]) as Partial<ATSScore>;
+function scoreDimension(score: number, weight: number, label: string, details: string, extras: Partial<DimensionResult> = {}): DimensionResult {
   return {
-    overall_score: Math.max(0, Math.min(100, Number(parsed.overall_score) || 0)),
-    ats_pass_probability: Math.max(0, Math.min(1, Number(parsed.ats_pass_probability) || 0)),
-    scores: {
-      formatting: Math.max(0, Math.min(100, Number(parsed.scores?.formatting) ?? 0)),
-      keyword_match: Math.max(0, Math.min(100, Number(parsed.scores?.keyword_match) ?? 0)),
-      experience: Math.max(0, Math.min(100, Number(parsed.scores?.experience) ?? 0)),
-      skills: Math.max(0, Math.min(100, Number(parsed.scores?.skills) ?? 0)),
-      education: Math.max(0, Math.min(100, Number(parsed.scores?.education) ?? 0)),
-      achievements: Math.max(0, Math.min(100, Number(parsed.scores?.achievements) ?? 0)),
-    },
-    keywords: {
-      found: Array.isArray(parsed.keywords?.found) ? parsed.keywords.found.map(String) : [],
-      missing: Array.isArray(parsed.keywords?.missing) ? parsed.keywords.missing.map(String) : [],
-      density: Math.max(0, Math.min(1, Number(parsed.keywords?.density) ?? 0)),
-    },
-    improvements: Array.isArray(parsed.improvements) ? parsed.improvements.map(String) : [],
-    strengths: Array.isArray(parsed.strengths) ? parsed.strengths.map(String) : [],
-    ats_flags: {
-      has_tables: Boolean(parsed.ats_flags?.has_tables),
-      has_images: Boolean(parsed.ats_flags?.has_images),
-      has_columns: Boolean(parsed.ats_flags?.has_columns),
-      uses_standard_fonts: parsed.ats_flags?.uses_standard_fonts !== false,
-      parseable_dates: parsed.ats_flags?.parseable_dates !== false,
-    },
+    score: Math.round(clip(score, 0, 100)),
+    max: 100,
+    weight,
+    contribution: Math.round(score * weight * 10) / 10,
+    label,
+    details,
+    ...extras,
   };
 }
 
-// ── Scorer ────────────────────────────────────────────────────────────────────
+// ── Experience match score ────────────────────────────────────────────────────
 
-export class ATSScorer {
-  async scoreResume(resumeText: string, jobDescription: string): Promise<ATSScore> {
-    if (!resumeText?.trim() || !jobDescription?.trim()) {
-      return { ...DEFAULT_SCORE };
-    }
-    const prompt = buildScorePrompt(resumeText, jobDescription);
-    const response = await callClaude(prompt, {
-      model: CLAUDE_MODEL,
-      maxTokens: 1500,
-    });
-    return parseScoreResponse(response);
+function scoreExperienceMatch(req: JobRequirements, candidate: ResumeCandidate): { score: number; details: string } {
+  const yrsCandidate = candidate.years_of_experience ?? deriveYearsFromExperience(candidate.experience);
+  const yrsMin = req.min_years_experience ?? 0;
+  const yrsPreferred = req.preferred_years_experience ?? yrsMin + 2;
+
+  let yearsFit: number;
+  if (yrsMin === 0) {
+    yearsFit = 100;
+  } else if (yrsCandidate >= yrsMin && yrsCandidate <= yrsPreferred) {
+    yearsFit = 100;
+  } else if (yrsCandidate < yrsMin) {
+    const gap = yrsMin - yrsCandidate;
+    yearsFit = Math.max(20, 100 - gap * 20);
+  } else {
+    // Over-qualified — gentle penalty
+    const gap = yrsCandidate - yrsPreferred;
+    yearsFit = Math.max(60, 100 - gap * 5);
   }
 
-  async optimizeResume(resumeText: string, jobDescription: string): Promise<OptimizeResult> {
-    const score = await this.scoreResume(resumeText, jobDescription);
+  // Domain/title alignment
+  const titleMatch = scoreTitleDomain(req.domain, [
+    candidate.primary_title ?? '',
+    ...candidate.secondary_titles,
+  ]);
 
-    if (score.overall_score >= 90) {
-      return { resume: resumeText, score, changes: [] };
-    }
+  const score = 0.55 * yearsFit + 0.45 * titleMatch;
+  const details = `${yrsCandidate} yrs experience (need ${yrsMin}+). Title domain match: ${Math.round(titleMatch)}%`;
+  return { score, details };
+}
 
-    const optimized = await this.generateOptimizations(resumeText, jobDescription, score);
-    return {
-      original: resumeText,
-      optimized: optimized.resume,
-      score: optimized.newScore,
-      changes: optimized.changes,
-    };
+function deriveYearsFromExperience(experience: ResumeCandidate['experience']): number {
+  let totalMonths = 0;
+  const now = new Date();
+  for (const exp of experience) {
+    const start = exp.start_date ? new Date(exp.start_date) : null;
+    const end = exp.current ? now : (exp.end_date ? new Date(exp.end_date) : null);
+    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) continue;
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    totalMonths += Math.max(0, months);
+  }
+  return Math.round(totalMonths / 12);
+}
+
+const DOMAIN_PATTERNS: Record<string, RegExp> = {
+  'frontend':         /front[\s-]*end|ui\s*(dev|eng)|react\s*(dev|eng)|angular|vue/i,
+  'backend':          /back[\s-]*end|server\s*side|api\s*(dev|eng)/i,
+  'fullstack':        /full[\s-]*stack/i,
+  'data-engineering': /data\s*(engineer|architect|pipeline)|etl|big\s*data/i,
+  'data-science':     /data\s*(scien|analy)|machine\s*learn|\bml\b|deep\s*learn|\bnlp\b/i,
+  'devops':           /devops|\bsre\b|cloud\s*(eng|arch)|platform\s*eng/i,
+  'mobile':           /mobile|ios|android|react\s*native|flutter/i,
+  'qa':               /\bqa\b|quality\s*(assur|eng)|test\s*(auto|eng)|\bsdet\b/i,
+  'security':         /secur|cyber|infosec/i,
+  'management':       /engineering\s*manager|\bvp\b.*eng|director.*eng|program\s*manager/i,
+  'design':           /\bux\b|ui\s*design|product\s*design/i,
+};
+
+function scoreTitleDomain(jobDomain: string, candidateTitles: string[]): number {
+  if (!jobDomain || jobDomain === 'general') return 80;
+  const re = DOMAIN_PATTERNS[jobDomain];
+  if (!re) return 70;
+  if (candidateTitles.some(t => re.test(t))) return 100;
+  // Partial: check if software/engineering appears (broad match)
+  if (candidateTitles.some(t => /engineer|developer|programmer|architect/i.test(t))) return 60;
+  return 30;
+}
+
+// ── Section completeness score ────────────────────────────────────────────────
+
+function scoreSectionCompleteness(parseResult: ReturnType<typeof analyzeParseIntegrity>): { score: number; details: string } {
+  const required = ['experience', 'education', 'skills'];
+  const bonus = ['summary', 'certifications'];
+
+  const foundRequired = required.filter(s => parseResult.parseable_sections.includes(s));
+  const foundBonus = bonus.filter(s => parseResult.parseable_sections.includes(s));
+
+  const requiredScore = (foundRequired.length / required.length) * 80;
+  const bonusScore = (foundBonus.length / bonus.length) * 20;
+  const score = requiredScore + bonusScore;
+
+  const missing = required.filter(s => !parseResult.parseable_sections.includes(s));
+  const details = missing.length === 0
+    ? `All required sections present (${parseResult.parseable_sections.join(', ')})`
+    : `Missing required sections: ${missing.join(', ')}`;
+
+  return { score, details };
+}
+
+// ── Build fix priorities ──────────────────────────────────────────────────────
+
+function buildFixPriorities(
+  keywordResult: ReturnType<typeof analyzeKeywords>,
+  parseResult: ReturnType<typeof analyzeParseIntegrity>,
+  _experienceScore: number,
+  req: JobRequirements,
+): ATSScoreResult['fix_priorities'] {
+  const fixes: ATSScoreResult['fix_priorities'] = [];
+  let rank = 1;
+
+  // Parse failures first — they're fatal
+  if (!parseResult.no_tables_detected) {
+    fixes.push({ rank: rank++, impact: 'critical', issue: 'Tables detected in resume', fix: 'Convert all tables to plain bullet lists. Taleo cannot parse table content — it will be lost entirely.', affects_systems: ['Taleo', 'iCIMS', 'Workday'], score_delta_estimate: 18 });
+  }
+  if (!parseResult.no_columns_detected) {
+    fixes.push({ rank: rank++, impact: 'critical', issue: 'Multi-column layout detected', fix: 'Convert to single-column layout. Taleo and iCIMS read columns left-to-right and mix up content.', affects_systems: ['Taleo', 'iCIMS', 'Workday'], score_delta_estimate: 15 });
+  }
+  if (!parseResult.has_contact_in_body) {
+    fixes.push({ rank: rank++, impact: 'critical', issue: 'Contact info missing from body', fix: 'Place name, email, phone in the main document body — not in header/footer. Older ATS skip header/footer entirely.', affects_systems: ['Taleo', 'iCIMS'], score_delta_estimate: 12 });
   }
 
-  private async generateOptimizations(
-    resumeText: string,
-    jobDescription: string,
-    currentScore: ATSScore
-  ): Promise< { resume: string; newScore: ATSScore; changes: string[] }> {
-    const resumeSnippet = resumeText.slice(0, 10000).replace(/```/g, '`');
-    const jdSnippet = jobDescription.slice(0, 6000).replace(/```/g, '`');
-    const improvementsList = currentScore.improvements.slice(0, 6).join('\n- ');
-    const missingKw = currentScore.keywords.missing.slice(0, 10).join(', ');
-
-    const prompt = `You are an ATS resume optimizer. Improve the resume so it scores higher for this job.
-
-JOB DESCRIPTION:
-${jdSnippet}
-
-CURRENT RESUME:
-${resumeSnippet}
-
-IMPROVEMENTS TO APPLY:
-- ${improvementsList}
-${missingKw ? `\nAdd these keywords naturally where relevant: ${missingKw}` : ''}
-
-Rules:
-- Output the FULL improved resume as plain text (no JSON, no code block).
-- Keep the same structure and length roughly; only add/fix content.
-- Add missing keywords in skills and bullet points where they fit.
-- Quantify achievements where you can (%, numbers, time saved).
-- Do not invent experience; only rephrase or add metrics to existing content.
-- Start directly with the resume text (e.g. candidate name or "SUMMARY").`;
-
-    const response = await callClaude(prompt, {
-      model: CLAUDE_MODEL,
-      maxTokens: 4000,
-    });
-
-    const optimizedText = response
-      .replace(/^```[\w]*\n?/i, '')
-      .replace(/\n?```\s*$/i, '')
-      .trim();
-    const finalResume = optimizedText || resumeText;
-
-    const newScore = await this.scoreResume(finalResume, jobDescription);
-    const changes = currentScore.improvements.slice(0, 5).map((s, i) => `${i + 1}. ${s}`);
-    return { resume: finalResume, newScore, changes };
+  // Missing must-have keywords — highest keyword fix priority
+  for (const kw of keywordResult.missing_must_have.slice(0, 8)) {
+    fixes.push({ rank: rank++, impact: 'high', issue: `Missing required skill: "${kw}"`, fix: `Add "${kw}" verbatim to Skills section AND at least one experience bullet where relevant. Use exact spelling — Taleo and SmartRecruiters match literally.`, affects_systems: ['Taleo', 'SmartRecruiters', 'iCIMS', 'Workday'], score_delta_estimate: Math.round(20 / req.must_have_skills.length) });
   }
+
+  // Section headers
+  if (!parseResult.has_standard_headers) {
+    fixes.push({ rank: rank++, impact: 'high', issue: `Missing standard sections: ${parseResult.missing_sections.join(', ')}`, fix: 'Use exact headers: "Work Experience", "Education", "Skills". ATS cannot attribute content to candidate fields without these headers.', affects_systems: ['Taleo', 'iCIMS', 'Workday', 'Greenhouse', 'Lever', 'SmartRecruiters'], score_delta_estimate: 10 });
+  }
+
+  // Keyword density
+  if (keywordResult.density_score < 70) {
+    fixes.push({ rank: rank++, impact: 'medium', issue: 'Keyword density below optimal (target 8-12%)', fix: 'Weave job description keywords naturally into experience bullets. Aim for each key skill to appear 2-3 times across the resume.', affects_systems: ['iCIMS', 'Taleo'], score_delta_estimate: 8 });
+  }
+
+  // Date format
+  if (!parseResult.date_format_consistent) {
+    fixes.push({ rank: rank++, impact: 'medium', issue: 'Inconsistent date formats', fix: 'Use MM/YYYY format consistently throughout (e.g. "03/2022 – Present"). Taleo and iCIMS assign incorrect dates when formats are mixed.', affects_systems: ['Taleo', 'iCIMS'], score_delta_estimate: 6 });
+  }
+
+  // Keyword placement
+  if (keywordResult.placement_score < 60) {
+    fixes.push({ rank: rank++, impact: 'medium', issue: 'Key skills only in skills list, not in experience bullets', fix: 'Add 3-5 must-have keywords into experience bullet points. iCIMS and Greenhouse weight keywords found in experience bullets more heavily than skills-list-only.', affects_systems: ['iCIMS', 'Greenhouse'], score_delta_estimate: 7 });
+  }
+
+  // Nice-to-have keywords
+  for (const kw of keywordResult.missing_nice_to_have.slice(0, 4)) {
+    fixes.push({ rank: rank++, impact: 'low', issue: `Missing preferred skill: "${kw}"`, fix: `Add "${kw}" if you have experience with it. This is a preferred (not required) qualification.`, affects_systems: ['iCIMS', 'SmartRecruiters'], score_delta_estimate: 3 });
+  }
+
+  return fixes;
+}
+
+// ── System verdicts ───────────────────────────────────────────────────────────
+
+function buildSystemVerdicts(
+  _totalScore: number,
+  parseResult: ReturnType<typeof analyzeParseIntegrity>,
+  keywordResult: ReturnType<typeof analyzeKeywords>,
+): ATSScoreResult['system_verdicts'] {
+  const mustCoverage = keywordResult.coverage_rate;
+  const parseOk = parseResult.no_tables_detected && parseResult.no_columns_detected && parseResult.has_contact_in_body;
+
+  // Taleo: exact keywords + parse-safe (strictest)
+  const taleoPasses = mustCoverage >= 0.75 && parseOk && parseResult.date_format_consistent && keywordResult.missing_must_have.length === 0;
+  // Workday: no auto-score, but fails on parse + keyword gaps in filter
+  const workdayPasses = parseOk && mustCoverage >= 0.65;
+  // iCIMS: frequency + similarity score
+  const icimsPass = mustCoverage >= 0.65 && parseOk;
+  // Greenhouse: most lenient, semantic
+  const greenhousePasses = mustCoverage >= 0.55 && parseResult.has_standard_headers;
+  // Lever: semantic, prefers DOCX
+  const leverPasses = mustCoverage >= 0.55 && parseResult.has_standard_headers;
+  // SmartRecruiters: exact match, structured fields
+  const smartPasses = mustCoverage >= 0.70 && parseOk;
+
+  return {
+    taleo: { passes: taleoPasses, reason: taleoPasses ? 'Meets Taleo keyword + parse requirements' : `Taleo issues: ${keywordResult.missing_must_have.length > 0 ? `missing ${keywordResult.missing_must_have.slice(0, 3).join(', ')}` : 'parse formatting problem'}` },
+    workday: { passes: workdayPasses, reason: workdayPasses ? 'Passes Workday keyword filters' : 'Insufficient keyword coverage for Workday recruiter filters' },
+    icims: { passes: icimsPass, reason: icimsPass ? 'Meets iCIMS similarity score threshold' : 'Low keyword frequency for iCIMS ranking' },
+    greenhouse: { passes: greenhousePasses, reason: greenhousePasses ? 'Passes Greenhouse keyword search' : 'Missing keywords for Greenhouse Boolean search' },
+    lever: { passes: leverPasses, reason: leverPasses ? 'Passes Lever semantic matching' : 'Insufficient keyword coverage for Lever' },
+    smartrecruiters: { passes: smartPasses, reason: smartPasses ? 'Meets SmartRecruiters Fit Score threshold' : 'Missing exact-match keywords SmartRecruiters requires' },
+  };
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+
+export function computeATSScore(
+  requirements: JobRequirements,
+  candidate: ResumeCandidate,
+): ATSScoreResult {
+  const bullets = candidate.experience.flatMap(e => e.bullets);
+  const skillsText = candidate.skills.concat(candidate.tools).join(' ');
+
+  // Run analyzers
+  const keywordResult = analyzeKeywords(requirements, candidate.resume_text, bullets, skillsText);
+  const parseResult = analyzeParseIntegrity(candidate.resume_text);
+  const expMatch = scoreExperienceMatch(requirements, candidate);
+  const sectionComp = scoreSectionCompleteness(parseResult);
+
+  // Keyword coverage score (0-100): blend of coverage rate + density
+  const keywordScore = 0.70 * (keywordResult.coverage_rate * 100) + 0.30 * keywordResult.density_score;
+
+  // Weights
+  const W = { keyword: 0.35, parse: 0.20, experience: 0.18, sections: 0.12, placement: 0.10, formatting: 0.05 };
+
+  const dims = {
+    keyword_coverage: scoreDimension(keywordScore, W.keyword, 'Keyword Coverage', `${keywordResult.matched_exact.length + keywordResult.matched_synonym.length}/${keywordResult.total_jd_keywords} keywords matched. Density score: ${keywordResult.density_score}`, { matched: [...keywordResult.matched_exact, ...keywordResult.matched_synonym], missing: keywordResult.missing_must_have }),
+    parse_integrity: scoreDimension(parseResult.score, W.parse, 'Parse Integrity', parseResult.warnings.length === 0 ? 'No parse issues detected' : parseResult.warnings[0], { warnings: parseResult.warnings }),
+    experience_match: scoreDimension(expMatch.score, W.experience, 'Experience Match', expMatch.details),
+    section_completeness: scoreDimension(sectionComp.score, W.sections, 'Section Completeness', sectionComp.details),
+    keyword_placement: scoreDimension(keywordResult.placement_score, W.placement, 'Keyword Placement', 'Keywords in experience bullets vs skills list only'),
+    formatting_details: scoreDimension(parseResult.date_format_consistent ? 90 : 50, W.formatting, 'Formatting Details', parseResult.date_format_consistent ? 'Date formats consistent' : 'Inconsistent date formats detected'),
+  };
+
+  // Weighted total
+  const totalWeight = Object.values(W).reduce((s, w) => s + w, 0);
+  const raw = Object.entries(dims).reduce((sum, [, dim]) => {
+    return sum + (dim.score * dim.weight);
+  }, 0) / totalWeight;
+
+  const total_score = Math.round(clip(raw, 0, 100));
+
+  const band: ATSScoreResult['band'] =
+    total_score >= 80 ? 'elite' :
+    total_score >= 65 ? 'strong' :
+    total_score >= 50 ? 'needs-work' : 'failing';
+
+  // Hard gate: if 2+ must-haves missing, gate blocks regardless of total score
+  const hard_gate_passed = keywordResult.missing_must_have.length <= 1;
+  const hard_gate_reason = hard_gate_passed
+    ? `Gate passed — ${requirements.must_have_skills.length - keywordResult.missing_must_have.length}/${requirements.must_have_skills.length} must-haves present`
+    : `Gate blocked — missing critical requirements: ${keywordResult.missing_must_have.slice(0, 5).join(', ')}`;
+
+  // Confidence: based on resume text richness
+  const wordCount = candidate.resume_text.split(/\s+/).length;
+  const confidence = clip(wordCount / 500, 0.3, 1.0);
+
+  const systemVerdicts = buildSystemVerdicts(total_score, parseResult, keywordResult);
+  const fixPriorities = buildFixPriorities(keywordResult, parseResult, expMatch.score, requirements);
+
+  return {
+    total_score,
+    band,
+    confidence,
+    hard_gate_passed,
+    hard_gate_reason,
+    dimensions: dims,
+    keyword_analysis: keywordResult,
+    parse_analysis: parseResult,
+    fix_priorities: fixPriorities,
+    system_verdicts: systemVerdicts,
+  };
 }

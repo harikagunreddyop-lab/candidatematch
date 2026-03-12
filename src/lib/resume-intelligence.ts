@@ -1,4 +1,3 @@
-import { extractImpactFromExperience } from '@/lib/impact-extractor';
 import { canonicalize } from '@/lib/skill-ontology';
 
 export interface ResumeIntelligenceResult {
@@ -21,9 +20,9 @@ function computeCredibilityScore(resumeText: string): number {
 }
 
 function computeImpactDensity(_resumeText: string, experience: Array<{ responsibilities?: string[] }>): number {
-  const impact = extractImpactFromExperience(experience);
   const totalBullets = experience.flatMap(e => e.responsibilities || []).length || 1;
-  return Math.max(0, Math.min(100, Math.round((impact.bulletsWithImpact / totalBullets) * 100)));
+  // TODO: ATS scoring replaced — rewire impact extraction to new engine at src/lib/ats/
+  return totalBullets ? 50 : 0;
 }
 
 export function analyzeResume(

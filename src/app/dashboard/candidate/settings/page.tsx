@@ -222,7 +222,7 @@ function SendPasswordReset() {
 }
 
 export default function CandidateSettingsPage() {
-  const [_candidate, setCandidate] = useState<any>(null);
+  const [candidate, setCandidate] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [notLinked, setNotLinked] = useState(false);
   const supabase = createClient();
@@ -231,7 +231,7 @@ export default function CandidateSettingsPage() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { setLoading(false); return; }
-      const { data: cand } = await supabase.from('candidates').select('id').eq('user_id', session.user.id).single();
+      const { data: cand } = await supabase.from('candidates').select('*').eq('user_id', session.user.id).single();
       if (!cand) setNotLinked(true);
       else setCandidate(cand);
       setLoading(false);
@@ -249,7 +249,9 @@ export default function CandidateSettingsPage() {
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">Account & preferences</h1>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
+      {candidate && <JobPreferencesSection candidate={candidate} />}
+
+      <div className="card p-6 border-2 border-surface-400 space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Settings size={16} className="text-surface-500 dark:text-surface-400" /> Password
         </h3>
@@ -257,14 +259,18 @@ export default function CandidateSettingsPage() {
         <SendPasswordReset />
       </div>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
+      <div className="card p-6 border-2 border-surface-400 space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Bell size={16} className="text-surface-500 dark:text-surface-400" /> Notifications
         </h3>
-        <p className="text-sm text-surface-600 dark:text-surface-300">Email reminders for your follow-ups (e.g. when a reminder is due) can be enabled by your recruiter. In-app reminders are always available on the Reminders tab.</p>
+        <p className="text-sm text-surface-600 dark:text-surface-300">
+          CandidateMatch always sends essential emails for things like sign-in and password reset. Optional updates (job
+          alerts, product tips) follow your <span className="font-medium">Marketing Emails</span> consent in the section
+          below. Turning that off means you&apos;ll only receive critical account messages.
+        </p>
       </div>
 
-      <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm space-y-4">
+      <div className="card p-6 border-2 border-surface-400 space-y-4">
         <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display flex items-center gap-2">
           <Shield size={16} className="text-surface-500 dark:text-surface-400" /> Privacy & Data
         </h3>
@@ -274,3 +280,173 @@ export default function CandidateSettingsPage() {
     </div>
   );
 }
+
+function JobPreferencesSection({ candidate }: { candidate: any }) {
+  const supabase = createClient();
+  const [targetTitles, setTargetTitles] = useState('');
+  const [locations, setLocations] = useState('');
+  const [openToRemote, setOpenToRemote] = useState<boolean>(true);
+  const [salaryMin, setSalaryMin] = useState<string>('');
+  const [salaryMax, setSalaryMax] = useState<string>('');
+  const [availability, setAvailability] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const titles =
+      Array.isArray(candidate.target_job_titles) && candidate.target_job_titles.length > 0
+        ? candidate.target_job_titles
+        : Array.isArray(candidate.target_roles)
+          ? candidate.target_roles
+          : [];
+    setTargetTitles(titles.join(', '));
+    const locs = Array.isArray(candidate.target_locations) ? candidate.target_locations : [];
+    setLocations(locs.join(', '));
+    setOpenToRemote(candidate.open_to_remote ?? true);
+    setSalaryMin(candidate.salary_min != null ? String(candidate.salary_min) : '');
+    setSalaryMax(candidate.salary_max != null ? String(candidate.salary_max) : '');
+    setAvailability(candidate.availability ?? '');
+  }, [candidate]);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const titlesArr = (targetTitles || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+      const locsArr = (locations || '')
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean);
+      const payload: Record<string, unknown> = {
+        target_job_titles: titlesArr,
+        target_roles: titlesArr,
+        target_locations: locsArr,
+        open_to_remote: openToRemote,
+        salary_min: salaryMin ? Number(salaryMin) : null,
+        salary_max: salaryMax ? Number(salaryMax) : null,
+        availability: availability.trim() || null,
+      };
+      const { error: err } = await supabase.from('candidates').update(payload).eq('id', candidate.id);
+      if (err) throw new Error(err.message);
+      setSuccess('Job preferences updated');
+      setTimeout(() => setSuccess(null), 4000);
+    } catch (e: any) {
+      setError(e.message || 'Failed to save preferences');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card p-6 border-2 border-surface-400 space-y-4">
+      <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display">
+        Job preferences
+      </h3>
+      <p className="text-sm text-surface-600 dark:text-surface-300">
+        These settings guide which roles CandidateMatch recommends first. They’re shared with recruiters only when you
+        apply or explicitly share your profile.
+      </p>
+
+      {success && (
+        <div className="rounded-xl border border-surface-400 bg-surface-100/60 px-4 py-2.5 text-xs text-surface-900 dark:text-surface-100">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-red-400">
+          {error}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium text-surface-500 dark:text-surface-300 mb-1">
+            Target roles / titles
+          </label>
+          <input
+            className="input text-sm"
+            value={targetTitles}
+            onChange={e => setTargetTitles(e.target.value)}
+            placeholder="Data Analyst, Product Analyst, Analytics Engineer"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-surface-500 dark:text-surface-300 mb-1">
+            Preferred locations
+          </label>
+          <input
+            className="input text-sm"
+            value={locations}
+            onChange={e => setLocations(e.target.value)}
+            placeholder="London, Berlin, Remote"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="open-remote"
+            type="checkbox"
+            className="w-4 h-4 rounded border-surface-400 bg-surface-100"
+            checked={openToRemote}
+            onChange={e => setOpenToRemote(e.target.checked)}
+          />
+          <label htmlFor="open-remote" className="text-xs text-surface-500 dark:text-surface-300">
+            I&apos;m open to remote roles
+          </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-surface-500 dark:text-surface-300 mb-1">
+              Min salary (annual)
+            </label>
+            <input
+              className="input text-sm"
+              type="number"
+              value={salaryMin}
+              onChange={e => setSalaryMin(e.target.value)}
+              placeholder="80000"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-surface-500 dark:text-surface-300 mb-1">
+              Max salary (annual)
+            </label>
+            <input
+              className="input text-sm"
+              type="number"
+              value={salaryMax}
+              onChange={e => setSalaryMax(e.target.value)}
+              placeholder="140000"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-surface-500 dark:text-surface-300 mb-1">
+            Availability
+          </label>
+          <input
+            className="input text-sm"
+            value={availability}
+            onChange={e => setAvailability(e.target.value)}
+            placeholder="e.g. 4 weeks notice, immediately available"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="btn-primary text-sm py-2 px-4"
+        >
+          {saving ? 'Saving…' : 'Save preferences'}
+        </button>
+      </div>
+    </div>
+  );
+}
+

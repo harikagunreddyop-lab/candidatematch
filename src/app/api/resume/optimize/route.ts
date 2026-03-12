@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 import { requireApiAuth, canAccessCandidate } from '@/lib/api-auth';
 import { isValidUuid } from '@/lib/security';
-import { ATSScorer } from '@/lib/ats/scorer';
 import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -97,10 +96,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const scorer = new ATSScorer();
-    const result = await scorer.optimizeResume(resumeText, jobDescription);
-    const optimizedText = result.optimized ?? result.resume ?? resumeText;
-
+    // TODO: Wire to deterministic ATS v3 engine if we want optimization + scoring in one place.
     const placeholderPath = `ats_optimized/${candidateId}/${randomUUID()}.txt`;
     const { data: version, error: insertErr } = await supabase
       .from('resume_versions')
@@ -108,7 +104,7 @@ export async function POST(req: NextRequest) {
         candidate_id: candidateId,
         job_id: jobId,
         pdf_path: placeholderPath,
-        resume_text: optimizedText,
+        resume_text: resumeText,
         generation_status: 'completed',
         version_number: 1,
       })
@@ -125,9 +121,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       resume_version_id: version?.id,
-      score: result.score,
-      changes: result.changes,
-      already_optimal: result.score.overall_score >= 90 && result.changes.length === 0,
+      score: null,
+      changes: [],
+      already_optimal: false,
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Optimization failed';

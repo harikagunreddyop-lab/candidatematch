@@ -4,7 +4,6 @@
  */
 
 import { callClaude } from './anthropic';
-import type { EvidenceSpan } from '@/lib/ats-engine';
 
 export interface ResumeEvidenceFinding {
   type: 'weak_bullet' | 'overclaim' | 'inflated_tools' | 'missing_depth' | 'skill_credibility';
@@ -24,7 +23,7 @@ export async function analyzeResumeEvidence(
   resumeText: string,
   matchedSkills: string[],
   missingSkills: string[],
-  _evidenceSpans: EvidenceSpan[],
+  _evidenceSpans: unknown[],
   jobDomain?: string
 ): Promise<ResumeEvidenceAnalysis | null> {
   try {

@@ -100,7 +100,7 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-surface-800/50 backdrop-blur-xl border border-surface-700/60 rounded-2xl p-8 shadow-2xl">
+        <div className="bg-surface-800/50 backdrop-blur-xl border border-surface-700/60 rounded-2xl p-8 shadow-2xl text-white">
           <div className="flex justify-center mb-8">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-brand-400" style={{ filter: 'drop-shadow(0 0 12px rgba(184,235,26,0.30))' }}>
               <Sparkles className="w-8 h-8 text-[#0a0f00]" />
@@ -108,7 +108,7 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-3xl font-bold text-white text-center mb-2">Welcome back</h1>
-          <p className="text-surface-400 text-center mb-8">Sign in to your account</p>
+          <p className="text-white/90 text-center mb-8">Sign in to your account</p>
 
           {error && (
             <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-200 text-sm">
@@ -136,7 +136,7 @@ export default function LoginPage() {
             />
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center text-surface-400 cursor-pointer">
+              <label className="flex items-center text-white/90 cursor-pointer">
                 <input type="checkbox" className="mr-2 rounded border-surface-600 bg-surface-800 text-brand-400 focus:ring-brand-400" />
                 Remember me
               </label>
@@ -163,7 +163,7 @@ export default function LoginPage() {
 
           <div className="flex items-center my-6">
             <div className="flex-1 h-px bg-surface-700" />
-            <span className="px-4 text-sm text-surface-500">or</span>
+            <span className="px-4 text-sm text-white/80">or</span>
             <div className="flex-1 h-px bg-surface-700" />
           </div>
 
@@ -179,14 +179,14 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={handleLinkedIn}
-              className="w-full px-6 py-3 bg-[#0A66C2] hover:bg-[#004182] text-white rounded-xl font-semibold flex items-center justify-center gap-3 transition-all"
+              className="w-full px-6 py-3 bg-black hover:bg-neutral-800 text-white rounded-xl font-semibold flex items-center justify-center gap-3 transition-all"
             >
               <LinkedInIcon />
               Continue with LinkedIn
             </button>
           </div>
 
-            <div className="mt-6 text-center text-sm text-surface-400">
+            <div className="mt-6 text-center text-sm text-white/90">
               Don&apos;t have an account?{' '}
               <Link href="/auth/signup" className="text-brand-400 hover:text-brand-300 font-semibold">
                 Sign up

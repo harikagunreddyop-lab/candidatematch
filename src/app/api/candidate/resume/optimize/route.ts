@@ -6,7 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireApiAuth } from '@/lib/api-auth';
 import { createServiceClient } from '@/lib/supabase-server';
-import { calculateGenericAtsScore } from '@/lib/resume-ats-score';
 import { error as logError } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -144,17 +143,11 @@ ${jobContext ? '\nUse the TARGET ROLE and KEY SKILLS to tailor suggestions.' : '
           .slice(0, 10)
       : [];
 
-    const mergedOptimized = optimizedSections.length
-      ? parsedText +
-        '\n\n--- SUGGESTED IMPROVEMENTS ---\n' +
-        optimizedSections.map((s) => `${s.section}: ${s.optimized}`).join('\n\n')
-      : parsedText;
-    const newAts = calculateGenericAtsScore(mergedOptimized);
-
     return NextResponse.json({
       optimized_sections: optimizedSections,
-      new_ats_score: newAts.score,
-      recommendations: newAts.recommendations,
+      // TODO: ATS scoring replaced — rewire to new engine at src/lib/ats/
+      new_ats_score: null,
+      recommendations: [],
     });
   } catch (e) {
     logError('[resume/optimize] failed', e);

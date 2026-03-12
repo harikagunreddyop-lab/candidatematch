@@ -5,7 +5,6 @@
 
 import { createHash } from 'crypto';
 import type { Job } from '@/types';
-import type { StructuredJob } from './ats-scorer';
 import { createServiceClient } from '@/lib/supabase-server';
 import { log as devLog, error as logError } from '@/lib/logger';
 
@@ -13,6 +12,21 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = 'claude-sonnet-4-20250514';
 
 // ── Main Extractor ───────────────────────────────────────────────────────────
+
+type StructuredJob = {
+  normalizedTitle: string;
+  relatedTitles: string[];
+  seniorityLevel: string;
+  mustHaveSkills: string[];
+  niceToHaveSkills: string[];
+  responsibilities: string[];
+  minYearsExperience: number | null;
+  isRemote: boolean;
+  location: string | null;
+  visaRequirement: string | null;
+  weightedKeywords: Record<string, number>;
+  embedding: unknown;
+};
 
 export async function extractJobStructure(job: Job): Promise<StructuredJob> {
   const supabase = createServiceClient();

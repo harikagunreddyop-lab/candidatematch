@@ -2,7 +2,6 @@
  * JD Intelligence Engine — Elite Part 1
  */
 import { callClaude } from './anthropic';
-import type { JobRequirements } from '@/lib/ats-engine';
 
 export interface JDIntelligence {
   implicit_requirements: string[];
@@ -16,7 +15,8 @@ export interface JDIntelligence {
 export async function extractJDIntelligence(
   jobTitle: string,
   jobDescription: string,
-  baseRequirements?: Partial<JobRequirements>
+  // TODO: ATS scoring replaced — rewire to new engine types at src/lib/ats/
+  baseRequirements?: Partial<{ domain?: string }>
 ): Promise<JDIntelligence | null> {
   try {
     const jd = (jobDescription || '').slice(0, 4000);

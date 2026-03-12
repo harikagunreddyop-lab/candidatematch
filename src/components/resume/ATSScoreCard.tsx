@@ -1,21 +1,7 @@
 'use client';
 
-/**
- * Real-time ATS score card — multi-factor breakdown, keyword analysis, quick wins.
- * Use with the enhanced LLM-based ATSScore from src/lib/ats/scorer.
- */
-
 import { cn } from '@/utils/helpers';
-import type { ATSScore, ATSScores } from '@/lib/ats/scorer';
-
-const FACTOR_LABELS: Record<keyof ATSScores, string> = {
-  formatting: 'Formatting',
-  keyword_match: 'Keyword match',
-  experience: 'Experience relevance',
-  skills: 'Skills match',
-  education: 'Education',
-  achievements: 'Achievement quantification',
-};
+import type { ATSScoreResult } from '@/lib/ats';
 
 function getScoreColor(val: number): 'lime' | 'amber' | 'red' {
   if (val >= 80) return 'lime';
@@ -49,16 +35,16 @@ function ScoreFactor({ label, value }: { label: string; value: number }) {
 }
 
 type Props = {
-  score: ATSScore;
+  score: ATSScoreResult;
   className?: string;
 };
 
 export function ATSScoreCard({ score, className }: Props) {
-  const color = getScoreColor(score.overall_score);
+  const color = getScoreColor(score.total_score);
   const passLabel =
-    score.ats_pass_probability > 0.8
+    score.band === 'elite'
       ? 'Excellent'
-      : score.ats_pass_probability > 0.6
+      : score.band === 'strong'
         ? 'Good'
         : 'Needs Work';
 
@@ -89,7 +75,7 @@ export function ATSScoreCard({ score, className }: Props) {
               fill="none"
               stroke="currentColor"
               strokeWidth="8"
-              strokeDasharray={`${score.overall_score * 3.52} 352`}
+              strokeDasharray={`${score.total_score * 3.52} 352`}
               className={cn(
                 color === 'lime' && 'text-[#b8eb1a]',
                 color === 'amber' && 'text-amber-500',
@@ -99,7 +85,7 @@ export function ATSScoreCard({ score, className }: Props) {
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-4xl font-bold text-surface-900 dark:text-white">
-              {score.overall_score}
+              {score.total_score}
             </span>
           </div>
         </div>
@@ -123,29 +109,46 @@ export function ATSScoreCard({ score, className }: Props) {
         <h4 className="text-sm font-semibold text-surface-800 dark:text-surface-200">
           Score breakdown
         </h4>
-        {(Object.entries(score.scores) as [keyof ATSScores, number][]).map(([factor, value]) => (
-          <ScoreFactor
-            key={factor}
-            label={FACTOR_LABELS[factor] ?? factor}
-            value={value}
-          />
-        ))}
+        <ScoreFactor
+          label="Keyword coverage"
+          value={score.dimensions.keyword_coverage.score}
+        />
+        <ScoreFactor
+          label="Parse integrity"
+          value={score.dimensions.parse_integrity.score}
+        />
+        <ScoreFactor
+          label="Experience match"
+          value={score.dimensions.experience_match.score}
+        />
+        <ScoreFactor
+          label="Section completeness"
+          value={score.dimensions.section_completeness.score}
+        />
+        <ScoreFactor
+          label="Keyword placement"
+          value={score.dimensions.keyword_placement.score}
+        />
+        <ScoreFactor
+          label="Formatting details"
+          value={score.dimensions.formatting_details.score}
+        />
       </div>
 
       {/* Quick Wins */}
-      {score.improvements.length > 0 && (
+      {score.fix_priorities.length > 0 && (
         <div>
           <h4 className="text-sm font-semibold text-surface-800 dark:text-surface-200 mb-3">
             Quick wins
           </h4>
           <ul className="space-y-2">
-            {score.improvements.slice(0, 3).map((tip, i) => (
+            {score.fix_priorities.slice(0, 3).map((tip, i) => (
               <li
                 key={i}
                 className="flex items-start gap-2 text-sm text-surface-600 dark:text-surface-400"
               >
                 <span className="text-brand-400 shrink-0">•</span>
-                <span>{tip}</span>
+                <span>{tip.issue}</span>
               </li>
             ))}
           </ul>
@@ -161,11 +164,11 @@ export function ATSScoreCard({ score, className }: Props) {
           <div className="flex items-center justify-between text-sm">
             <span className="text-surface-500 dark:text-surface-400">Density</span>
             <span className="text-surface-900 dark:text-white font-semibold">
-              {(score.keywords.density * 100).toFixed(1)}%
+              {score.keyword_analysis.density_score.toFixed(0)} / 100
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {score.keywords.found.map((kw) => (
+            {score.keyword_analysis.matched_exact.map((kw) => (
               <span
                 key={kw}
                 className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded text-xs"
@@ -173,7 +176,7 @@ export function ATSScoreCard({ score, className }: Props) {
                 {kw}
               </span>
             ))}
-            {score.keywords.missing.map((kw) => (
+            {score.keyword_analysis.missing_must_have.map((kw) => (
               <span
                 key={kw}
                 className="px-2 py-1 bg-red-500/10 text-red-600 dark:text-red-400 rounded text-xs"

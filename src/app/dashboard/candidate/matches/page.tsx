@@ -6,9 +6,7 @@ import { Star, MapPin, DollarSign, Briefcase, ChevronLeft } from 'lucide-react';
 
 export default function CandidateMatchesPage() {
   const [matches, setMatches] = useState<any[]>([]);
-  const [allApiMatches, setAllApiMatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [minScore, setMinScore] = useState(50);
   const [limitReached, setLimitReached] = useState(false);
   const [usedThisWeek, setUsedThisWeek] = useState(0);
   const [weeklyLimit, setWeeklyLimit] = useState<number | null>(null);
@@ -30,7 +28,7 @@ export default function CandidateMatchesPage() {
           const job = Array.isArray(m.job) ? m.job[0] : m.job;
           return !job || job.is_active !== false;
         });
-        setAllApiMatches(activeOnly);
+        setMatches(activeOnly);
         setLimitReached(Boolean(data?.limitReached));
         setUsedThisWeek(typeof data?.usedThisWeek === 'number' ? data.usedThisWeek : activeOnly.length);
         setWeeklyLimit(typeof data?.limit === 'number' && data.limit >= 0 ? data.limit : null);
@@ -42,11 +40,6 @@ export default function CandidateMatchesPage() {
     })();
   }, []);
 
-  useEffect(() => {
-    const filtered = allApiMatches.filter((m: any) => (m.fit_score ?? 0) >= minScore);
-    setMatches(filtered);
-  }, [allApiMatches, minScore]);
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <Link href="/dashboard/candidate" className="text-surface-400 hover:text-white flex items-center gap-1 text-sm mb-6">
@@ -56,26 +49,13 @@ export default function CandidateMatchesPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Job Matches</h1>
           <p className="text-surface-400 mt-1">
-            {matches.length} matches at {minScore}%+ ({usedThisWeek} available this week)
+            {matches.length} matches ({usedThisWeek} available this week)
           </p>
           {limitReached && weeklyLimit != null && (
             <p className="text-xs text-amber-300 mt-1">
               Weekly free limit reached ({weeklyLimit}). Upgrade to Pro for unlimited matches.
             </p>
           )}
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-surface-400">Min score:</label>
-          <select
-            value={minScore}
-            onChange={(e) => setMinScore(Number(e.target.value))}
-            className="px-3 py-2 bg-surface-800 border border-surface-700 rounded-lg text-[#0a0a0a] font-bold"
-          >
-            <option value={50}>50%+</option>
-            <option value={70}>70%+</option>
-            <option value={80}>80%+</option>
-            <option value={90}>90%+</option>
-          </select>
         </div>
       </div>
 
@@ -92,11 +72,6 @@ export default function CandidateMatchesPage() {
               <p className="text-surface-500 text-sm mt-1">
                 {weeklyLimit != null ? `You have used ${weeklyLimit}/${weeklyLimit} matches this week.` : 'Upgrade to Pro for unlimited matches.'}
               </p>
-            </>
-          ) : allApiMatches.length > 0 ? (
-            <>
-              <p className="text-surface-300">No matches at {minScore}% or above.</p>
-              <p className="text-surface-500 text-sm mt-1">Lower the minimum score to see more opportunities.</p>
             </>
           ) : hasCandidateProfile === false ? (
             <>
@@ -139,10 +114,10 @@ export default function CandidateMatchesPage() {
                     <div className="text-surface-400 mt-1">{job.company}</div>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                      <Star className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm font-bold text-emerald-400">{match.fit_score}% Match</span>
-                    </div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                  <Star className="w-4 h-4 text-emerald-400" />
+                  <span className="text-sm font-bold text-emerald-400">Matched to your profile</span>
+                </div>
                     {isNew && (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
                         New

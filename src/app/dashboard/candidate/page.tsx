@@ -249,10 +249,12 @@ export default function CandidateDashboard() {
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <p className="text-surface-400">Here&apos;s your job search at a glance</p>
-              <span className="inline-flex items-center gap-1 rounded-full border border-surface-700/80 bg-surface-900/40 px-3 py-1 text-xs font-medium text-surface-200">
-                <span className="h-1.5 w-1.5 rounded-full bg-surface-300" />
-                {tierLabel} plan
-              </span>
+              {tierLabel && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-surface-700/80 bg-surface-900/40 px-3 py-1 text-[11px] font-medium text-surface-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-surface-300" />
+                  {tierLabel} plan
+                </span>
+              )}
             </div>
             <p className="mt-1 text-[11px] text-surface-500">{tierDescription}</p>
           </div>
@@ -281,12 +283,12 @@ export default function CandidateDashboard() {
           />
           <DashboardMetricCard
             label="AI Matches"
-            value={matchesLoading ? '—' : matches.length}
+            value={statsLoading ? '—' : (stats?.activeMatches ?? 0)}
             icon={<Sparkles className="w-5 h-5" />}
             iconClassName="bg-brand-400/10 text-brand-400"
             href="/dashboard/candidate/matches"
-            loading={matchesLoading}
-            aria-label={`AI matches: ${matches.length}`}
+            loading={statsLoading}
+            aria-label={`AI matches: ${stats?.activeMatches ?? 0}`}
             onCtaClick={() => trackDashboardCta('metric_matches')}
           />
           <DashboardMetricCard

@@ -8,36 +8,40 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { profileCompletionPercent } from '@/lib/profile-completion';
 import { FREE_TIER_WEEKLY_MATCH_LIMIT } from '@/lib/usage-limits';
 
-function getWeekStartUtc(now: Date): string {
-  const d = new Date(now);
-  const day = d.getUTCDay();
-  const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-  d.setUTCDate(diff);
-  d.setUTCHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate', 'platform_admin', 'company_admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;
 
   const supabase = createServiceClient();
   const userId = authResult.user.id;
-  const weekStartUtc = getWeekStartUtc(new Date());
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('subscription_tier')
+    .select('subscription_tier, email')
     .eq('id', userId)
     .single();
   const subscriptionTier = (profile?.subscription_tier ?? 'free') as 'free' | 'pro' | 'pro_plus' | 'enterprise';
   const isPro = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus' || subscriptionTier === 'enterprise';
 
-  const { data: candidate } = await supabase
-    .from('candidates')
-    .select('id, full_name, email, primary_title, summary, skills, experience, education, location')
-    .eq('user_id', userId)
-    .single();
+  // Prefer candidate row linked by user_id; fall back to latest candidate with same email
+  let candidate =
+    (
+      await supabase
+        .from('candidates')
+        .select('id, full_name, email, primary_title, summary, skills, experience, education, location')
+        .eq('user_id', userId)
+        .maybeSingle()
+    ).data ?? null;
+
+  if (!candidate && profile?.email) {
+    const { data: candidateByEmail } = await supabase
+      .from('candidates')
+      .select('id, full_name, email, primary_title, summary, skills, experience, education, location')
+      .eq('email', profile.email)
+      .order('created_at', { ascending: false })
+      .maybeSingle();
+    candidate = candidateByEmail ?? null;
+  }
 
   if (!candidate) {
     // #region agent log
@@ -65,17 +69,6 @@ export async function GET(req: NextRequest) {
   weekStart.setHours(0, 0, 0, 0);
   const weekStartIso = weekStart.toISOString();
 
-  const matchesQuery = supabase
-    .from('candidate_job_matches')
-    .select('id, fit_score, ats_score, job:jobs(is_active)')
-    .eq('candidate_id', candidateId)
-    .or('job.is_active.is.null,job.is_active.is.true')
-    .order('fit_score', { ascending: false });
-
-  if (!isPro) {
-    matchesQuery.gte('matched_at', weekStartUtc).limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
-  }
-
   const [
     { data: applications },
     { data: matches },
@@ -86,7 +79,10 @@ export async function GET(req: NextRequest) {
       .from('applications')
       .select('id, status, applied_at')
       .eq('candidate_id', candidateId),
-    matchesQuery,
+    supabase
+      .from('candidate_job_matches')
+      .select('id, fit_score, ats_score, job:jobs(is_active)')
+      .eq('candidate_id', candidateId),
     supabase
       .from('applications')
       .select('id, interview_date, status')
@@ -141,10 +137,6 @@ export async function GET(req: NextRequest) {
   const profileCompletionPercentValue = profileCompletionPercent(candidate as Record<string, unknown>);
 
   const applicationsThisWeek = (applicationsThisWeekCount ?? []).length;
-
-  // #region agent log
-  fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f6067c'},body:JSON.stringify({sessionId:'f6067c',runId:'candidate-dashboard-post-fix',hypothesisId:'H3',location:'src/app/api/candidate/dashboard/stats/route.ts:136',message:'stats computed with tier-aware match scope',data:{candidateId,isPro,weekStart:!isPro?weekStartUtc:null,activeMatches:matchList.length,averageMatchScore},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   return NextResponse.json({
     subscriptionTier,

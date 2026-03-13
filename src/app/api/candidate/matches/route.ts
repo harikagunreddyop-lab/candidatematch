@@ -29,10 +29,31 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceClient();
   const userId = authResult.user.id;
 
-  const [{ data: profile }, { data: candidate }] = await Promise.all([
-    supabase.from('profiles').select('subscription_tier').eq('id', userId).single(),
-    supabase.from('candidates').select('id').eq('user_id', userId).single(),
-  ]);
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('subscription_tier, email')
+    .eq('id', userId)
+    .single();
+
+  // Prefer candidate row linked by user_id; fall back to latest candidate with same email
+  let candidate =
+    (
+      await supabase
+        .from('candidates')
+        .select('id')
+        .eq('user_id', userId)
+        .maybeSingle()
+    ).data ?? null;
+
+  if (!candidate && profile?.email) {
+    const { data: candidateByEmail } = await supabase
+      .from('candidates')
+      .select('id')
+      .eq('email', profile.email)
+      .order('created_at', { ascending: false })
+      .maybeSingle();
+    candidate = candidateByEmail ?? null;
+  }
 
   if (!candidate) {
     // #region agent log
@@ -58,11 +79,10 @@ export async function GET(req: NextRequest) {
       .from('candidate_job_matches')
       .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
-      .or('job.is_active.is.null,job.is_active.is.true')
       .order('matched_at', { ascending: false })
       .order('fit_score', { ascending: false });
     // #region agent log
-    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H3',location:'api/candidate/matches/route.ts:58',message:'Candidate matches API pro response',data:{candidateId:candidate.id,tier:subscriptionTier,returnedCount:(matches??[]).length},timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4f15e9'},body:JSON.stringify({sessionId:'4f15e9',runId:'candidate-dashboard-debug',hypothesisId:'H4',location:'src/app/api/candidate/matches/route.ts:65',message:'Candidate matches API pro response',data:{candidateId:candidate.id,tier:subscriptionTier,returnedCount:(matches??[]).length},timestamp:Date.now()})}).catch(()=>{});
     // #endregion
     return NextResponse.json({
       matches: matches ?? [],
@@ -76,13 +96,13 @@ export async function GET(req: NextRequest) {
   // Free tier: current week only, capped at FREE_TIER_WEEKLY_MATCH_LIMIT (~10/day)
   const weekStart = getWeekStartUtc(new Date());
   const usedThisWeek = await getWeeklyMatchCount(supabase, candidate.id);
+
   if (usedThisWeek >= FREE_TIER_WEEKLY_MATCH_LIMIT) {
     const { data: capped } = await supabase
       .from('candidate_job_matches')
       .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
       .gte('matched_at', weekStart)
-      .or('job.is_active.is.null,job.is_active.is.true')
       .order('matched_at', { ascending: false })
       .order('fit_score', { ascending: false })
       .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
@@ -104,7 +124,6 @@ export async function GET(req: NextRequest) {
     .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
     .eq('candidate_id', candidate.id)
     .gte('matched_at', weekStart)
-    .or('job.is_active.is.null,job.is_active.is.true')
     .order('matched_at', { ascending: false })
     .order('fit_score', { ascending: false })
     .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);

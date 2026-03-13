@@ -6,7 +6,7 @@ import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
 import { Tabs, StatusBadge, Spinner, EmptyState } from '@/components/ui';
 import {
   ArrowLeft, FileText, Briefcase, Download, ExternalLink,
-  CheckCircle2, Sparkles, MapPin, Trash2, Plus, Link2,
+  CheckCircle2, Sparkles, MapPin,
   Mail, Phone, Star, RefreshCw, AlertCircle, Bell, BookmarkCheck, FileDown, Zap,
 } from 'lucide-react';
 import { AtsBreakdownPanel } from '@/components/ats/AtsBreakdownPanel';
@@ -35,8 +35,6 @@ export default function CandidateDetailPage() {
   const [applications, setApplications] = useState<any[]>([]);
   const [resumes, setResumes] = useState<any[]>([]);
   const [uploadedResumes, setUploadedResumes] = useState<any[]>([]);
-  const [recruiters, setRecruiters] = useState<any[]>([]);
-  const [assignedRecruiters, setAssignedRecruiters] = useState<any[]>([]);
   const [savedJobs, setSavedJobs] = useState<any[]>([]);
   const [reminders, setReminders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,9 +42,6 @@ export default function CandidateDetailPage() {
   const [exporting, setExporting] = useState(false);
   const [generating, setGenerating] = useState<string | null>(null);
   const [resumeError, setResumeError] = useState<string | null>(null);
-  const [assigningRecruiter, setAssigningRecruiter] = useState('');
-  const [savingAssignment, setSavingAssignment] = useState(false);
-  const [removingAssignment, setRemovingAssignment] = useState<string | null>(null);
   const [runningMatch, setRunningMatch] = useState(false);
   const [matchMsg, setMatchMsg] = useState<string | null>(null);
 
@@ -57,30 +52,37 @@ export default function CandidateDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [cand, mch, apps, rvs, urv, recs, asgn, savedRes, remRes] = await Promise.all([
+      const [cand, mch, apps, rvs, urv, savedRes, remRes] = await Promise.all([
         supabase.from('candidates').select('*').eq('id', id).single(),
         supabase.from('candidate_job_matches').select('*, job:jobs(*)').eq('candidate_id', id).order('fit_score', { ascending: false }),
         supabase.from('applications').select('*, job:jobs(*), resume_version:resume_versions(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
         supabase.from('resume_versions').select('*, job:jobs(*)').eq('candidate_id', id).order('created_at', { ascending: false }),
         supabase.from('candidate_resumes').select('*').eq('candidate_id', id).order('uploaded_at', { ascending: false }),
-        supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-        supabase.from('recruiter_candidate_assignments').select('*, recruiter:profiles!recruiter_id(id, name, email)').eq('candidate_id', id),
         supabase.from('candidate_saved_jobs').select('job_id, created_at, job:jobs(id, title, company)').eq('candidate_id', id).order('created_at', { ascending: false }),
         supabase.from('application_reminders').select('*, application:applications(job:jobs(title, company))').eq('candidate_id', id).order('remind_at'),
       ]);
       const c = cand.data;
       let merged = c;
       if (c?.user_id) {
-        const { data: profile } = await supabase.from('profiles').select('name, email, phone').eq('id', c.user_id).single();
-        merged = { ...c, full_name: profile?.name ?? c.full_name, email: profile?.email ?? c.email, phone: profile?.phone ?? c.phone };
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, email, phone, subscription_tier')
+          .eq('id', c.user_id)
+          .single();
+        merged = {
+          ...c,
+          full_name: profile?.name ?? c.full_name,
+          email: profile?.email ?? c.email,
+          phone: profile?.phone ?? c.phone,
+          subscription_tier: profile?.subscription_tier ?? (c as any).subscription_tier ?? 'free',
+        };
       }
+
       setCandidate(merged);
       setMatches(mch.data || []);
       setApplications(apps.data || []);
       setResumes(rvs.data || []);
       setUploadedResumes(urv.data || []);
-      setRecruiters(recs.data || []);
-      setAssignedRecruiters(asgn.data || []);
       setSavedJobs(savedRes.data || []);
       setReminders(remRes.data || []);
     } finally {
@@ -179,24 +181,6 @@ export default function CandidateDetailPage() {
     await load();
   };
 
-  const assignRecruiter = async () => {
-    if (!assigningRecruiter) return;
-    setSavingAssignment(true);
-    await supabase.from('recruiter_candidate_assignments')
-      .upsert({ recruiter_id: assigningRecruiter, candidate_id: id }, { onConflict: 'recruiter_id,candidate_id' });
-    setAssigningRecruiter('');
-    await load();
-    setSavingAssignment(false);
-  };
-
-  const removeRecruiter = async (recruiterId: string) => {
-    setRemovingAssignment(recruiterId);
-    await supabase.from('recruiter_candidate_assignments')
-      .delete().eq('recruiter_id', recruiterId).eq('candidate_id', id);
-    await load();
-    setRemovingAssignment(null);
-  };
-
   const downloadResume = async (pdfPath: string) => {
     const { data } = await supabase.storage.from('resumes').createSignedUrl(pdfPath, 300);
     if (data?.signedUrl) window.open(data.signedUrl, '_blank');
@@ -262,7 +246,26 @@ export default function CandidateDetailPage() {
   const languages = safeArray(candidate.languages);
   const tags = safeArray(candidate.tags);
   const targetRoles = safeArray(candidate.target_roles);
+  const targetTitles = safeArray(candidate.target_job_titles);
   const targetLocs = safeArray(candidate.target_locations);
+
+  const subscriptionTier = (candidate as any).subscription_tier as
+    | 'free'
+    | 'pro'
+    | 'pro_plus'
+    | 'enterprise'
+    | undefined;
+
+  const tierLabel =
+    subscriptionTier === 'pro_plus'
+      ? 'Pro Plus'
+      : subscriptionTier === 'pro'
+      ? 'Pro'
+      : subscriptionTier === 'enterprise'
+      ? 'Elite'
+      : subscriptionTier === 'free'
+      ? 'Free'
+      : null;
 
   return (
     <div className="space-y-6 min-w-0 max-w-full">
@@ -277,6 +280,12 @@ export default function CandidateDetailPage() {
         <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-center gap-3 flex-wrap min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-surface-900 font-display truncate">{candidate.full_name}</h1>
+            {tierLabel && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-surface-200 bg-surface-100 px-2.5 py-0.5 text-[11px] font-medium text-surface-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-surface-400" />
+                {tierLabel} plan
+              </span>
+            )}
             <span className={cn('px-2 py-0.5 rounded-full text-xs font-medium',
               candidate.active ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-300' : 'bg-surface-100 dark:bg-surface-700 text-surface-500 dark:text-surface-400')}>
               {candidate.active ? 'Active' : 'Inactive'}
@@ -330,10 +339,43 @@ export default function CandidateDetailPage() {
       {tab === 'profile' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-5">
+            {/* Target job titles (mirror candidate profile layout) */}
+            {(targetTitles.length > 0 || targetRoles.length > 0) && (
+              <div className="card p-5">
+                <h3 className="text-sm font-semibold text-surface-800 mb-1">Target job titles</h3>
+                <p className="text-xs text-surface-500 mb-3">
+                  Roles this candidate is actively targeting.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(targetTitles.length ? targetTitles : targetRoles).map((t: string, i: number) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 rounded-lg bg-surface-100 text-surface-800 dark:bg-surface-700/40 dark:text-surface-50 text-xs font-medium border border-surface-300 dark:border-surface-500"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {candidate.summary && (
               <div className="card p-5">
-                <h3 className="text-sm font-semibold text-surface-800 mb-2">Summary</h3>
+                <h3 className="text-sm font-semibold text-surface-800 mb-2">Professional summary</h3>
                 <p className="text-sm text-surface-600 leading-relaxed">{candidate.summary}</p>
+              </div>
+            )}
+
+            {/* Default pitch / cover snippet (read-only mirror of candidate view) */}
+            {candidate.default_pitch && (
+              <div className="card p-5">
+                <h3 className="text-sm font-semibold text-surface-800 mb-2">Default pitch / cover snippet</h3>
+                <p className="text-xs text-surface-500 mb-2">
+                  One-paragraph intro candidates use when reaching out.
+                </p>
+                <p className="text-sm text-surface-600 leading-relaxed whitespace-pre-wrap">
+                  {candidate.default_pitch}
+                </p>
               </div>
             )}
 
@@ -486,46 +528,7 @@ export default function CandidateDetailPage() {
               </div>
             )}
 
-            {/* Recruiter Assignment */}
-            <div className="card p-5">
-              <h3 className="text-sm font-semibold text-surface-800 mb-3 flex items-center gap-2">
-                <Link2 size={14} /> Assigned Recruiters
-              </h3>
-              {assignedRecruiters.length > 0 ? (
-                <div className="space-y-2 mb-3">
-                  {assignedRecruiters.map((a: any) => (
-                    <div key={a.recruiter_id} className="flex items-center justify-between gap-2 py-1.5 px-2 bg-surface-100 rounded-lg">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-surface-800 truncate">{a.recruiter?.name || a.recruiter?.email}</p>
-                        <p className="text-[10px] text-surface-400 truncate">{a.recruiter?.email}</p>
-                      </div>
-                      <button onClick={() => removeRecruiter(a.recruiter_id)}
-                        disabled={removingAssignment === a.recruiter_id}
-                        className="btn-ghost p-1 text-red-400 hover:text-red-600 shrink-0">
-                        {removingAssignment === a.recruiter_id ? <Spinner size={12} /> : <Trash2 size={13} />}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-surface-400 mb-3">No recruiter assigned</p>
-              )}
-              {recruiters.filter(r => !assignedRecruiters.some((a: any) => a.recruiter_id === r.id)).length > 0 && (
-                <div className="flex gap-2">
-                  <select value={assigningRecruiter} onChange={e => setAssigningRecruiter(e.target.value)}
-                    className="input text-xs flex-1 py-1.5" aria-label="Select recruiter">
-                    <option value="">Assign recruiter...</option>
-                    {recruiters
-                      .filter(r => !assignedRecruiters.some((a: any) => a.recruiter_id === r.id))
-                      .map(r => <option key={r.id} value={r.id}>{r.name || r.email}</option>)}
-                  </select>
-                  <button onClick={assignRecruiter} disabled={!assigningRecruiter || savingAssignment}
-                    className="btn-primary text-xs py-1.5 px-2.5 shrink-0">
-                    {savingAssignment ? <Spinner size={12} /> : <Plus size={14} />}
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Recruiter card removed: new model does not assign recruiters per candidate */}
 
             {/* Internal notes */}
             {(candidate.internal_notes || candidate.interview_notes) && (

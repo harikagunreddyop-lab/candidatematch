@@ -103,8 +103,10 @@ export async function checkDailyLimit(
     };
 }
 
-/** Free tier: max job matches a candidate can see per week (UTC week) */
-export const FREE_TIER_WEEKLY_MATCH_LIMIT = 10;
+/** Free tier: max job matches a candidate can see per week (UTC week).
+ * 70/week ≈ 10/day in practice, matching pricing copy.
+ */
+export const FREE_TIER_WEEKLY_MATCH_LIMIT = 70;
 
 /** Start of current week (Monday 00:00 UTC) */
 function getWeekStartUtc(now: Date): string {

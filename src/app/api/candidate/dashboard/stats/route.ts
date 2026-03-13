@@ -30,7 +30,8 @@ export async function GET(req: NextRequest) {
     .select('subscription_tier')
     .eq('id', userId)
     .single();
-  const isPro = (profile?.subscription_tier ?? 'free') === 'pro';
+  const subscriptionTier = (profile?.subscription_tier ?? 'free') as 'free' | 'pro' | 'pro_plus' | 'enterprise';
+  const isPro = subscriptionTier === 'pro' || subscriptionTier === 'pro_plus' || subscriptionTier === 'enterprise';
 
   const { data: candidate } = await supabase
     .from('candidates')
@@ -66,8 +67,9 @@ export async function GET(req: NextRequest) {
 
   const matchesQuery = supabase
     .from('candidate_job_matches')
-    .select('id, fit_score, ats_score')
+    .select('id, fit_score, ats_score, job:jobs(is_active)')
     .eq('candidate_id', candidateId)
+    .or('job.is_active.is.null,job.is_active.is.true')
     .order('fit_score', { ascending: false });
 
   if (!isPro) {
@@ -124,7 +126,10 @@ export async function GET(req: NextRequest) {
   const interviewsUpcoming = interviewDates.filter((d) => new Date(d) >= now).length;
   const interviewsPast = interviewDates.filter((d) => new Date(d) < now).length;
 
-  const matchList = matches ?? [];
+  const matchList = (matches ?? []).filter((m: any) => {
+    const job = Array.isArray(m.job) ? m.job[0] : m.job;
+    return !job || job.is_active !== false;
+  });
   type MatchRow = { fit_score?: number; ats_score?: number | null };
   const scoreOf = (m: MatchRow) =>
     typeof m.ats_score === 'number' ? m.ats_score : m.fit_score ?? 0;
@@ -142,6 +147,8 @@ export async function GET(req: NextRequest) {
   // #endregion
 
   return NextResponse.json({
+    subscriptionTier,
+    weeklyMatchLimit: isPro ? -1 : FREE_TIER_WEEKLY_MATCH_LIMIT,
     applicationsTotal: apps.length,
     applicationsByStatus,
     activeMatches: matchList.length,

@@ -81,16 +81,12 @@ export default function FloatingChatWidget({ currentProfile }: { currentProfile:
   const loadAvailableUsers = async () => {
     let query = supabase.from('profiles').select('*').neq('id', currentProfile.id);
     if (currentProfile.role === 'recruiter') {
-      // Recruiter can only message their assigned candidates + admins
-      const { data: assignments } = await supabase
-        .from('recruiter_candidate_assignments')
-        .select('candidate_id')
-        .eq('recruiter_id', currentProfile.id);
-      const candidateIds = (assignments || []).map((a: any) => a.candidate_id).filter(Boolean);
-      const { data: candidateRows } = candidateIds.length
-        ? await supabase.from('candidates').select('user_id').in('id', candidateIds)
-        : { data: [] };
-      const candidateUserIds = (candidateRows || []).map((c: any) => c.user_id).filter(Boolean);
+      // Recruiter can message any candidate or admin
+      const { data: candidates } = await supabase
+        .from('candidates')
+        .select('user_id')
+        .not('user_id', 'is', null);
+      const candidateUserIds = (candidates || []).map((c: any) => c.user_id).filter(Boolean);
       const [candidateProfilesRes, adminsRes] = await Promise.all([
         candidateUserIds.length ? supabase.from('profiles').select('*').in('id', candidateUserIds) : Promise.resolve({ data: [] }),
         supabase.from('profiles').select('*').eq('role', 'admin'),
@@ -100,21 +96,14 @@ export default function FloatingChatWidget({ currentProfile }: { currentProfile:
       return;
     }
     if (currentProfile.role === 'candidate') {
-      // Candidate can only message their assigned recruiters + admins
-      const { data: myCand } = await supabase.from('candidates').select('id').eq('user_id', currentProfile.id).single();
-      if (myCand) {
-        const { data: assignments } = await supabase
-          .from('recruiter_candidate_assignments')
-          .select('recruiter_id')
-          .eq('candidate_id', myCand.id);
-        const recruiterIds = (assignments || []).map((a: any) => a.recruiter_id);
-        const { data: admins } = await supabase.from('profiles').select('*').eq('role', 'admin');
-        const { data: recruiters } = recruiterIds.length
-          ? await supabase.from('profiles').select('*').in('id', recruiterIds)
-          : { data: [] };
-        setAvailableUsers([...(admins || []), ...(recruiters || [])]);
-        return;
-      }
+      // Candidate can message any recruiter or admin
+      const [recruitersRes, adminsRes] = await Promise.all([
+        supabase.from('profiles').select('*').eq('role', 'recruiter'),
+        supabase.from('profiles').select('*').eq('role', 'admin'),
+      ]);
+      const combined = [...(adminsRes.data || []), ...(recruitersRes.data || [])];
+      setAvailableUsers(combined.filter(u => u.id !== currentProfile.id));
+      return;
     }
     // Admin can message anyone
     const { data } = await query.order('name');

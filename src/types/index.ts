@@ -177,6 +177,8 @@ export interface Candidate {
   years_of_experience?: number;
   last_seen_matches_at?: string;
   onboarding_completed?: boolean;
+  /** Candidate billing tier (from profiles.subscription_tier); optional on older rows. */
+  subscription_tier?: 'free' | 'pro' | 'pro_plus' | 'enterprise';
   /** Optional salary range for profile/preview (not always present). */
   salary_min?: number;
   salary_max?: number;

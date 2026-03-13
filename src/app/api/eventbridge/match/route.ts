@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const results = await matcher.matchNewJobs({
       minScore,
       notifyThreshold,
-      hoursBack: 2,
+      hoursBack: 24,
     });
 
     if (runId) {

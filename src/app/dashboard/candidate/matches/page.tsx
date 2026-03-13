@@ -124,6 +124,8 @@ export default function CandidateMatchesPage() {
           {matches.map((match: any) => {
             const job = Array.isArray(match.job) ? match.job[0] : match.job;
             if (!job) return null;
+            const matchedAt = match.matched_at ? new Date(match.matched_at) : null;
+            const isNew = matchedAt ? Date.now() - matchedAt.getTime() < 24 * 60 * 60 * 1000 : false;
             return (
               <div key={match.id} className="bg-surface-800/50 border border-surface-700/60 rounded-xl p-6 hover:border-brand-400/50 transition-all">
                 <div className="flex items-start justify-between mb-4">
@@ -136,9 +138,16 @@ export default function CandidateMatchesPage() {
                     </Link>
                     <div className="text-surface-400 mt-1">{job.company}</div>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                    <Star className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-bold text-emerald-400">{match.fit_score}% Match</span>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                      <Star className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-bold text-emerald-400">{match.fit_score}% Match</span>
+                    </div>
+                    {isNew && (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                        New
+                      </span>
+                    )}
                   </div>
                 </div>
 

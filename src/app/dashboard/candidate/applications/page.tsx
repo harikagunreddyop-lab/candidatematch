@@ -69,6 +69,7 @@ export default function CandidateApplicationsPage() {
     interview_rate: number;
     offer_rate: number;
   } | null>(null);
+  const [subscriptionTier, setSubscriptionTier] = useState<'free' | 'pro' | 'pro_plus' | 'enterprise' | null>(null);
 
   const loadApplications = useCallback(async () => {
     setLoading(true);
@@ -87,6 +88,17 @@ export default function CandidateApplicationsPage() {
     fetch('/api/candidate/applications/analytics', { credentials: 'include' })
       .then((r) => r.json())
       .then((data) => setAnalytics(data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/candidate/dashboard/stats', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.subscriptionTier) {
+          setSubscriptionTier(data.subscriptionTier);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -131,6 +143,17 @@ export default function CandidateApplicationsPage() {
       ? applications
       : applications.filter((a) => a.status === statusFilter);
 
+  const tierLabel =
+    subscriptionTier === 'pro_plus'
+      ? 'Pro Plus'
+      : subscriptionTier === 'pro'
+      ? 'Pro'
+      : subscriptionTier === 'enterprise'
+      ? 'Elite'
+      : subscriptionTier === 'free'
+      ? 'Free'
+      : null;
+
   return (
     <div className="min-h-screen bg-surface-900 text-surface-100">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -144,9 +167,17 @@ export default function CandidateApplicationsPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">Applications</h1>
-            <p className="text-surface-400 mt-1 text-sm">
-              {filtered.length} application{filtered.length !== 1 ? 's' : ''}
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-surface-400 text-sm">
+                {filtered.length} application{filtered.length !== 1 ? 's' : ''}
+              </p>
+              {tierLabel && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-surface-700/80 bg-surface-900/40 px-3 py-1 text-[11px] font-medium text-surface-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-surface-300" />
+                  {tierLabel} plan
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <label className="text-sm text-surface-400">Status:</label>

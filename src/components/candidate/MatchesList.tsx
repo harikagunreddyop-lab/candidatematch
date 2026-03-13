@@ -27,6 +27,8 @@ export function MatchesList({ matches }: { matches: CandidateJobMatch[] }) {
 function MatchCard({ match }: { match: CandidateJobMatch }) {
   const job = match.job;
   const postedAt = job?.scraped_at ?? job?.created_at;
+  const matchedAt = match.matched_at ? new Date(match.matched_at) : null;
+  const isNew = matchedAt ? Date.now() - matchedAt.getTime() < 24 * 60 * 60 * 1000 : false;
 
   return (
     <Link href="/dashboard/candidate/matches">
@@ -38,8 +40,15 @@ function MatchCard({ match }: { match: CandidateJobMatch }) {
             </h3>
             <p className="text-surface-400 text-sm">{job?.company}</p>
           </div>
-          <div className="px-3 py-1 bg-brand-400/10 text-brand-400 rounded-full text-xs font-semibold">
-            {match.fit_score ?? 0}% Match
+          <div className="flex flex-col items-end gap-1">
+            <div className="px-3 py-1 bg-brand-400/10 text-brand-400 rounded-full text-xs font-semibold">
+              {match.fit_score ?? 0}% Match
+            </div>
+            {isNew && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-semibold uppercase tracking-wide">
+                New
+              </span>
+            )}
           </div>
         </div>
 

@@ -45,6 +45,8 @@ export default function CandidateDashboard() {
   const { applications, loading: appsLoading, refresh: refreshApplications } = useApplications(candidate?.id ?? null);
 
   const [stats, setStats] = useState<{
+    subscriptionTier: 'free' | 'pro' | 'pro_plus' | 'enterprise';
+    weeklyMatchLimit: number;
     applicationsTotal: number;
     applicationsByStatus: Record<string, number>;
     activeMatches: number;
@@ -215,6 +217,27 @@ export default function CandidateDashboard() {
     );
   }
 
+  const subscriptionTier =
+    stats?.subscriptionTier ?? (candidate as any).subscription_tier ?? 'free';
+
+  const tierLabel =
+    subscriptionTier === 'pro_plus'
+      ? 'Pro Plus'
+      : subscriptionTier === 'pro'
+      ? 'Pro'
+      : subscriptionTier === 'enterprise'
+      ? 'Elite'
+      : 'Free';
+
+  const tierDescription =
+    subscriptionTier === 'free'
+      ? 'Free plan · limits on matches, applications, and AI tools'
+      : subscriptionTier === 'pro'
+      ? 'Pro plan · resume tools, full ATS insights, and recruiter visibility'
+      : subscriptionTier === 'pro_plus'
+      ? 'Pro Plus plan · automation, bulk apply, and priority matching'
+      : 'Elite plan · coaching, recruiter introductions, and featured visibility';
+
   return (
     <DashboardErrorBoundary sectionName="Dashboard">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
@@ -224,7 +247,14 @@ export default function CandidateDashboard() {
             <h1 className="text-2xl sm:text-3xl font-bold text-white">
               Welcome back, {candidate.full_name || 'there'}
             </h1>
-            <p className="text-surface-400 mt-1">Here&apos;s your job search at a glance</p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-surface-400">Here&apos;s your job search at a glance</p>
+              <span className="inline-flex items-center gap-1 rounded-full border border-surface-700/80 bg-surface-900/40 px-3 py-1 text-xs font-medium text-surface-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-surface-300" />
+                {tierLabel} plan
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] text-surface-500">{tierDescription}</p>
           </div>
           <Link
             href="/dashboard/candidate/jobs"

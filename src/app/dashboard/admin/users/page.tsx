@@ -538,7 +538,7 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
           ))}
 
           {/* Info note */}
-          <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 text-xs text-blue-700 dark:text-blue-300">
+          <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-surface-100 border border-surface-300 text-xs text-surface-700">
             <Info size={14} className="shrink-0 mt-0.5" />
             <span>
               These are <strong>per-user overrides</strong> and take highest priority.
@@ -549,7 +549,7 @@ function FeatureAccessModal({ user, onClose }: { user: any; onClose: () => void 
       )}
 
       {error && (
-        <p className="mt-3 text-xs text-red-600 dark:text-red-400 flex items-center gap-1.5">
+        <p className="mt-3 text-xs text-surface-800 flex items-center gap-1.5">
           <AlertCircle size={13} />{error}
         </p>
       )}
@@ -1061,7 +1061,7 @@ function EditUserModal({ user, onClose, onSaved }: { user: any; onClose: () => v
       <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
         {isCandidate ? (
           <>
-            <p className="text-xs text-surface-500 mb-2">Only name, email, phone and password can be edited here. All other candidate details are managed by the assigned recruiter.</p>
+            <p className="text-xs text-surface-500 mb-2">Only name, email, phone and password can be edited here. Profile details are managed by the candidate&apos;s recruiter team.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Full Name</label>

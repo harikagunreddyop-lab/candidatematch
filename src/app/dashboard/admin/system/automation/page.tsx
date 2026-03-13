@@ -9,7 +9,7 @@ function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
       <p className="text-xs font-medium text-surface-400 uppercase tracking-wide">{label}</p>
-      <p className="text-xl font-bold text-white mt-1 tabular-nums">{value ?? '—'}</p>
+      <p className="text-xl font-bold text-surface-900 mt-1 tabular-nums">{value ?? '—'}</p>
     </div>
   );
 }
@@ -17,9 +17,9 @@ function Metric({ label, value }: { label: string; value: string | number }) {
 function PipelineStep({ label, status, time }: { label: string; status: string; time: string }) {
   const icon =
     status === 'success' ? (
-      <CheckCircle className="w-5 h-5 text-emerald-400" />
+      <CheckCircle className="w-5 h-5 text-surface-100" />
     ) : status === 'running' ? (
-      <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+      <Loader2 className="w-5 h-5 text-surface-200 animate-spin" />
     ) : (
       <Clock className="w-5 h-5 text-surface-500" />
     );
@@ -41,6 +41,12 @@ function Arrow() {
 export default function AutomationMonitoringPage() {
   const [stats, setStats] = useState<AutomationStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [adzunaRunning, setAdzunaRunning] = useState(false);
+  const [adzunaMsg, setAdzunaMsg] = useState<string | null>(null);
+  const [adzunaWhat, setAdzunaWhat] = useState('data engineer');
+  const [adzunaWhere, setAdzunaWhere] = useState('United States');
+  const [adzunaPage, setAdzunaPage] = useState(1);
+  const [adzunaPages, setAdzunaPages] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +63,36 @@ export default function AutomationMonitoringPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  const runAdzunaIngest = async () => {
+    setAdzunaRunning(true);
+    setAdzunaMsg(null);
+    try {
+      const res = await fetch('/api/integrations/adzuna/ingest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          what: adzunaWhat,
+          where: adzunaWhere,
+          page: adzunaPage,
+          results_per_page: 50,
+          pages: adzunaPages,
+          skip_matching: false,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Adzuna ingest failed');
+      }
+      setAdzunaMsg(
+        `Ingested ${data.inserted ?? 0} jobs (${data.duplicates ?? 0} duplicates, ${data.skipped ?? 0} skipped)`,
+      );
+    } catch (err: any) {
+      setAdzunaMsg(err?.message || 'Failed to run Adzuna ingest');
+    } finally {
+      setAdzunaRunning(false);
+    }
+  };
 
   const formatLastRun = (iso: string | null) => {
     if (!iso) return '—';
@@ -78,23 +114,23 @@ export default function AutomationMonitoringPage() {
           <ChevronLeft size={18} /> Back
         </Link>
       </div>
-      <h1 className="text-3xl font-bold text-white">Automation Pipeline</h1>
-      <p className="text-surface-400 text-sm">
+      <h1 className="text-3xl font-bold text-surface-900">Automation Pipeline</h1>
+      <p className="text-surface-500 text-sm">
         EventBridge-driven ingestion → matching → notification. Monitor runs and health here.
       </p>
 
       {loading ? (
-        <div className="rounded-xl border border-surface-700 bg-surface-800/50 p-8 text-center text-surface-500">
+        <div className="rounded-xl border border-surface-300 bg-white p-8 text-center text-surface-600">
           Loading…
         </div>
       ) : !stats ? (
-        <div className="rounded-xl border border-surface-700 bg-surface-800/50 p-8 text-center text-surface-500">
+        <div className="rounded-xl border border-surface-300 bg-white p-8 text-center text-surface-600">
           Failed to load automation stats.
         </div>
       ) : (
         <>
-          <div className="bg-surface-800 rounded-xl p-6 border border-surface-700">
-            <h2 className="text-xl font-semibold text-white mb-4">Job Ingestion</h2>
+          <div className="bg-white rounded-xl p-6 border border-surface-300">
+            <h2 className="text-xl font-semibold text-surface-900 mb-4">Job Ingestion</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Metric label="Last Run" value={formatLastRun(stats.ingest.lastRun)} />
               <Metric label="Jobs Added" value={stats.ingest.jobsAdded} />
@@ -103,8 +139,8 @@ export default function AutomationMonitoringPage() {
             </div>
           </div>
 
-          <div className="bg-surface-800 rounded-xl p-6 border border-surface-700">
-            <h2 className="text-xl font-semibold text-white mb-4">Auto-Matching</h2>
+          <div className="bg-white rounded-xl p-6 border border-surface-300">
+            <h2 className="text-xl font-semibold text-surface-900 mb-4">Auto-Matching</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Metric label="Last Run" value={formatLastRun(stats.matching.lastRun)} />
               <Metric label="Matches Created" value={stats.matching.matchesCreated} />
@@ -113,8 +149,8 @@ export default function AutomationMonitoringPage() {
             </div>
           </div>
 
-          <div className="bg-surface-800 rounded-xl p-6 border border-surface-700">
-            <h2 className="text-xl font-semibold text-white mb-4">Pipeline Flow</h2>
+          <div className="bg-white rounded-xl p-6 border border-surface-300">
+            <h2 className="text-xl font-semibold text-surface-900 mb-4">Pipeline Flow</h2>
             <div className="flex flex-wrap items-center gap-4">
               <PipelineStep
                 label="Ingest"
@@ -141,19 +177,111 @@ export default function AutomationMonitoringPage() {
               />
             </div>
           </div>
+
+          <div className="bg-white rounded-xl p-6 border border-surface-300 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-surface-900 mb-1">
+                  External Job Ingest (Adzuna)
+                </h2>
+                <p className="text-sm text-surface-500">
+                  Run an on-demand Adzuna search and ingest results into the internal jobs table.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={runAdzunaIngest}
+                disabled={adzunaRunning}
+                className="inline-flex items-center gap-2 rounded-lg bg-surface-900 text-white text-sm font-medium px-4 py-2 hover:bg-surface-800 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {adzunaRunning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Running…
+                  </>
+                ) : (
+                  <>
+                    <ArrowRight className="w-4 h-4" />
+                    Ingest jobs
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-surface-500">
+                  Search job titles (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={adzunaWhat}
+                  onChange={(e) => setAdzunaWhat(e.target.value)}
+                  className="input text-sm"
+                  placeholder="e.g. javascript developer"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-surface-500">
+                  Location
+                </label>
+                <input
+                  type="text"
+                  value={adzunaWhere}
+                  onChange={(e) => setAdzunaWhere(e.target.value)}
+                  className="input text-sm"
+                  placeholder="e.g. London"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-surface-500">
+                  Page
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={adzunaPage}
+                  onChange={(e) => setAdzunaPage(Math.max(1, Number(e.target.value) || 1))}
+                  className="input text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="block text-xs font-medium text-surface-500">
+                  Pages to ingest (max 100)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={adzunaPages}
+                  onChange={(e) =>
+                    setAdzunaPages(
+                      Math.min(100, Math.max(1, Number(e.target.value) || 1)),
+                    )
+                  }
+                  className="input text-sm"
+                />
+              </div>
+            </div>
+            {adzunaMsg && (
+              <div className="text-sm text-surface-700 bg-surface-50 border border-surface-200 rounded-lg px-3 py-2">
+                {adzunaMsg}
+              </div>
+            )}
+          </div>
+
         </>
       )}
 
       <div className="flex gap-3 flex-wrap">
         <Link
           href="/dashboard/admin/system/cron"
-          className="text-sm text-brand-400 hover:text-brand-300"
+          className="text-sm text-surface-200 hover:text-white"
         >
           Cron history →
         </Link>
         <Link
           href="/dashboard/admin/system/connectors"
-          className="text-sm text-brand-400 hover:text-brand-300"
+          className="text-sm text-surface-200 hover:text-white"
         >
           Connectors →
         </Link>

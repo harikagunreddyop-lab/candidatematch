@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Database, Zap, Cloud, RefreshCw, ChevronLeft, Bot } from 'lucide-react';
-import { cn } from '@/utils/helpers';
 
 type CheckValue = string | { status: string; error?: string };
 
@@ -11,18 +10,6 @@ function checkStatus(c: CheckValue | undefined): string {
   if (c == null) return '—';
   if (typeof c === 'object' && 'status' in c) return c.error ? `${c.status}: ${c.error}` : c.status;
   return String(c);
-}
-
-function isHealthy(c: CheckValue | undefined): boolean {
-  if (c == null) return false;
-  if (typeof c === 'object' && 'status' in c) return c.status === 'healthy';
-  return c === 'healthy';
-}
-
-function isNotConfigured(c: CheckValue | undefined): boolean {
-  if (c == null) return false;
-  if (typeof c === 'object' && 'status' in c) return false;
-  return c === 'not_configured';
 }
 
 export default function SystemHealthPage() {
@@ -68,12 +55,7 @@ export default function SystemHealthPage() {
         <div className="rounded-2xl border border-surface-300 bg-white overflow-hidden shadow-[0_8px_25px_rgba(15,23,42,0.05)]">
           <div className="px-6 py-4 border-b border-surface-300 flex items-center justify-between">
             <span className="font-semibold text-surface-900">Overall</span>
-            <span className={cn(
-              'text-sm font-medium px-2 py-0.5 rounded-full',
-              health?.status === 'healthy' && 'bg-emerald-50 text-emerald-700',
-              health?.status === 'degraded' && 'bg-amber-50 text-amber-700',
-              (health?.status === 'unhealthy' || health?.status === 'error') && 'bg-red-50 text-red-700'
-            )}>
+            <span className="text-sm font-medium px-2 py-0.5 rounded-full bg-surface-900 text-surface-50">
               {health?.status ?? 'unknown'}
             </span>
           </div>
@@ -83,42 +65,23 @@ export default function SystemHealthPage() {
                 <div className="flex items-center gap-3">
                   <Database size={20} className="text-surface-500" />
                   <span className="flex-1 text-surface-900">Database</span>
-                  <span className={cn(
-                    'font-medium',
-                    isHealthy(health.checks.database) && 'text-emerald-600',
-                    !isHealthy(health.checks.database) && !isNotConfigured(health.checks.database) && 'text-red-600'
-                  )}>{checkStatus(health.checks.database)}</span>
+                  <span className="font-medium text-surface-800">{checkStatus(health.checks.database)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Zap size={20} className="text-surface-500" />
                   <span className="flex-1 text-surface-900">Redis (queues)</span>
-                  <span className={cn(
-                    'font-medium',
-                    isHealthy(health.checks.redis) && 'text-emerald-600',
-                    isNotConfigured(health.checks.redis) && 'text-surface-600',
-                    !isHealthy(health.checks.redis) && !isNotConfigured(health.checks.redis) && 'text-amber-600'
-                  )}>{checkStatus(health.checks.redis)}</span>
+                  <span className="font-medium text-surface-800">{checkStatus(health.checks.redis)}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Cloud size={20} className="text-surface-500" />
                   <span className="flex-1 text-surface-900">Cache (Upstash)</span>
-                  <span className={cn(
-                    'font-medium',
-                    isHealthy(health.checks.cache) && 'text-emerald-600',
-                    isNotConfigured(health.checks.cache) && 'text-surface-600',
-                    !isHealthy(health.checks.cache) && !isNotConfigured(health.checks.cache) && 'text-amber-600'
-                  )}>{checkStatus(health.checks.cache)}</span>
+                  <span className="font-medium text-surface-800">{checkStatus(health.checks.cache)}</span>
                 </div>
                 {health.checks.anthropic !== undefined && (
                   <div className="flex items-center gap-3">
                     <Bot size={20} className="text-surface-500" />
                     <span className="flex-1 text-surface-900">Anthropic</span>
-                    <span className={cn(
-                      'font-medium',
-                      isHealthy(health.checks.anthropic) && 'text-emerald-600',
-                      isNotConfigured(health.checks.anthropic) && 'text-surface-600',
-                      !isHealthy(health.checks.anthropic) && !isNotConfigured(health.checks.anthropic) && 'text-amber-600'
-                    )}>{checkStatus(health.checks.anthropic)}</span>
+                    <span className="font-medium text-surface-800">{checkStatus(health.checks.anthropic)}</span>
                   </div>
                 )}
               </>

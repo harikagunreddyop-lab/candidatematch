@@ -27,12 +27,12 @@ type Recruiter = {
 };
 
 const STAGES = [
-  { key: 'ready', label: 'Ready', color: 'bg-surface-200', text: 'text-surface-600' },
-  { key: 'applied', label: 'Applied', color: 'bg-blue-100', text: 'text-blue-700' },
-  { key: 'screening', label: 'Screening', color: 'bg-yellow-100', text: 'text-yellow-700' },
-  { key: 'interview', label: 'Interview', color: 'bg-brand-400/10', text: 'text-brand-400' },
-  { key: 'offer', label: 'Offer', color: 'bg-green-100', text: 'text-green-700' },
-  { key: 'rejected', label: 'Rejected', color: 'bg-red-50', text: 'text-red-500' },
+  { key: 'ready', label: 'Ready', color: 'bg-surface-200', text: 'text-surface-700' },
+  { key: 'applied', label: 'Applied', color: 'bg-surface-200', text: 'text-surface-700' },
+  { key: 'screening', label: 'Screening', color: 'bg-surface-200', text: 'text-surface-700' },
+  { key: 'interview', label: 'Interview', color: 'bg-surface-200', text: 'text-surface-700' },
+  { key: 'offer', label: 'Offer', color: 'bg-surface-200', text: 'text-surface-700' },
+  { key: 'rejected', label: 'Rejected', color: 'bg-surface-200', text: 'text-surface-700' },
 ] as const;
 
 function MiniBar({ data }: { data: { date: string; count: number }[] }) {
@@ -61,7 +61,7 @@ function KpiCard({ label, value, icon, href }: {
         <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">{label}</p>
         <p className="text-3xl font-bold text-surface-900 mt-1 tabular-nums">{value.toLocaleString()}</p>
       </div>
-      <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center text-brand-600 group-hover:bg-brand-100 transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center text-surface-700 group-hover:bg-surface-200 transition-colors">
         {icon}
       </div>
     </div>
@@ -71,9 +71,9 @@ function KpiCard({ label, value, icon, href }: {
 
 function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
   const colors = [
-    'bg-blue-600/20 text-blue-300', 'bg-purple-600/20 text-purple-300',
-    'bg-green-600/20 text-green-300', 'bg-amber-600/20 text-amber-300',
-    'bg-rose-600/20 text-rose-300', 'bg-teal-600/20 text-teal-300',
+    'bg-surface-900 text-surface-100',
+    'bg-surface-800 text-surface-100',
+    'bg-surface-700 text-surface-100',
   ];
   const color = colors[(name?.charCodeAt(0) || 0) % colors.length];
   const sz = size === 'sm' ? 'w-7 h-7 text-xs' : 'w-9 h-9 text-sm';
@@ -175,13 +175,13 @@ export default function AdminDashboardClient({
       </div>
 
       {matchMsg && (
-        <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">
+        <div className="rounded-xl border border-surface-300 bg-surface-100 px-4 py-2.5 text-sm text-surface-800">
           {matchMsg}
         </div>
       )}
 
       {cleanMsg && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
+        <div className="rounded-xl border border-surface-300 bg-surface-100 px-4 py-2.5 text-sm text-surface-800">
           {cleanMsg}
         </div>
       )}
@@ -196,12 +196,7 @@ export default function AdminDashboardClient({
               ? new Date(cronRuns[0].ended_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
               : new Date(cronRuns[0].started_at).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' }) + ' (running)'}
           </span>
-          <span className={cn(
-            'px-1.5 py-0.5 rounded text-xs font-medium',
-            cronRuns[0].status === 'ok' && 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200',
-            cronRuns[0].status === 'failed' && 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200',
-            cronRuns[0].status === 'running' && 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200'
-          )}>
+          <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-surface-900 text-surface-50">
             {cronRuns[0].status}
           </span>
           {cronRuns[0].status === 'ok' && (cronRuns[0].candidates_processed != null || cronRuns[0].total_matches_upserted != null) && (
@@ -328,7 +323,7 @@ export default function AdminDashboardClient({
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-semibold text-surface-900 truncate">{c.full_name}</p>
                         <span className={cn('px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0',
-                          c.active ? 'bg-green-100 text-green-700' : 'bg-surface-100 text-surface-500')}>
+                          c.active ? 'bg-surface-900 text-surface-50' : 'bg-surface-100 text-surface-500')}>
                           {c.active ? 'Active' : 'Inactive'}
                         </span>
                       </div>

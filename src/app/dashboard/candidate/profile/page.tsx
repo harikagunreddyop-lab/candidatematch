@@ -93,6 +93,8 @@ export default function CandidateProfilePage() {
       salary_max: cand.salary_max ?? '',
       availability: cand.availability || '',
       open_to_remote: cand.open_to_remote ?? true,
+      visa_status: cand.visa_status || '',
+      open_to_relocation: cand.open_to_relocation ?? false,
       skills: Array.isArray(cand.skills) ? [...cand.skills] : [],
       experience: normalizeExperience(cand.experience),
     });
@@ -223,6 +225,8 @@ export default function CandidateProfilePage() {
       salary_max: profileForm.salary_max !== '' && profileForm.salary_max != null ? Number(profileForm.salary_max) : null,
       availability: profileForm.availability?.trim() || null,
       open_to_remote: profileForm.open_to_remote ?? true,
+      visa_status: profileForm.visa_status?.trim() || null,
+      open_to_relocation: profileForm.open_to_relocation ?? false,
       privacy_settings: Object.keys(privacySettings).length ? privacySettings : {},
     };
     // #region agent log
@@ -260,7 +264,7 @@ export default function CandidateProfilePage() {
 
   return (
     <>
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-xl font-bold text-surface-900 dark:text-surface-100 font-display">My Profile</h1>
         <div className="flex items-center gap-2 flex-wrap">
@@ -317,7 +321,7 @@ export default function CandidateProfilePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Job title / Role</h3>
             {editingProfile
               ? (
@@ -333,7 +337,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-brand-200 dark:border-brand-500/40 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-1">Target job titles</h3>
             <p className="text-xs text-surface-500 dark:text-surface-400 mb-3">Jobs matching these titles will appear in your My Jobs. Separate with commas.</p>
             {editingProfile
@@ -350,7 +354,12 @@ export default function CandidateProfilePage() {
                 <div className="flex flex-wrap gap-2">
                   {(candidate.target_job_titles as string[] | undefined)?.length
                     ? (candidate.target_job_titles as string[]).map((t, i) => (
-                        <span key={i} className="px-2.5 py-1 rounded-lg bg-brand-500/10 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 text-xs font-medium">{t}</span>
+                        <span
+                          key={i}
+                          className="px-2.5 py-1 rounded-lg bg-surface-100 text-surface-800 dark:bg-surface-700/40 dark:text-surface-50 text-xs font-medium border border-surface-300 dark:border-surface-500"
+                        >
+                          {t}
+                        </span>
                       ))
                     : <span className="text-surface-400 dark:text-surface-500 italic text-sm">None set — add titles to get matched to jobs</span>
                   }
@@ -359,7 +368,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Professional summary</h3>
             {editingProfile
               ? (
@@ -380,7 +389,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Default pitch / cover snippet</h3>
             <p className="text-xs text-surface-500 dark:text-surface-400 mb-2">One paragraph for recruiters (e.g. elevator pitch or default cover intro).</p>
             {editingProfile
@@ -391,7 +400,7 @@ export default function CandidateProfilePage() {
             }
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Preferences</h3>
             {editingProfile ? (
               <div className="space-y-4">
@@ -435,6 +444,24 @@ export default function CandidateProfilePage() {
                   <input type="checkbox" checked={profileForm.open_to_remote ?? true} onChange={e => setProfileForm((p: any) => ({ ...p, open_to_remote: e.target.checked }))} className="rounded border-surface-300 dark:border-surface-600 text-brand-600" />
                   <span className="text-sm text-surface-700 dark:text-surface-200">Open to remote</span>
                 </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={profileForm.open_to_relocation ?? false}
+                    onChange={e => setProfileForm((p: any) => ({ ...p, open_to_relocation: e.target.checked }))}
+                    className="rounded border-surface-300 dark:border-surface-600 text-brand-600"
+                  />
+                  <span className="text-sm text-surface-700 dark:text-surface-200">Open to relocate</span>
+                </label>
+                <div>
+                  <label className="label text-xs dark:text-surface-200">Work authorization / visa status</label>
+                  <textarea
+                    value={profileForm.visa_status || ''}
+                    onChange={e => setProfileForm((p: any) => ({ ...p, visa_status: e.target.value }))}
+                    className="input text-sm h-20 resize-none dark:bg-surface-700 dark:border-surface-600 dark:text-surface-100 dark:placeholder:text-surface-400"
+                    placeholder="e.g. UK citizen; US H-1B valid to 2028, needs transfer; Open to sponsorship in EU"
+                  />
+                </div>
               </div>
             ) : (
               <div className="space-y-2 text-sm text-surface-600 dark:text-surface-300">
@@ -443,12 +470,14 @@ export default function CandidateProfilePage() {
                 )}
                 {candidate.availability && <p>Availability: {candidate.availability}</p>}
                 <p>Open to remote: {candidate.open_to_remote !== false ? 'Yes' : 'No'}</p>
+                <p>Open to relocate: {candidate.open_to_relocation ? 'Yes' : 'No'}</p>
+                {candidate.visa_status && <p>Work authorization: {candidate.visa_status}</p>}
                 {!candidate.salary_min && !candidate.salary_max && !candidate.availability && candidate.open_to_remote === undefined && <p className="text-surface-400 dark:text-surface-500 italic">Not set</p>}
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-4">Experience</h3>
             {editingProfile ? (
               <RichExperienceEditor
@@ -506,7 +535,7 @@ export default function CandidateProfilePage() {
             lastSyncedAt={candidate.linkedin_last_synced_at ?? null}
             linkedinSyncEnabled={candidate.linkedin_sync_enabled ?? false}
           />
-          <div className="rounded-2xl border border-surface-200 dark:border-surface-700 bg-surface-100 p-6 shadow-sm">
+          <div className="card p-6 border-2 border-surface-400">
             <h3 className="text-sm font-bold text-surface-900 dark:text-surface-100 font-display mb-3">Contact info</h3>
             {editingProfile ? (
               <div className="space-y-3">

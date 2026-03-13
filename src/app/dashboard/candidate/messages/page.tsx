@@ -175,7 +175,7 @@ export default function CandidateMessagesPage() {
         <div>
           <h1 className="text-2xl font-bold text-surface-900 font-display">Messages</h1>
           <p className="text-sm text-surface-500 mt-1">
-            Chat with your recruiter {totalUnread > 0 && <span className="text-brand-600 font-medium">· {totalUnread} unread</span>}
+            Chat with the CandidateMatch team{totalUnread > 0 && <span className="text-brand-600 font-medium"> · {totalUnread} unread</span>}
           </p>
         </div>
         <button onClick={() => { setShowNewConv(true); loadAvailableUsers(); }}
@@ -232,7 +232,7 @@ export default function CandidateMessagesPage() {
               <p className="text-xs font-semibold text-surface-400 uppercase tracking-wide mb-3">Your recruiters & support</p>
               <div className="space-y-1 mb-6">
                 {availableUsers.length === 0 && (
-                  <p className="text-sm text-surface-400">No recruiter assigned yet. Contact your admin.</p>
+                  <p className="text-sm text-surface-400">No team members are available to message yet.</p>
                 )}
                 {availableUsers.map(u => (
                   <label key={u.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-100 cursor-pointer">

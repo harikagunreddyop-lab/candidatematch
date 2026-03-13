@@ -53,7 +53,11 @@ if (REDIS_URL) {
   try {
     const IORedis = require('ioredis');
     const { Queue, Worker, QueueEvents } = require('bullmq');
-    const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
+    // Managed Redis instances may forbid the INFO command; disable ready checks to avoid NOPERM noise.
+    const connection = new IORedis(REDIS_URL, {
+      maxRetriesPerRequest: null,
+      enableReadyCheck: false,
+    });
     const queueName = 'resume-generation';
     resumeQueue = new Queue(queueName, { connection });
     queueEvents = new QueueEvents(queueName, { connection });

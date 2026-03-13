@@ -9,11 +9,14 @@ export type FeatureGateResult =
   | { allowed: false; reason: 'upgrade_required'; plan: string }
   | { allowed: false; reason: 'limit_reached'; limit: number; used: number; plan: string };
 
-const FREE_PLAN_FEATURES: string[] = ['job_search', 'basic_profile', '5_applications'];
+const FREE_PLAN_FEATURES: string[] = ['job_search', 'basic_profile', 'limited_applications'];
 const FREE_PLAN_LIMITS: Record<string, number> = {
-  applications_per_month: 5,
-  resume_generations: 1,
-  job_alerts: 0,
+  // Approximate: 20 applications/day ≈ ~600/month
+  applications_per_month: 600,
+  // Approximate: 2 AI generations/week ≈ ~8/month
+  resume_generations: 8,
+  // Approximate: 3 alerts/week ≈ ~12/month
+  job_alerts: 12,
 };
 
 /** Current calendar month period (start/end date) for usage. */

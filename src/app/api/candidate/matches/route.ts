@@ -47,14 +47,19 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const subscriptionTier = profile?.subscription_tier ?? 'free';
-  const isPro = subscriptionTier === 'pro';
+  const subscriptionTier = (profile?.subscription_tier ?? 'free') as 'free' | 'pro' | 'pro_plus' | 'enterprise';
+  const isPro =
+    subscriptionTier === 'pro' ||
+    subscriptionTier === 'pro_plus' ||
+    subscriptionTier === 'enterprise';
 
   if (isPro) {
     const { data: matches } = await supabase
       .from('candidate_job_matches')
       .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
+      .or('job.is_active.is.null,job.is_active.is.true')
+      .order('matched_at', { ascending: false })
       .order('fit_score', { ascending: false });
     // #region agent log
     fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bacffe'},body:JSON.stringify({sessionId:'bacffe',runId:'matches-mismatch-1',hypothesisId:'H3',location:'api/candidate/matches/route.ts:58',message:'Candidate matches API pro response',data:{candidateId:candidate.id,tier:subscriptionTier,returnedCount:(matches??[]).length},timestamp:Date.now()})}).catch(()=>{});
@@ -68,7 +73,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Free tier: current week only, cap at 10
+  // Free tier: current week only, capped at FREE_TIER_WEEKLY_MATCH_LIMIT (~10/day)
   const weekStart = getWeekStartUtc(new Date());
   const usedThisWeek = await getWeeklyMatchCount(supabase, candidate.id);
   if (usedThisWeek >= FREE_TIER_WEEKLY_MATCH_LIMIT) {
@@ -77,6 +82,8 @@ export async function GET(req: NextRequest) {
       .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
       .eq('candidate_id', candidate.id)
       .gte('matched_at', weekStart)
+      .or('job.is_active.is.null,job.is_active.is.true')
+      .order('matched_at', { ascending: false })
       .order('fit_score', { ascending: false })
       .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
     // #region agent log
@@ -97,6 +104,8 @@ export async function GET(req: NextRequest) {
     .select('*, job:jobs(id, title, company, location, remote_type, scraped_at, created_at, is_active)')
     .eq('candidate_id', candidate.id)
     .gte('matched_at', weekStart)
+    .or('job.is_active.is.null,job.is_active.is.true')
+    .order('matched_at', { ascending: false })
     .order('fit_score', { ascending: false })
     .limit(FREE_TIER_WEEKLY_MATCH_LIMIT);
   // #region agent log

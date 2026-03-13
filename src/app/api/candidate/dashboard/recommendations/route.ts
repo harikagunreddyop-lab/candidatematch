@@ -38,7 +38,11 @@ export async function GET(req: NextRequest) {
   }
 
   const candidateId = (candidate as { id: string }).id;
-  const isPro = (profile?.subscription_tier ?? 'free') === 'pro';
+  const subscriptionTier = (profile?.subscription_tier ?? 'free') as 'free' | 'pro' | 'pro_plus' | 'enterprise';
+  const isPro =
+    subscriptionTier === 'pro' ||
+    subscriptionTier === 'pro_plus' ||
+    subscriptionTier === 'enterprise';
 
   const { data: appliedJobIds } = await supabase
     .from('applications')
@@ -52,6 +56,7 @@ export async function GET(req: NextRequest) {
       'id, job_id, fit_score, ats_score, match_reason, matched_keywords, missing_keywords, matched_at, job:jobs(id, title, company, location, remote_type, salary_min, salary_max, scraped_at, created_at)'
     )
     .eq('candidate_id', candidateId)
+    .order('matched_at', { ascending: false })
     .order('fit_score', { ascending: false });
 
   if (!isPro) {

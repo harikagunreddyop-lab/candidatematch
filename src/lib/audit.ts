@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-browser';
 export type AuditAction =
   | 'job.create'
   | 'job.upload'
+  | 'job.ingest_adzuna'
   | 'connector.sync'
   | 'assignment.create'
   | 'assignment.remove'

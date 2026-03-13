@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import Link from 'next/link';
 import { Building2, Search, ChevronRight, Plus } from 'lucide-react';
+import { PLAN_DISPLAY_NAMES } from '@/lib/plan-limits';
 
 type Filter = 'all' | 'active' | 'trialing' | 'past_due';
 
@@ -84,7 +85,7 @@ export default function CompaniesPage() {
       <div className="admin-table-wrap">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin w-6 h-6 border-2 border-[#2563EB] border-t-transparent rounded-full" />
+            <div className="animate-spin w-6 h-6 border-2 border-surface-500 border-t-transparent rounded-full" />
           </div>
         ) : (
           <table className="w-full">
@@ -111,8 +112,9 @@ export default function CompaniesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-[#EFF6FF] text-[#2563EB] text-xs font-medium rounded">
-                      {company.subscription_plan}
+                    <span className="px-2.5 py-1 bg-surface-100 text-surface-700 text-xs font-medium rounded-full border border-surface-200">
+                      {PLAN_DISPLAY_NAMES[company.subscription_plan as keyof typeof PLAN_DISPLAY_NAMES] ??
+                        company.subscription_plan}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -127,7 +129,7 @@ export default function CompaniesPage() {
                   <td className="px-6 py-4">
                     <Link
                       href={`/dashboard/admin/companies/${company.id}`}
-                      className="inline-flex text-[#2563EB] hover:text-[#1D4ED8] transition-colors"
+                      className="inline-flex text-surface-600 hover:text-surface-900 transition-colors"
                       aria-label="View company"
                     >
                       <ChevronRight className="w-5 h-5" />
@@ -143,7 +145,7 @@ export default function CompaniesPage() {
             {companies.length === 0 ? (
               <>
                 No companies yet.{' '}
-                <Link href="/dashboard/admin/companies/new" className="text-[#2563EB] hover:underline">
+                <Link href="/dashboard/admin/companies/new" className="text-surface-900 underline">
                   Create the first one →
                 </Link>
               </>

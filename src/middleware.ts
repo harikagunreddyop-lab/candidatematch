@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { EffectiveRole } from '@/types';
 import { cached } from '@/lib/redis-upstash';
 import { authLogger } from '@/lib/logger';
+import { subscriptionTierToPlanKey, type PlanKey } from '@/lib/plans';
 
 const PROFILE_CACHE_TTL = 300; // 5 minutes
 
@@ -90,6 +91,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const pathname = request.nextUrl.pathname;
+  let userPlan: PlanKey = 'FREE';
 
   // Only warn when on a protected route and auth failed (e.g. expired/invalid session)
   if (error && pathname.startsWith('/dashboard')) {
@@ -142,6 +144,15 @@ export async function middleware(request: NextRequest) {
     const role = profile?.legacy_role as string | undefined;
     const effectiveRole = profile?.effective_role as string | undefined;
     const activeRole = effectiveRole || role;
+
+    // Fetch subscription tier to derive candidate plan for paywall checks
+    const { data: billingProfile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', user.id)
+      .maybeSingle();
+    userPlan = subscriptionTierToPlanKey(billingProfile?.subscription_tier as any);
+    response.headers.set('x-user-plan', userPlan);
 
     // ── No profile or role (e.g. not yet approved) → pending approval page ──
     if (!role && (pathname === '/auth' || pathname.startsWith('/dashboard'))) {
@@ -287,6 +298,58 @@ export async function middleware(request: NextRequest) {
 
         // Otherwise send to onboarding
         return addTracingHeaders(NextResponse.redirect(new URL('/dashboard/candidate/onboarding', request.url)), requestId, start);
+      }
+    }
+  }
+  // Plan-based gating for candidate features (paywall)
+  if (user) {
+    const paywalledRoutes: Array<{ prefix: string; feature: string }> = [
+      { prefix: '/dashboard/resume/download', feature: 'resumeDownload' },
+      { prefix: '/dashboard/resume/ats', feature: 'atsBreakdown' },
+      { prefix: '/dashboard/apply/bulk', feature: 'bulkApply' },
+      { prefix: '/dashboard/apply/auto', feature: 'autoApply' },
+      { prefix: '/dashboard/coaching', feature: 'resumeCoaching' },
+      { prefix: '/dashboard/advisor', feature: 'dedicatedAdvisor' },
+    ];
+
+    const match = paywalledRoutes.find((r) => pathname.startsWith(r.prefix));
+    if (match) {
+      const feature = match.feature;
+      const allowedFeaturesByPlan: Record<PlanKey, string[]> = {
+        FREE: [],
+        PRO: ['resumeDownload', 'atsBreakdown', 'resumeTailoring', 'recruiterVisibility', 'profileViewers', 'applicationAnalytics'],
+        PRO_PLUS: [
+          'resumeDownload',
+          'atsBreakdown',
+          'resumeTailoring',
+          'recruiterVisibility',
+          'profileViewers',
+          'applicationAnalytics',
+          'bulkApply',
+          'autoApply',
+          'resumeCoaching',
+          'interviewScore',
+        ],
+        ELITE: [
+          'resumeDownload',
+          'atsBreakdown',
+          'resumeTailoring',
+          'recruiterVisibility',
+          'profileViewers',
+          'applicationAnalytics',
+          'bulkApply',
+          'autoApply',
+          'resumeCoaching',
+          'interviewScore',
+          'dedicatedAdvisor',
+        ],
+      };
+
+      const allowed = allowedFeaturesByPlan[userPlan]?.includes(feature);
+      if (!allowed) {
+        const url = new URL('/upgrade', request.url);
+        url.searchParams.set('feature', feature);
+        return addTracingHeaders(NextResponse.redirect(url), requestId, start);
       }
     }
   }

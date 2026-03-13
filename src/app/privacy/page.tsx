@@ -27,7 +27,7 @@ export default function PrivacyPage() {
                 <p>We use AI models (including Claude by Anthropic) to: extract job requirements, score candidates, rewrite resume bullets, and generate content. Your data is sent to AI providers solely for Service functionality. We do not sell your data to AI companies for model training.</p>
 
                 <h2>4. Data Sharing</h2>
-                <p>We share data with: (a) AI providers for processing (Anthropic); (b) infrastructure providers (Supabase, AWS, Redis); (c) payment processors (Stripe); (d) assigned recruiters (if applicable). We do not sell personal data to third parties.</p>
+                <p>We share data with: (a) AI providers for processing (Anthropic); (b) infrastructure providers (Supabase, AWS, Redis); (c) payment processors (Stripe); (d) authorized recruiter or hiring teams (if applicable). We do not sell personal data to third parties.</p>
 
                 <h2>5. Data Retention</h2>
                 <p>Account data is retained while your account is active. Upon deletion, personal data is removed within 30 days. Aggregated, anonymized data may be retained for analytics.</p>

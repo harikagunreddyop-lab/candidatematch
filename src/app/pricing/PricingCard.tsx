@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-type PlanKey = 'free' | 'pro' | 'pro_plus';
+type PlanKey = 'free' | 'pro' | 'pro_plus' | 'enterprise';
 
 type PricingCardProps = {
   name: string;
@@ -44,6 +44,7 @@ export function PricingCard({ name, price, features, cta, popular, planKey }: Pr
   }
 
   const isProPlus = planKey === 'pro_plus';
+  const isElite = planKey === 'enterprise';
   const isFree = planKey === 'free';
 
   return (
@@ -72,9 +73,9 @@ export function PricingCard({ name, price, features, cta, popular, planKey }: Pr
           >
             {cta}
           </Link>
-        ) : isProPlus ? (
+        ) : isProPlus || isElite ? (
           <a
-            href="mailto:sales@candidatematch.io?subject=Pro Plus plan"
+            href={`mailto:sales@candidatematch.io?subject=${encodeURIComponent(name + ' plan')}`}
             className="block text-center py-3 rounded-xl font-medium bg-brand-400 hover:bg-brand-300 text-[#0a0f00] transition"
           >
             {cta}

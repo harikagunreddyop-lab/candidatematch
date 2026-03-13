@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient, subscribeWithLog } from '@/lib/supabase-browser';
-import { SearchInput, EmptyState, Spinner, Modal, ToastContainer } from '@/components/ui';
+import { SearchInput, EmptyState, Spinner, ToastContainer } from '@/components/ui';
 import { useToast, useProfile } from '@/hooks';
 import {
   Users,
@@ -15,20 +15,17 @@ import {
   ChevronDown,
   MapPin,
   Send,
-  UserPlus,
-  Trash2,
-  Plus,
 } from 'lucide-react';
 import { cn } from '@/utils/helpers';
 import Link from 'next/link';
 
 const STATUS_COLORS: Record<string, string> = {
   ready: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
-  applied: 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-200',
-  screening: 'bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-200',
-  interview: 'bg-brand-400/10 text-brand-400',
-  offer: 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-200',
-  rejected: 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-300',
+  applied: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
+  screening: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
+  interview: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
+  offer: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
+  rejected: 'bg-surface-100 dark:bg-surface-600 text-surface-600 dark:text-surface-300',
 };
 
 function CandidatesPageContent() {
@@ -39,14 +36,10 @@ function CandidatesPageContent() {
   const supabase = createClient();
 
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [recruiters, setRecruiters] = useState<any[]>([]);
-  const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [filterAssignment, setFilterAssignment] = useState<'all' | 'unassigned' | 'assigned'>('all');
   const [filterActive, setFilterActive] = useState('all');
-  const [filterRecruiter, setFilterRecruiter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'created_at' | 'title'>('created_at');
   const [sortAsc, setSortAsc] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
@@ -56,12 +49,7 @@ function CandidatesPageContent() {
     else { setSortBy(col); setSortAsc(true); }
   };
 
-  // Assign recruiter modal
-  const [assignTarget, setAssignTarget] = useState<any | null>(null);
-  const [assigningId, setAssigningId] = useState('');
-  const [savingAssign, setSavingAssign] = useState(false);
-  const [removingAssign, setRemovingAssign] = useState<string | null>(null);
-  const { toasts, toast, dismiss } = useToast();
+  const { toasts, dismiss } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -75,7 +63,7 @@ function CandidatesPageContent() {
 
     const validProfileIds = (candidateProfiles || []).map((p: any) => p.id);
 
-    const [candRes, recRes, asgRes] = await Promise.all([
+    const [candRes] = await Promise.all([
       supabase
         .from('candidates')
         .select('*, applications(status)')
@@ -84,21 +72,10 @@ function CandidatesPageContent() {
         // This filters out orphaned rows left behind after a user is deleted
         .in('user_id', validProfileIds.length > 0 ? validProfileIds : ['00000000-0000-0000-0000-000000000000'])
         .order('created_at', { ascending: false }),
-      supabase.from('profiles').select('id, name, email').eq('role', 'recruiter').order('name'),
-      supabase.from('recruiter_candidate_assignments').select('candidate_id, recruiter_id'),
     ]);
 
     if (candRes.error) setError(candRes.error.message);
     else setCandidates(candRes.data || []);
-
-    setRecruiters(recRes.data || []);
-
-    const map: Record<string, string[]> = {};
-    for (const a of asgRes.data || []) {
-      if (!map[a.candidate_id]) map[a.candidate_id] = [];
-      map[a.candidate_id].push(a.recruiter_id);
-    }
-    setAssignments(map);
 
     setLastRefreshed(new Date());
     setLoading(false);
@@ -122,8 +99,7 @@ function CandidatesPageContent() {
     const channel = supabase
       .channel('admin-candidates-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'candidates' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'recruiter_candidate_assignments' }, () => load());
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => load());
     subscribeWithLog(channel, 'admin-candidates-realtime');
 
     return () => {
@@ -131,73 +107,14 @@ function CandidatesPageContent() {
     };
   }, [load, supabase]);
 
-  const assignRecruiter = async () => {
-    if (!assignTarget || !assigningId) return;
-    setSavingAssign(true);
-    try {
-      const { error: err1 } = await supabase.from('recruiter_candidate_assignments').upsert({
-        recruiter_id: assigningId,
-        candidate_id: assignTarget.id,
-      });
-      if (err1) {
-        toast(err1.message || 'Failed to assign recruiter', 'error');
-        return;
-      }
-      const { error: err2 } = await supabase.from('candidates').update({ assigned_recruiter_id: assigningId, updated_at: new Date().toISOString() }).eq('id', assignTarget.id);
-      if (err2) {
-        toast(err2.message || 'Failed to update candidate', 'error');
-        return;
-      }
-      setAssigningId('');
-      toast('Recruiter assigned', 'success');
-      await load();
-    } catch (e: any) {
-      toast(e.message || 'Failed to assign recruiter', 'error');
-    } finally {
-      setSavingAssign(false);
-    }
-  };
-
-  const removeRecruiter = async (candidateId: string, recruiterId: string) => {
-    setRemovingAssign(recruiterId);
-    try {
-      const { error: err1 } = await supabase.from('recruiter_candidate_assignments').delete().eq('recruiter_id', recruiterId).eq('candidate_id', candidateId);
-      if (err1) {
-        toast(err1.message || 'Failed to remove assignment', 'error');
-        return;
-      }
-      const { data: remaining } = await supabase.from('recruiter_candidate_assignments').select('recruiter_id').eq('candidate_id', candidateId).order('assigned_at', { ascending: true }).limit(1);
-      const nextRecruiterId = remaining?.[0]?.recruiter_id ?? null;
-      const { error: err2 } = await supabase.from('candidates').update({ assigned_recruiter_id: nextRecruiterId, updated_at: new Date().toISOString() }).eq('id', candidateId);
-      if (err2) {
-        toast(err2.message || 'Failed to update candidate', 'error');
-        return;
-      }
-      toast('Recruiter removed', 'success');
-      await load();
-    } catch (e: any) {
-      toast(e.message || 'Failed to remove recruiter', 'error');
-    } finally {
-      setRemovingAssign(null);
-    }
-  };
-
   const filtered = [...candidates].filter((c) => {
     const matchSearch =
       c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       c.primary_title?.toLowerCase().includes(search.toLowerCase()) ||
       c.location?.toLowerCase().includes(search.toLowerCase());
 
-    const assignedIds = assignments[c.id] || [];
-    const isAssigned = assignedIds.length > 0;
-    const matchAssignment =
-      filterAssignment === 'all' ||
-      (filterAssignment === 'unassigned' && !isAssigned) ||
-      (filterAssignment === 'assigned' && isAssigned);
     const matchActive = filterActive === 'all' || (filterActive === 'active' ? c.active : !c.active);
-    const matchRecruiter = filterRecruiter === 'all' || assignedIds.includes(filterRecruiter);
-
-    return matchSearch && matchAssignment && matchActive && matchRecruiter;
+    return matchSearch && matchActive;
   });
 
   filtered.sort((a, b) => {
@@ -209,17 +126,12 @@ function CandidatesPageContent() {
     return mul * (da - db);
   });
 
-  const unassignedCount = candidates.filter((c) => !(assignments[c.id] || []).length).length;
   const effectiveRole = (profile as (typeof profile & { effective_role?: string }) | null)?.effective_role ?? null;
   const isPlatformAdmin = effectiveRole === 'platform_admin';
-  const showRecruiterAssignmentUI = !isPlatformAdmin;
 
   useEffect(() => {
     if (!profile) return;
-    // #region agent log
-    fetch('http://127.0.0.1:7830/ingest/7e7b9384-2f83-41f7-a326-f10ef9606c50',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'60e030'},body:JSON.stringify({sessionId:'60e030',runId:'baseline',hypothesisId:'H2',location:'src/app/dashboard/admin/candidates/page.tsx:220',message:'Candidates admin visibility model',data:{profileRole:profile.role,effectiveRole,isPlatformAdmin,showRecruiterAssignmentUI,candidatesCount:candidates.length,recruitersCount:recruiters.length,unassignedCount},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-  }, [profile, effectiveRole, isPlatformAdmin, showRecruiterAssignmentUI, candidates.length, recruiters.length, unassignedCount]);
+  }, [profile, effectiveRole, isPlatformAdmin, candidates.length]);
 
   return (
     <div className="space-y-6">
@@ -249,49 +161,22 @@ function CandidatesPageContent() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
+        <div className="rounded-xl border border-surface-300 bg-surface-100 px-4 py-3 text-sm text-surface-800 flex items-center gap-2">
           <AlertCircle size={14} /> {error}
         </div>
       )}
 
-      {showRecruiterAssignmentUI && unassignedCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
-          <UserPlus size={15} className="text-amber-600 shrink-0" />
-          <p className="text-sm text-amber-800">
-            <span className="font-semibold">{unassignedCount} candidate{unassignedCount !== 1 ? 's' : ''}</span> waiting for recruiter assignment.
-          </p>
-          <button
-            onClick={() => setFilterAssignment('unassigned')}
-            className="ml-auto text-xs text-amber-700 underline"
-          >
-            Show them
-          </button>
-        </div>
-      )}
+      {/* Legacy recruiter-assignment banner removed in new model */}
 
       {/* Filters */}
       <div className="admin-toolbar items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Search name, title, location..." />
-        {showRecruiterAssignmentUI && (
-          <select value={filterAssignment} onChange={(e) => setFilterAssignment(e.target.value as 'all' | 'unassigned' | 'assigned')} className="input text-sm w-full sm:w-44" aria-label="Assignment filter">
-            <option value="all">All</option>
-            <option value="unassigned">Waiting for recruiter</option>
-            <option value="assigned">Assigned</option>
-          </select>
-        )}
         <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} className="input text-sm w-full sm:w-32" aria-label="Active filter">
           <option value="all">All</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
         </select>
-        {showRecruiterAssignmentUI && (
-          <select value={filterRecruiter} onChange={(e) => setFilterRecruiter(e.target.value)} className="input text-sm w-full sm:w-44" aria-label="Recruiter filter">
-            <option value="all">All recruiters</option>
-            {recruiters.map((r) => (
-              <option key={r.id} value={r.id}>{r.name || r.email}</option>
-            ))}
-          </select>
-        )}
+        {/* Recruiter filter removed in new model */}
       </div>
 
       {!loading && <p className="text-xs text-surface-500">Showing {filtered.length} of {candidates.length}</p>}
@@ -332,10 +217,6 @@ function CandidatesPageContent() {
             </div>
             {filtered.map((c) => {
               const latestStatus = c.applications?.[0]?.status;
-              const assignedRecruiterIds = assignments[c.id] || [];
-              const assignedRecruiters = recruiters.filter((r) => assignedRecruiterIds.includes(r.id));
-              const isAssigned = assignedRecruiters.length > 0;
-
               return (
                 <div
                   key={c.id}
@@ -343,7 +224,7 @@ function CandidatesPageContent() {
                   className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 hover:bg-surface-100 transition-colors group min-w-0"
                 >
                   <div
-                    className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-700 font-bold text-sm shrink-0 cursor-pointer"
+                    className="w-10 h-10 rounded-full bg-surface-900 flex items-center justify-center text-surface-50 font-bold text-sm shrink-0 cursor-pointer"
                     onClick={() => router.push(`/dashboard/admin/candidates/${c.id}`)}
                   >
                     {c.full_name?.[0] || '?'}
@@ -359,14 +240,7 @@ function CandidatesPageContent() {
                           ))}
                         </div>
                       )}
-                      {showRecruiterAssignmentUI && (
-                        <span className={cn(
-                          'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                          isAssigned ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                        )}>
-                          {isAssigned ? 'Assigned' : 'Waiting for recruiter'}
-                        </span>
-                      )}
+                      {/* Recruiter assignment status badge removed in new model */}
                     </div>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                       <span className="text-xs text-surface-600 font-medium">
@@ -382,33 +256,7 @@ function CandidatesPageContent() {
                     </div>
                   </div>
 
-                  {showRecruiterAssignmentUI && (
-                  <div className="hidden md:flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {!isAssigned ? (
-                      <button
-                        onClick={() => { setAssignTarget(c); setAssigningId(''); }}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded-lg hover:bg-blue-50 border border-blue-200 transition-colors"
-                      >
-                        <UserPlus size={11} /> Assign
-                      </button>
-                    ) : (
-                      <>
-                        {assignedRecruiters.slice(0, 2).map((r) => (
-                          <span key={r.id} className="px-2 py-0.5 bg-brand-50 text-brand-700 rounded-full text-[10px] font-medium">
-                            {r.name || r.email}
-                          </span>
-                        ))}
-                        {assignedRecruiters.length > 2 && <span className="text-[10px] text-surface-400">+{assignedRecruiters.length - 2}</span>}
-                        <button
-                          onClick={() => { setAssignTarget(c); setAssigningId(''); }}
-                          className="btn-ghost p-1 text-surface-400 hover:text-brand-600"
-                        >
-                          <Plus size={12} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  )}
+                  {/* Per-candidate recruiter assignment controls removed in new model */}
 
                   <div className="shrink-0 flex items-center gap-3">
                     {latestStatus && (
@@ -425,66 +273,7 @@ function CandidatesPageContent() {
         </div>
       )}
 
-      {/* ── Assign Recruiter Modal ── */}
-      {showRecruiterAssignmentUI && assignTarget && (
-        <Modal open onClose={() => { setAssignTarget(null); setAssigningId(''); }} title={`Assign recruiter — ${assignTarget.full_name}`} size="sm">
-          <div className="space-y-4">
-            {(assignments[assignTarget.id] || []).length > 0 && (
-              <div>
-                <p className="text-xs font-medium text-surface-600 mb-2">Currently assigned</p>
-                <div className="space-y-1.5">
-                  {recruiters
-                    .filter((r) => (assignments[assignTarget.id] || []).includes(r.id))
-                    .map((r) => (
-                      <div key={r.id} className="flex items-center justify-between px-3 py-2 bg-surface-100 rounded-lg">
-                        <div>
-                          <p className="text-sm font-medium text-surface-800">{r.name || r.email}</p>
-                          <p className="text-xs text-surface-400">{r.email}</p>
-                        </div>
-                        <button
-                          onClick={() => removeRecruiter(assignTarget.id, r.id)}
-                          disabled={removingAssign === r.id}
-                          className="btn-ghost p-1.5 text-red-400 hover:text-red-600"
-                        >
-                          {removingAssign === r.id ? <Spinner size={12} /> : <Trash2 size={13} />}
-                        </button>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {recruiters.filter((r) => !(assignments[assignTarget.id] || []).includes(r.id)).length > 0 ? (
-              <div>
-                <p className="text-xs font-medium text-surface-600 mb-2">Add recruiter</p>
-                <div className="flex gap-2">
-                  <select value={assigningId} onChange={(e) => setAssigningId(e.target.value)} className="input text-sm flex-1" aria-label="Select recruiter">
-                    <option value="">Select a recruiter...</option>
-                    {recruiters
-                      .filter((r) => !(assignments[assignTarget.id] || []).includes(r.id))
-                      .map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name || r.email}
-                        </option>
-                      ))}
-                  </select>
-                  <button onClick={assignRecruiter} disabled={!assigningId || savingAssign} className="btn-primary text-sm px-3">
-                    {savingAssign ? <Spinner size={14} /> : <Plus size={14} />}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-surface-400">All recruiters are already assigned.</p>
-            )}
-
-            <div className="flex justify-end pt-2">
-              <button onClick={() => { setAssignTarget(null); setAssigningId(''); }} className="btn-secondary text-sm">
-                Done
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* Assign recruiter modal removed in new model */}
     </div>
   );
 }

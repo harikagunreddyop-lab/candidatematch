@@ -56,11 +56,11 @@ async function getIntFlagOrDefault(supabase: any, key: string, defaultValue: num
   }
 }
 
-async function isMatchingV3Enabled(supabase: any): Promise<boolean> {
+export async function isMatchingV3Enabled(supabase: any): Promise<boolean> {
   return isFlagEnabled(supabase, 'matching.v3.enabled');
 }
 
-async function computeSkillOverlapScores(
+export async function computeSkillOverlapScores(
   supabase: any,
   candidateId: string,
   jobs: Job[],
@@ -275,6 +275,55 @@ function canonicalTerm(s: string): string {
     .replace(/[^a-z0-9#+.\s-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+// ── Simple title & skill scoring (titles + skills only) ────────────────────────
+
+function simpleTokenSet(str: string): Set<string> {
+  return new Set(
+    canonicalTerm(str)
+      .split(/\s+/)
+      .filter((t) => t.length > 1),
+  );
+}
+
+function simpleTitleScore(candidate: Candidate, job: Job): number {
+  const titles: string[] = [];
+  if (candidate.primary_title) titles.push(candidate.primary_title);
+  if (Array.isArray(candidate.target_job_titles)) titles.push(...candidate.target_job_titles);
+  if (!titles.length || !job.title) return 0;
+
+  const jobTokens = simpleTokenSet(job.title);
+  if (!jobTokens.size) return 0;
+
+  const candTokens = new Set<string>();
+  for (const t of titles) {
+    for (const tok of simpleTokenSet(t)) candTokens.add(tok);
+  }
+
+  let overlap = 0;
+  for (const tok of jobTokens) {
+    if (candTokens.has(tok)) overlap++;
+  }
+  return (overlap / jobTokens.size) * 100;
+}
+
+function simpleSkillsScore(candidate: Candidate, job: Job): number {
+  const candSkills = Array.isArray(candidate.skills) ? candidate.skills : [];
+  const jobSkills = [
+    ...(Array.isArray(job.must_have_skills) ? job.must_have_skills : []),
+    ...(Array.isArray(job.nice_to_have_skills) ? job.nice_to_have_skills : []),
+  ];
+  if (!candSkills.length || !jobSkills.length) return 0;
+
+  const candSet = new Set(candSkills.map((s) => canonicalTerm(String(s))));
+  const jobSet = new Set(jobSkills.map((s) => canonicalTerm(String(s))));
+
+  let overlap = 0;
+  for (const s of jobSet) {
+    if (candSet.has(s)) overlap++;
+  }
+  return (overlap / jobSet.size) * 100;
 }
 
 
@@ -601,6 +650,7 @@ export async function runMatching(
   onProgress?: (msg: string) => void,
   options?: { jobsSince?: string },
 ) {
+  const MIN_SCORE = 50; // titles + skills combined
   const supabase = createServiceClient();
   const log = (m: string) => { devLog('[MATCH] ' + m); onProgress?.(m); };
 
@@ -628,7 +678,7 @@ export async function runMatching(
     while (true) {
       let q2 = supabase
         .from('jobs')
-        .select('id, title, company, location, salary_min, salary_max, remote_type')
+        .select('id, title, company, must_have_skills, nice_to_have_skills')
         .eq('is_active', true)
         .range(from, from + PAGE_SIZE - 1);
       if (jobsSinceDate) {
@@ -657,7 +707,7 @@ export async function runMatching(
     }
   } catch (_) { }
 
-  log(`Title-based matching: ${candidates.length} candidates × ${jobs.length} jobs.`);
+  log(`Title + skills matching: ${candidates.length} candidates × ${jobs.length} jobs.`);
 
   let totalMatchesUpserted = 0;
   const summary: any[] = [];
@@ -666,57 +716,54 @@ export async function runMatching(
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.target_job_titles || []).some(t => t?.trim()) ||
-      (candidate.secondary_titles || []).some(t => t?.trim())
+      (candidate.target_job_titles || []).some(t => t?.trim())
     );
 
     if (!hasTitles) {
-      log(`${candidate.full_name}: Skipped — no titles set (primary, secondary, or target).`);
+      log(`${candidate.full_name}: Skipped — no titles set (primary or target).`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'No Titles' });
       continue;
     }
 
-    const matchedJobs = (jobs as Job[]).filter(job => {
-      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
-      if (!isTitleCompatible(candidate, job)) return false;
-      return isTitleMatch(candidate, job);
-    });
+    const scored: Array<{ job: Job; score: number; titleComponent: number; skillsComponent: number }> = [];
 
-    if (matchedJobs.length === 0) {
-      log(`${candidate.full_name}: 0 title-matched jobs.`);
+    for (const job of jobs as Job[]) {
+      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) continue;
+      const titleComponent = simpleTitleScore(candidate, job);
+      const skillsComponent = simpleSkillsScore(candidate, job);
+      const score = Math.round(titleComponent * 0.4 + skillsComponent * 0.6);
+      if (score >= MIN_SCORE) {
+        scored.push({ job, score, titleComponent, skillsComponent });
+      }
+    }
+
+    if (!scored.length) {
+      log(`${candidate.full_name}: 0 title + skills matches.`);
       summary.push({ candidate_id: candidate.id, candidate: candidate.full_name, matches: 0, status: 'No Matches Found' });
       continue;
     }
 
-    let jobsForRows = matchedJobs;
-
-    // Optional v3: re-rank title matches by skill overlap when enabled
-    const matchingV3On = await isMatchingV3Enabled(supabase);
-    let skillScores: Map<string, number> | null = null;
-    if (matchingV3On) {
-      skillScores = await computeSkillOverlapScores(supabase, candidate.id, matchedJobs as Job[]);
-      if (skillScores && skillScores.size) {
-        jobsForRows = [...matchedJobs].sort((a, b) => {
-          const sb = skillScores!.get(b.id) ?? 0;
-          const sa = skillScores!.get(a.id) ?? 0;
-          return sb - sa;
-        });
-      }
-    }
-
-    const rows = jobsForRows.slice(0, MAX_MATCHES_PER_CANDIDATE).map(job => ({
-      candidate_id: candidate.id,
-      job_id: job.id,
-      fit_score: skillScores?.get(job.id) ? Math.round((skillScores!.get(job.id)! || 0) * 100) : 0,
-      match_reason: 'Title match',
-      best_resume_id: null,
-      matched_keywords: [],
-      missing_keywords: [],
-      matched_at: now,
-      score_breakdown: matchingV3On
-        ? { version: 2, title_match: true, skill_overlap: skillScores?.get(job.id) ?? null }
-        : { version: 1, title_match: true },
-    }));
+    const rows = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_MATCHES_PER_CANDIDATE)
+      .map(({ job, score, titleComponent, skillsComponent }) => ({
+        candidate_id: candidate.id,
+        job_id: job.id,
+        fit_score: score,
+        match_reason: 'Primary title + target titles + skills match',
+        best_resume_id: null,
+        matched_keywords: [],
+        missing_keywords: [],
+        matched_at: now,
+        score_breakdown: {
+          version: 4,
+          title_match: titleComponent > 0,
+          components: {
+            title: Math.round(titleComponent),
+            skills: Math.round(skillsComponent),
+          },
+        },
+      }));
 
     const { error: saveErr } = await supabase
       .from('candidate_job_matches')
@@ -766,7 +813,7 @@ export async function runMatchingForJobs(
 
   const { data: jobs, error: jErr } = await supabase
     .from('jobs')
-    .select('id, title, company, location, salary_min, salary_max, remote_type')
+    .select('id, title, company, must_have_skills, nice_to_have_skills')
     .in('id', jobIds)
     .eq('is_active', true);
   if (jErr || !jobs?.length) {
@@ -793,46 +840,44 @@ export async function runMatchingForJobs(
   for (const candidate of candidates as Candidate[]) {
     const hasTitles = !!(
       candidate.primary_title?.trim() ||
-      (candidate.target_job_titles || []).some(t => t?.trim()) ||
-      (candidate.secondary_titles || []).some(t => t?.trim())
+      (candidate.target_job_titles || []).some(t => t?.trim())
     );
     if (!hasTitles) continue;
 
-    const matchedJobs = (jobs as Job[]).filter(job => {
-      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) return false;
-      if (!isTitleCompatible(candidate, job)) return false;
-      return isTitleMatch(candidate, job);
-    });
-    if (!matchedJobs.length) continue;
+    const scored: Array<{ job: Job; score: number; titleComponent: number; skillsComponent: number }> = [];
 
-    let jobsForRows = matchedJobs;
-
-    const matchingV3On = await isMatchingV3Enabled(supabase);
-    let skillScores: Map<string, number> | null = null;
-    if (matchingV3On) {
-      skillScores = await computeSkillOverlapScores(supabase, candidate.id, matchedJobs as Job[]);
-      if (skillScores && skillScores.size) {
-        jobsForRows = [...matchedJobs].sort((a, b) => {
-          const sb = skillScores!.get(b.id) ?? 0;
-          const sa = skillScores!.get(a.id) ?? 0;
-          return sb - sa;
-        });
+    for (const job of jobs as Job[]) {
+      if (hiddenByCandidate.get(candidate.id)?.has(job.id)) continue;
+      const titleComponent = simpleTitleScore(candidate, job);
+      const skillsComponent = simpleSkillsScore(candidate, job);
+      const score = Math.round(titleComponent * 0.4 + skillsComponent * 0.6);
+      if (score >= 50) {
+        scored.push({ job, score, titleComponent, skillsComponent });
       }
     }
+    if (!scored.length) continue;
 
-    const rows = jobsForRows.slice(0, MAX_MATCHES_PER_CANDIDATE).map(job => ({
-      candidate_id: candidate.id,
-      job_id: job.id,
-      fit_score: skillScores?.get(job.id) ? Math.round((skillScores!.get(job.id)! || 0) * 100) : 0,
-      match_reason: 'Title match',
-      best_resume_id: null,
-      matched_keywords: [],
-      missing_keywords: [],
-      matched_at: now,
-      score_breakdown: matchingV3On
-        ? { version: 2, title_match: true, skill_overlap: skillScores?.get(job.id) ?? null }
-        : { version: 1, title_match: true },
-    }));
+    const rows = scored
+      .sort((a, b) => b.score - a.score)
+      .slice(0, MAX_MATCHES_PER_CANDIDATE)
+      .map(({ job, score, titleComponent, skillsComponent }) => ({
+        candidate_id: candidate.id,
+        job_id: job.id,
+        fit_score: score,
+        match_reason: 'Primary title + target titles + skills match',
+        best_resume_id: null,
+        matched_keywords: [],
+        missing_keywords: [],
+        matched_at: now,
+        score_breakdown: {
+          version: 4,
+          title_match: titleComponent > 0,
+          components: {
+            title: Math.round(titleComponent),
+            skills: Math.round(skillsComponent),
+          },
+        },
+      }));
 
     const { error: saveErr } = await supabase
       .from('candidate_job_matches')

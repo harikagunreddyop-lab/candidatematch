@@ -8,6 +8,9 @@ import { createServiceClient } from '@/lib/supabase-server';
 import { profileCompletionPercent } from '@/lib/profile-completion';
 import { FREE_TIER_WEEKLY_MATCH_LIMIT } from '@/lib/usage-limits';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const authResult = await requireApiAuth(req, { effectiveRoles: ['candidate', 'platform_admin', 'company_admin', 'recruiter'] });
   if (authResult instanceof Response) return authResult;

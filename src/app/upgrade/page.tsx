@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
@@ -14,7 +15,7 @@ function getFeatureFromParam(raw: string | null): FeatureKey | null {
     : null;
 }
 
-export default function UpgradePage() {
+function UpgradePageContent() {
   const searchParams = useSearchParams();
   const featureParam = searchParams.get('feature');
   const feature = getFeatureFromParam(featureParam);
@@ -105,4 +106,15 @@ export default function UpgradePage() {
     </div>
   );
 }
+
+export const dynamic = 'force-dynamic';
+
+export default function UpgradePage() {
+  return (
+    <Suspense fallback={null}>
+      <UpgradePageContent />
+    </Suspense>
+  );
+}
+
 

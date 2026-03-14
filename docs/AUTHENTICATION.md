@@ -61,7 +61,22 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 5. Forgot Password (Self-Service)
+## 5. Signup and Activation Email
+
+1. User signs up on **/auth/signup** (email, password, name, role) → `supabase.auth.signUp({ email, password, options: { data: { ... }, emailRedirectTo: appUrl + '/auth/callback' } })`.
+2. **Activation email is sent by Supabase**, not by the app. For users to receive it you must configure your Supabase project:
+   - In **Supabase Dashboard** → **Authentication** → **Providers** → **Email**:
+     - Turn **ON** “Confirm email”. If this is off, signup returns a session immediately and **no confirmation email is sent**.
+   - In **Authentication** → **URL Configuration**:
+     - Set **Site URL** to your app URL (e.g. `https://yourdomain.com`).
+     - Add **Redirect URL**: `https://yourdomain.com/auth/callback` (so the confirmation link works).
+   - (Recommended) In **Project Settings** → **Auth** → **SMTP**: configure custom SMTP (e.g. Resend, SendGrid) so emails are reliable and less likely to go to spam. The default Supabase sender is rate-limited and often filtered.
+3. If confirmation is enabled, `signUp()` does not return a session → user sees “Check your email” and must click the link. The link goes to `/auth/callback` → session is set → user can sign in or be redirected to complete/onboarding.
+4. If confirmation is disabled, `signUp()` returns a session → user is redirected to `/auth/complete` and no email is sent.
+
+---
+
+## 6. Forgot Password (Self-Service)
 
 1. On `/`, user clicks "Forgot password?" → mode `forgot`.
 2. Submits email → `supabase.auth.resetPasswordForEmail(email, { redirectTo: origin + '/auth/callback?type=recovery' })`.
@@ -72,7 +87,7 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 6. Middleware (Route Protection)
+## 7. Middleware (Route Protection)
 
 **File:** `src/middleware.ts`  
 **Matcher:** `['/', '/dashboard/:path*', '/pending-approval']` (so `/auth/callback` and `/auth/reset-password` are not run through middleware).
@@ -89,7 +104,7 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 7. Server-Side Auth (Layout & API)
+## 8. Server-Side Auth (Layout & API)
 
 - **Dashboard layout** (`src/app/dashboard/layout.tsx`): Uses `requireAuth()` from `src/lib/auth.ts` → `getProfile()` → redirect to `/` if no profile. So dashboard pages are protected by both middleware and layout.
 - **Auth helpers** (`src/lib/auth.ts`): `getSession()`, `getProfile()`, `requireAuth()`, `requireRole()`. Use **`getUser()`** (not `getSession()`) for server-side checks so the JWT is validated with Supabase.
@@ -97,7 +112,7 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 8. Profile Creation (New Users)
+## 9. Profile Creation (New Users)
 
 - **DB trigger:** `handle_new_user()` on `auth.users` AFTER INSERT:
   - Inserts into `profiles(id, name, email, role)`.
@@ -107,7 +122,7 @@ Session is stored in **cookies** and validated in **middleware** and **API route
 
 ---
 
-## 9. Summary Diagram
+## 10. Summary Diagram
 
 ```
 [ / ]  Login/Signup/Forgot
@@ -124,7 +139,7 @@ Middleware on / and /dashboard and /pending-approval:
 
 ---
 
-## 10. Security Notes
+## 11. Security Notes
 
 - **Middleware** and **API auth** use **`getUser()`** to validate the JWT with Supabase (recommended).
 - **Server components / layout** should use **`getUser()`** (or profile fetch after getUser) rather than `getSession()` only, so server-side checks are validated.

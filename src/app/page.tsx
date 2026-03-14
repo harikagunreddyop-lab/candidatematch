@@ -2,12 +2,29 @@
 /**
  * Marketing Landing Page — CandidateMatch
  * Public page at `/`. Human-crafted copy: one clear promise, outcome-led steps, minimal decoration.
+ * If a logged-in user visits this page, they are signed out so the landing page shows a clean public state.
  */
+import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Zap, BarChart3, RefreshCw, Shield, Users } from 'lucide-react';
 import ThreeDMarqueeDemo from '@/components/3d-marquee-demo';
+import { createClient } from '@/lib/supabase-browser';
 
 export default function LandingPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        supabase.auth.signOut().then(() => {
+          router.refresh();
+        });
+      }
+    });
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white overflow-hidden">
       {/* Nav */}

@@ -20,6 +20,9 @@ export function EmailVerification({ email }: { email: string }) {
       <p className="text-sm text-surface-500">
         Click the link in the email to activate your account, then sign in.
       </p>
+      <p className="text-xs text-surface-500 mt-4">
+        Not seeing it? Check your spam folder. If it still doesn’t arrive, your admin may need to enable “Confirm email” and SMTP in Supabase (Authentication → Providers → Email).
+      </p>
     </motion.div>
   );
 }
